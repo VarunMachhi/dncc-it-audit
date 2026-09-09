@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DNCC — IT Admin Panel</title>
+<style>
+  :root{
+    --navy:#132635; --navy-2:#1c384d; --accent:#2c6f97; --accent-light:#eaf2f6;
+    --line:#d7dde1; --line-strong:#b7c1c8; --bg:#f4f6f7; --card:#ffffff;
+    --text:#182530; --text-soft:#5b6b74; --danger:#a03a3a; --danger-light:#fbeaea;
+    --ok:#2f7d5a; --ok-light:#e9f5ef; --amber:#b5691f; --amber-light:#fbeee1;
+    --radius:10px; --sans:"IBM Plex Sans","Segoe UI",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.5;}
+  .wrap{max-width:1120px; margin:0 auto; padding:32px 20px 80px;}
+  .masthead{display:flex; align-items:center; gap:14px; margin-bottom:20px; justify-content:space-between; flex-wrap:wrap;}
+  .masthead .left{display:flex; align-items:center; gap:14px;}
+  .masthead .badge{width:44px; height:44px; border-radius:8px; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex:none;}
+  .masthead h1{font-size:19px; margin:0; font-weight:700; color:var(--navy);}
+  .masthead p{margin:2px 0 0; font-size:13px; color:var(--text-soft);}
+  a.formlink, .logout-link{font-size:12.5px; color:var(--text-soft); cursor:pointer; text-decoration:underline; background:none; border:none;}
+  #loginGate{max-width:360px; margin:80px auto; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:26px;}
+  #loginGate h2{font-size:16px; margin:0 0 14px; color:var(--navy);}
+  #loginGate input{width:100%; padding:10px 12px; border:1px solid var(--line-strong); border-radius:7px; font-size:14px; margin-bottom:12px;}
+  #loginGate button{width:100%; padding:11px; border:none; border-radius:7px; background:var(--navy); color:#fff; font-weight:700; cursor:pointer;}
+  #loginGate .err{color:var(--danger); font-size:12.5px; display:none; margin-bottom:10px;}
+  #dashboard{display:none;}
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:26px;}
+  .stat-card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+  .stat-card .num{font-size:24px; font-weight:700; color:var(--navy);}
+  .stat-card .label{font-size:12px; color:var(--text-soft); margin-top:4px;}
+  .tabs{display:flex; gap:8px; margin-bottom:18px; border-bottom:1px solid var(--line); flex-wrap:wrap;}
+  .tab-btn{background:none; border:none; padding:10px 4px; font-size:14px; font-weight:700; color:var(--text-soft); cursor:pointer; border-bottom:2px solid transparent; margin-right:18px;}
+  .tab-btn.active{color:var(--navy); border-bottom-color:var(--accent);}
+  .tab-panel{display:none;} .tab-panel.active{display:block;}
+  .panel-bar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;}
+  .panel-bar h2{font-size:16px; margin:0; color:var(--navy);}
+  button.btn{font-family:var(--sans); font-weight:700; font-size:13.5px; border-radius:7px; border:none; padding:9px 16px; cursor:pointer;}
+  .btn-primary{background:var(--navy); color:#fff;} .btn-primary:hover{background:var(--navy-2);}
+  .btn-secondary{background:#fff; color:var(--navy); border:1px solid var(--line-strong);}
+  .btn-danger{background:var(--danger); color:#fff;}
+  .btn-small{padding:5px 9px; font-size:11.5px; border-radius:6px; border:1px solid var(--line-strong); background:#fff; cursor:pointer; margin:2px;}
+  .btn-small.assign{color:var(--accent); border-color:var(--accent);}
+  .btn-small.spare{color:var(--amber); border-color:var(--amber);}
+  .btn-small.retire, .btn-small.delete{color:var(--danger); border-color:var(--danger);}
+  .btn-small.edit{color:var(--navy); border-color:var(--line-strong);}
+  .btn-small.email{color:var(--ok); border-color:var(--ok);}
+  .table-wrap{overflow-x:auto; border-radius:8px; border:1px solid var(--line); background:#fff;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th, td{border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top;}
+  th{background:var(--accent-light); color:var(--navy); font-weight:700; white-space:nowrap;}
+  img.thumb{width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:4px; border:1px solid var(--line);}
+  .badge-status{padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; display:inline-block;}
+  .badge-status.Assigned{background:var(--ok-light); color:var(--ok);}
+  .badge-status.Spare{background:var(--amber-light); color:var(--amber);}
+  .badge-status.Retired{background:var(--danger-light); color:var(--danger);}
+  .empty-state{font-size:13px; color:var(--text-soft); padding:14px 0;}
+  .card-form{background:#fff; border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:18px;}
+  .card-form .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:10px;}
+  .card-form h3{margin:0 0 4px; font-size:13.5px; color:var(--navy);}
+  .card-form .sub{font-size:12px; color:var(--text-soft); margin:0 0 12px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; margin-bottom:4px;}
+  input[type=text], input[type=password], input[type=email], textarea{
+    width:100%; padding:8px 10px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px; font-family:var(--sans);}
+  textarea{min-height:56px; resize:vertical;}
+  .msg{font-size:12.5px; padding:8px 10px; border-radius:6px; margin-bottom:10px; display:none;}
+  .msg.ok{display:block; background:var(--ok-light); color:var(--ok);}
+  .msg.err{display:block; background:var(--danger-light); color:var(--danger);}
+  #modalOverlay{display:none; position:fixed; inset:0; background:rgba(15,25,35,.45); z-index:80; align-items:center; justify-content:center; padding:20px;}
+  #modalOverlay.open{display:flex;}
+  #modalBox{background:#fff; border-radius:var(--radius); padding:22px; max-width:560px; width:100%; max-height:88vh; overflow:auto;}
+  #modalBox h3{margin:0 0 14px; color:var(--navy); font-size:16px;}
+  .modal-section-title{font-size:12px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.03em; margin:14px 0 6px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:16px;}
+
+  @media (max-width: 640px){
+    .wrap{padding:20px 12px 60px;}
+    .masthead{flex-direction:column; align-items:flex-start;}
+    .stats{grid-template-columns:1fr 1fr;}
+    .card-form .grid{grid-template-columns:1fr;}
+    .tabs{overflow-x:auto; flex-wrap:nowrap;}
+    .tab-btn{flex:none;}
+    #modalBox{padding:16px;}
+    .panel-bar{flex-direction:column; align-items:flex-start;}
+    .panel-bar > div{width:100%; display:flex; flex-wrap:wrap; gap:6px;}
+    .panel-bar button{flex:1; min-width:120px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="loginGate">
+    <h2 id="loginTitle">IT Admin Login</h2>
+    <div class="err" id="loginErr">Incorrect username or password.</div>
+    <input type="text" id="usernameInput" placeholder="Username" autocomplete="username" />
+    <input type="password" id="passwordInput" placeholder="Password" autocomplete="current-password" />
+    <button id="loginBtn">Log in</button>
+  </div>
+
+  <div id="dashboard">
+    <div class="masthead">
+      <div class="left">
+        <div class="badge">DNCC</div>
+        <div><h1 id="companyTitle">IT Admin Panel</h1><p id="companySub">Mobile audit &amp; inventory</p></div>
+      </div>
+      <div style="display:flex; gap:16px; align-items:center;">
+        <a class="formlink" href="index.html">← Open employee form</a>
+        <button class="logout-link" id="logoutBtn">Log out</button>
+      </div>
+    </div>
+
+    <div class="stats" id="statsRow"></div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="submissions">Submissions</button>
+      <button class="tab-btn" data-tab="inventory">Inventory</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- SUBMISSIONS -->
+    <div class="tab-panel active" id="tab-submissions">
+      <div class="panel-bar">
+        <h2>Form submissions</h2>
+        <div>
+          <button class="btn btn-secondary" id="addSubBtn">+ Add manually</button>
+          <button class="btn btn-secondary" id="refreshSubsBtn">Refresh</button>
+          <button class="btn btn-primary" id="exportBtn">Download Excel (.xlsx)</button>
+        </div>
+      </div>
+      <div id="subsArea"><p class="empty-state">Loading…</p></div>
+    </div>
+
+    <!-- INVENTORY -->
+    <div class="tab-panel" id="tab-inventory">
+      <div class="panel-bar">
+        <h2>Device inventory</h2>
+        <button class="btn btn-secondary" id="refreshInvBtn">Refresh</button>
+      </div>
+      <div class="card-form">
+        <h3>Add a spare / stock device</h3>
+        <p class="sub">Use this for devices not yet tied to an employee submission.</p>
+        <div class="grid">
+          <input id="newBrand" placeholder="Brand" />
+          <input id="newModel" placeholder="Model" />
+          <input id="newRam" placeholder="RAM" />
+          <input id="newStorage" placeholder="Storage" />
+          <input id="newImei1" placeholder="IMEI 1" />
+          <input id="newImei2" placeholder="IMEI 2 (optional)" />
+        </div>
+        <button class="btn btn-primary" id="addDeviceBtn">Add to inventory as Spare</button>
+      </div>
+      <div id="invArea"><p class="empty-state">Loading…</p></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="card-form">
+        <h3>SMTP email settings</h3>
+        <p class="sub">Used to send handover confirmation emails to employees. Changes here take effect immediately — no redeploy needed.</p>
+        <div id="smtpMsg" class="msg"></div>
+        <div class="grid">
+          <div class="field"><label>SMTP host</label><input type="text" id="smtpHost" placeholder="smtp.gmail.com" /></div>
+          <div class="field"><label>SMTP port</label><input type="text" id="smtpPort" placeholder="587" /></div>
+          <div class="field"><label>SMTP username</label><input type="text" id="smtpUsername" placeholder="it@dncc.com" /></div>
+          <div class="field"><label>SMTP password</label><input type="password" id="smtpPassword" placeholder="App password" /></div>
+          <div class="field"><label>From name</label><input type="text" id="smtpFromName" placeholder="DNCC IT Department" /></div>
+          <div class="field"><label>From email</label><input type="text" id="smtpFromEmail" placeholder="it@dncc.com" /></div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="saveSmtpBtn">Save SMTP settings</button>
+          <button class="btn btn-secondary" id="testEmailBtn">Send test email</button>
+        </div>
+      </div>
+
+      <div class="card-form">
+        <h3>Email templates</h3>
+        <p class="sub">One format per action — used automatically (with a PDF attached) when you email an employee from Submissions or Inventory. Placeholders: <code>{{employee_name}}</code> <code>{{employee_id}}</code> <code>{{device_brand}}</code> <code>{{device_model}}</code> <code>{{imei1}}</code> <code>{{imei2}}</code> <code>{{location}}</code> <code>{{designation}}</code> <code>{{action_date}}</code> <code>{{company_name}}</code></p>
+        <div id="tmplMsg" class="msg"></div>
+        <div class="field">
+          <label>Template for</label>
+          <select id="tmplAction" style="width:100%; padding:8px 10px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px;">
+            <option value="handover">Handover (new device given to employee)</option>
+            <option value="reassign">Reassign (device moved to a different employee)</option>
+            <option value="takeover">Takeover / Return (device taken back from employee)</option>
+            <option value="retire">Retire (device removed from active use)</option>
+          </select>
+        </div>
+        <div class="field"><label>Subject</label><input type="text" id="tmplSubject" /></div>
+        <div class="field"><label>Body (HTML)</label><textarea id="tmplBody" style="min-height:140px;"></textarea></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="saveTmplBtn">Save template</button>
+          <button class="btn btn-secondary" id="resetTmplBtn">Reset this one to default</button>
+        </div>
+      </div>
+
+      <div class="card-form">
+        <h3>Admin login credentials</h3>
+        <p class="sub">Change your admin username/password, or reset to the default.</p>
+        <div id="credMsg" class="msg"></div>
+        <div class="grid">
+          <div class="field"><label>New username</label><input type="text" id="newUsername" /></div>
+          <div class="field"><label>New password</label><input type="password" id="newPassword" /></div>
+          <div class="field"><label>Confirm new password</label><input type="password" id="confirmPassword" /></div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="saveCredsBtn">Update credentials</button>
+          <button class="btn btn-secondary" id="resetCredsBtn">Reset to default (Varunit)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modalOverlay">
+  <div id="modalBox">
+    <h3 id="modalTitle"></h3>
+    <div id="modalFields"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+      <button class="btn btn-primary" id="modalSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+  document.getElementById('loginTitle').textContent = window.DNCC_CONFIG.COMPANY_NAME + ' — IT Admin Login';
+  document.getElementById('companyTitle').textContent = window.DNCC_CONFIG.COMPANY_NAME;
+  document.getElementById('companySub').textContent = window.DNCC_CONFIG.DEPARTMENT + ' — Mobile audit & inventory';
+  document.title = window.DNCC_CONFIG.COMPANY_NAME + ' — IT Admin Panel';
+
+  var sb = window.supabase.createClient(window.DNCC_CONFIG.SUPABASE_URL, window.DNCC_CONFIG.SUPABASE_ANON_KEY);
+  var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL.replace('.supabase.co', '.functions.supabase.co');
+  var currentSettings = null;
+  var currentTemplates = {};
+  var DEFAULT_TEMPLATES = {
+    handover: {
+      subject: 'Your Mobile Device Handover Confirmation — {{company_name}}',
+      body: '<p>Hi {{employee_name}},</p><p>This confirms your mobile device handover with {{company_name}} IT Department.</p><p><b>Device:</b> {{device_brand}} {{device_model}}<br/><b>IMEI:</b> {{imei1}}<br/><b>Date:</b> {{action_date}}</p><p>Your handover PDF is attached for your records. Please keep it safe.</p>'
+    },
+    reassign: {
+      subject: 'Device Reassignment Confirmation — {{company_name}}',
+      body: '<p>Hi {{employee_name}},</p><p>A mobile device has been reassigned to you by {{company_name}} IT Department.</p><p><b>Device:</b> {{device_brand}} {{device_model}}<br/><b>IMEI:</b> {{imei1}}<br/><b>Date:</b> {{action_date}}</p><p>A confirmation PDF is attached for your records.</p>'
+    },
+    takeover: {
+      subject: 'Device Return / Takeover Confirmation — {{company_name}}',
+      body: '<p>Hi {{employee_name}},</p><p>This confirms {{company_name}} IT Department has taken back the following device from you.</p><p><b>Device:</b> {{device_brand}} {{device_model}}<br/><b>IMEI:</b> {{imei1}}<br/><b>Date:</b> {{action_date}}</p><p>A confirmation PDF is attached for your records.</p>'
+    },
+    retire: {
+      subject: 'Device Retirement Notice — {{company_name}}',
+      body: '<p>Hi {{employee_name}},</p><p>This confirms the following device previously assigned to you has been retired from active use by {{company_name}} IT Department.</p><p><b>Device:</b> {{device_brand}} {{device_model}}<br/><b>IMEI:</b> {{imei1}}<br/><b>Date:</b> {{action_date}}</p>'
+    }
+  };
+
+  function esc(s){ if(s===undefined||s===null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  async function fetchSettings(){
+    var { data, error } = await sb.from('settings').select('*').eq('id',1).single();
+    if(error){ console.error(error); return null; }
+    return data;
+  }
+
+  // ---------- Login ----------
+  document.getElementById('loginBtn').addEventListener('click', async function(){
+    var u = document.getElementById('usernameInput').value.trim();
+    var p = document.getElementById('passwordInput').value;
+    var settings = await fetchSettings();
+    currentSettings = settings;
+    var okUser = settings ? (settings.admin_username || 'Varunit') : 'Varunit';
+    var okPass = settings ? (settings.admin_password || 'Shinchan@1121') : 'Shinchan@1121';
+    if(u === okUser && p === okPass){
+      document.getElementById('loginGate').style.display = 'none';
+      document.getElementById('dashboard').style.display = 'block';
+      sessionStorage.setItem('dncc_admin_ok','1');
+      loadAll();
+    } else {
+      document.getElementById('loginErr').style.display = 'block';
+    }
+  });
+  document.getElementById('passwordInput').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('loginBtn').click(); });
+  document.getElementById('logoutBtn').addEventListener('click', function(){
+    sessionStorage.removeItem('dncc_admin_ok');
+    location.reload();
+  });
+  if(sessionStorage.getItem('dncc_admin_ok') === '1'){
+    document.getElementById('loginGate').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    fetchSettings().then(function(s){ currentSettings = s; loadAll(); });
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if(btn.dataset.tab === 'settings'){ populateSettingsForm(); populateTemplateForm(); }
+    });
+  });
+
+  // ---------- Modal ----------
+  function openModal(title, fields, onSave){
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalFields').innerHTML = fields.map(function(f){
+      if(f.section) return '<div class="modal-section-title">'+esc(f.section)+'</div>';
+      var val = (f.value===undefined||f.value===null) ? '' : String(f.value);
+      if(f.type==='textarea'){
+        return '<div class="field"><label>'+esc(f.label)+'</label><textarea id="mf_'+f.id+'">'+esc(val)+'</textarea></div>';
+      }
+      return '<div class="field"><label>'+esc(f.label)+'</label><input type="text" id="mf_'+f.id+'" value="'+esc(val)+'" /></div>';
+    }).join('');
+    document.getElementById('modalOverlay').classList.add('open');
+    document.getElementById('modalSave').onclick = function(){
+      var values = {};
+      fields.forEach(function(f){ if(f.section) return; values[f.id] = document.getElementById('mf_'+f.id).value.trim(); });
+      onSave(values);
+    };
+    document.getElementById('modalCancel').onclick = closeModal;
+  }
+  function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+
+  var currentSubs = [], currentDevices = [];
+
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates()]); renderStats(); }
+
+  async function loadTemplates(){
+    try{
+      var { data, error } = await sb.from('email_templates').select('*');
+      if(error) throw error;
+      currentTemplates = {};
+      (data||[]).forEach(function(t){ currentTemplates[t.action] = t; });
+    }catch(err){ console.error('Could not load email templates', err); }
+  }
+
+  function renderStats(){
+    var total = currentSubs.length;
+    var assigned = currentDevices.filter(function(d){ return d.status==='Assigned'; }).length;
+    var spare = currentDevices.filter(function(d){ return d.status==='Spare'; }).length;
+    var retired = currentDevices.filter(function(d){ return d.status==='Retired'; }).length;
+    var damaged = currentSubs.filter(function(s){ return s.damage==='Yes'; }).length;
+    var emailed = currentSubs.filter(function(s){ return !!s.email_sent_at; }).length;
+    var cards = [
+      ['Forms submitted', total], ['Devices tracked', currentDevices.length],
+      ['Currently assigned', assigned], ['Spare / stock', spare],
+      ['Retired', retired], ['Reported damaged', damaged], ['Handover emails sent', emailed]
+    ];
+    document.getElementById('statsRow').innerHTML = cards.map(function(c){
+      return '<div class="stat-card"><div class="num">'+c[1]+'</div><div class="label">'+c[0]+'</div></div>';
+    }).join('');
+  }
+
+  // ---------- Submissions ----------
+  async function loadSubmissions(){
+    var area = document.getElementById('subsArea');
+    try{
+      var { data, error } = await sb.from('submissions').select('*').order('created_at', { ascending:false });
+      if(error) throw error;
+      currentSubs = data || [];
+      renderSubmissions();
+    }catch(err){
+      console.error(err);
+      area.innerHTML = '<p class="empty-state">Could not load submissions. Check your Supabase config.</p>';
+    }
+  }
+
+  function renderSubmissions(){
+    var area = document.getElementById('subsArea');
+    if(!currentSubs.length){ area.innerHTML = '<p class="empty-state">No submissions yet.</p>'; return; }
+    var rows = currentSubs.map(function(r){
+      var d1 = r.device1 || {}, d2 = r.device2 || {};
+      var thumbs = '';
+      if(d1.frontPhoto) thumbs += '<img class="thumb" src="'+d1.frontPhoto+'" title="D1 front" />';
+      if(d1.backPhoto) thumbs += '<img class="thumb" src="'+d1.backPhoto+'" title="D1 back" />';
+      if(d2.frontPhoto) thumbs += '<img class="thumb" src="'+d2.frontPhoto+'" title="D2 front" />';
+      if(d2.backPhoto) thumbs += '<img class="thumb" src="'+d2.backPhoto+'" title="D2 back" />';
+      return '<tr>'
+        + '<td>'+esc(new Date(r.created_at).toLocaleString())+'</td>'
+        + '<td>'+esc(r.employee_name)+'</td>'
+        + '<td>'+esc(r.employee_id)+'</td>'
+        + '<td>'+esc(r.employee_email)+'</td>'
+        + '<td>'+esc(r.location)+'</td>'
+        + '<td>'+esc(d1.brand)+' '+esc(d1.model)+'</td>'
+        + '<td>'+esc(d1.imei1)+'</td>'
+        + '<td>'+esc(r.damage)+(r.damage==='Yes' ? ' — '+esc(r.damage_what) : '')+'</td>'
+        + '<td>'+(thumbs||'—')+'</td>'
+        + '<td>'+ (r.email_sent_at ? ('Sent '+new Date(r.email_sent_at).toLocaleDateString()) : '—') +'</td>'
+        + '<td style="white-space:nowrap;">'
+        +   '<button class="btn-small email" data-action="email" data-id="'+r.id+'">Email</button>'
+        +   '<button class="btn-small edit" data-action="edit" data-id="'+r.id+'">Edit</button>'
+        +   '<button class="btn-small delete" data-action="delete" data-id="'+r.id+'">Delete</button>'
+        + '</td>'
+        + '</tr>';
+    }).join('');
+    area.innerHTML = '<p class="empty-state">'+currentSubs.length+' submission(s) on record.</p>'
+      + '<div class="table-wrap"><table><thead><tr>'
+      + '<th>Submitted</th><th>Employee</th><th>Emp ID</th><th>Email</th><th>Location</th>'
+      + '<th>Device 1</th><th>IMEI 1</th><th>Damage</th><th>Photos</th><th>Handover email</th><th>Actions</th>'
+      + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+
+    area.querySelectorAll('button[data-action]').forEach(function(btn){
+      btn.addEventListener('click', function(){ handleSubAction(btn.dataset.action, btn.dataset.id); });
+    });
+  }
+
+  function subEditFields(r){
+    r = r || {};
+    var d1 = r.device1 || {}, d2 = r.device2 || {};
+    var fields = [
+      { section:'Employee' },
+      { id:'employee_name', label:'Employee name', value:r.employee_name },
+      { id:'employee_id', label:'Employee ID', value:r.employee_id },
+      { id:'employee_email', label:'Employee email', value:r.employee_email },
+      { id:'department', label:'Department', value:r.department },
+      { id:'location', label:'Location', value:r.location },
+      { id:'designation', label:'Designation', value:r.designation },
+      { id:'contact', label:'Alternate contact', value:r.contact },
+      { id:'device_count', label:'Number of phones (1 or 2)', value:r.device_count || 1 },
+      { section:'Device 1' },
+      { id:'d1_brand', label:'Brand', value:d1.brand },
+      { id:'d1_model', label:'Model', value:d1.model },
+      { id:'d1_ram', label:'RAM', value:d1.ram },
+      { id:'d1_storage', label:'Storage', value:d1.storage },
+      { id:'d1_imei1', label:'IMEI 1', value:d1.imei1 },
+      { id:'d1_imei2', label:'IMEI 2', value:d1.imei2 },
+      { id:'d1_sims', label:'SIM number(s), comma separated', value:(d1.simNumbers||[]).join(', ') },
+      { id:'d1_usage', label:'Usage', value:d1.usage, type:'textarea' },
+      { section:'Device 2 (leave blank if only 1 phone)' },
+      { id:'d2_brand', label:'Brand', value:d2.brand },
+      { id:'d2_model', label:'Model', value:d2.model },
+      { id:'d2_ram', label:'RAM', value:d2.ram },
+      { id:'d2_storage', label:'Storage', value:d2.storage },
+      { id:'d2_imei1', label:'IMEI 1', value:d2.imei1 },
+      { id:'d2_imei2', label:'IMEI 2', value:d2.imei2 },
+      { id:'d2_sims', label:'SIM number(s), comma separated', value:(d2.simNumbers||[]).join(', ') },
+      { id:'d2_usage', label:'Usage', value:d2.usage, type:'textarea' },
+      { section:'Accessories & damage' },
+      { id:'charger', label:'Charger provided (Yes/No)', value:r.charger },
+      { id:'cable', label:'Cable provided (Yes/No)', value:r.cable },
+      { id:'damage', label:'Damage present (Yes/No)', value:r.damage },
+      { id:'damage_what', label:'Damage description', value:r.damage_what, type:'textarea' },
+      { id:'damage_how', label:'Damage cause', value:r.damage_how, type:'textarea' }
+    ];
+    return fields;
+  }
+
+  function valuesToSubmissionRow(v, originalD1, originalD2){
+    var device1 = {
+      brand:v.d1_brand, model:v.d1_model, ram:v.d1_ram, storage:v.d1_storage,
+      imei1:v.d1_imei1, imei2:v.d1_imei2,
+      simNumbers: v.d1_sims ? v.d1_sims.split(',').map(function(s){return s.trim();}).filter(Boolean) : [],
+      usage:v.d1_usage,
+      frontPhoto:(originalD1||{}).frontPhoto || '', backPhoto:(originalD1||{}).backPhoto || ''
+    };
+    var deviceCount = parseInt(v.device_count,10) === 2 ? 2 : 1;
+    var device2 = null;
+    if(deviceCount === 2){
+      device2 = {
+        brand:v.d2_brand, model:v.d2_model, ram:v.d2_ram, storage:v.d2_storage,
+        imei1:v.d2_imei1, imei2:v.d2_imei2,
+        simNumbers: v.d2_sims ? v.d2_sims.split(',').map(function(s){return s.trim();}).filter(Boolean) : [],
+        usage:v.d2_usage,
+        frontPhoto:(originalD2||{}).frontPhoto || '', backPhoto:(originalD2||{}).backPhoto || ''
+      };
+    }
+    return {
+      employee_name:v.employee_name, employee_id:v.employee_id, employee_email:v.employee_email,
+      department:v.department, location:v.location, designation:v.designation, contact:v.contact,
+      device_count:deviceCount, charger:v.charger, cable:v.cable, damage:v.damage,
+      damage_what:v.damage_what, damage_how:v.damage_how, device1:device1, device2:device2
+    };
+  }
+
+  document.getElementById('addSubBtn').addEventListener('click', function(){
+    openModal('Add submission manually', subEditFields({}), async function(values){
+      try{
+        var row = valuesToSubmissionRow(values, {}, {});
+        var { error } = await sb.from('submissions').insert([row]);
+        if(error) throw error;
+        closeModal(); await loadSubmissions(); renderStats();
+      }catch(err){ console.error(err); alert('Could not add submission: ' + (err.message||err)); }
+    });
+  });
+
+  async function handleSubAction(action, id){
+    var r = currentSubs.find(function(s){ return String(s.id)===String(id); });
+    if(!r) return;
+    if(action === 'edit'){
+      openModal('Edit submission — ' + (r.employee_name||''), subEditFields(r), async function(values){
+        try{
+          var row = valuesToSubmissionRow(values, r.device1, r.device2);
+          var { error } = await sb.from('submissions').update(row).eq('id', id);
+          if(error) throw error;
+          closeModal(); await loadSubmissions(); renderStats();
+        }catch(err){ console.error(err); alert('Could not save changes: ' + (err.message||err)); }
+      });
+    } else if(action === 'delete'){
+      if(!confirm('Delete this submission permanently? This cannot be undone.')) return;
+      try{
+        var { error } = await sb.from('submissions').delete().eq('id', id);
+        if(error) throw error;
+        await loadSubmissions(); renderStats();
+      }catch(err){ console.error(err); alert('Could not delete: ' + (err.message||err)); }
+    } else if(action === 'email'){
+      await sendHandoverEmail(r);
+    }
+  }
+
+  function buildHandoverPDFBase64(r){
+    var jsPDFCtor = window.jspdf.jsPDF;
+    var doc = new jsPDFCtor({ unit:'pt', format:'a4' });
+    var y = 50, left = 48, lineH = 16;
+    doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text(window.DNCC_CONFIG.COMPANY_NAME, left, y); y += 20;
+    doc.setFontSize(11); doc.setFont('helvetica','normal');
+    doc.text(window.DNCC_CONFIG.DEPARTMENT + ' — Mobile Device Handover Receipt', left, y); y += 10;
+    doc.setDrawColor(180); doc.line(left, y, 547, y); y += 24;
+    function row(label, value){
+      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(label, left, y);
+      doc.setFont('helvetica','normal'); doc.text(String(value||'—'), left+150, y);
+      y += lineH; if(y > 780){ doc.addPage(); y = 50; }
+    }
+    function section(title){
+      y += 6; doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(30,60,90);
+      doc.text(title, left, y); doc.setTextColor(0,0,0); y += 16;
+    }
+    section('Employee');
+    row('Name', r.employee_name); row('Employee ID', r.employee_id); row('Email', r.employee_email);
+    row('Department', r.department); row('Location', r.location);
+    row('Designation', r.designation); row('Date', new Date().toLocaleString());
+    [r.device1, r.device_count===2?r.device2:null].forEach(function(d, i){
+      if(!d) return;
+      section('Mobile phone ' + (i+1));
+      row('Brand / Model', (d.brand||'')+' '+(d.model||''));
+      row('RAM / Storage', (d.ram||'')+' / '+(d.storage||''));
+      row('IMEI 1', d.imei1); row('IMEI 2', d.imei2);
+      row('SIM number(s)', (d.simNumbers||[]).join(', ')); row('Usage', d.usage);
+    });
+    section('Accessories & condition');
+    row('Charger provided', r.charger); row('Data/USB cable provided', r.cable); row('Damage present', r.damage);
+    if(r.damage === 'Yes'){ row('Damage', r.damage_what); row('Cause', r.damage_how); }
+    y += 20;
+    doc.setFont('helvetica','italic'); doc.setFontSize(9.5);
+    doc.text('This is a system-generated handover confirmation. Please retain this copy for your records.', left, y);
+    var datauri = doc.output('datauristring');
+    return datauri.split(',')[1];
+  }
+
+  async function sendHandoverEmail(r){
+    if(!r.employee_email){ alert('This submission has no employee email on file.'); return; }
+    if(!confirm('Send the handover confirmation email to ' + r.employee_email + '?')) return;
+    try{
+      var pdfBase64 = buildHandoverPDFBase64(r);
+      var t = currentTemplates.handover || DEFAULT_TEMPLATES.handover;
+      var vars = {
+        employee_name: r.employee_name||'', employee_id: r.employee_id||'',
+        device_brand: (r.device1||{}).brand||'', device_model: (r.device1||{}).model||'',
+        imei1: (r.device1||{}).imei1||'', imei2: (r.device1||{}).imei2||'',
+        location: r.location||'', designation: r.designation||'',
+        action_date: new Date().toLocaleString(), company_name: window.DNCC_CONFIG.COMPANY_NAME
+      };
+      var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY,
+          'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({
+          to: r.employee_email,
+          employeeName: r.employee_name,
+          subject: fillTemplate(t.subject, vars),
+          html: fillTemplate(t.body, vars),
+          pdfBase64: pdfBase64,
+          pdfFilename: 'Handover_' + (r.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf'
+        })
+      });
+      var json = await res.json();
+      if(!res.ok || !json.ok) throw new Error(json.error || 'Send failed');
+      await sb.from('submissions').update({ email_sent_at: new Date().toISOString() }).eq('id', r.id);
+      alert('Email sent to ' + r.employee_email);
+      await loadSubmissions(); renderStats();
+    }catch(err){
+      console.error(err);
+      alert('Could not send email: ' + (err.message||err) + '\n\nCheck Admin → Settings → SMTP, and that the send-handover-email function is deployed.');
+    }
+  }
+
+  function flattenSub(r){
+    var d1 = r.device1 || {}, d2 = r.device2 || {};
+    return {
+      'Submitted at': r.created_at ? new Date(r.created_at).toLocaleString() : '',
+      'Employee name': r.employee_name||'', 'Employee ID': r.employee_id||'', 'Employee email': r.employee_email||'',
+      'Department': r.department||'', 'Location': r.location||'', 'Designation': r.designation||'', 'Contact': r.contact||'',
+      'Number of phones': r.device_count||'',
+      'Device 1 brand': d1.brand||'', 'Device 1 model': d1.model||'', 'Device 1 RAM': d1.ram||'', 'Device 1 storage': d1.storage||'',
+      'Device 1 IMEI 1': d1.imei1||'', 'Device 1 IMEI 2': d1.imei2||'', 'Device 1 SIM numbers': (d1.simNumbers||[]).join(', '),
+      'Device 1 usage': d1.usage||'',
+      'Device 2 brand': d2.brand||'', 'Device 2 model': d2.model||'', 'Device 2 RAM': d2.ram||'', 'Device 2 storage': d2.storage||'',
+      'Device 2 IMEI 1': d2.imei1||'', 'Device 2 IMEI 2': d2.imei2||'', 'Device 2 SIM numbers': (d2.simNumbers||[]).join(', '),
+      'Device 2 usage': d2.usage||'',
+      'Charger provided': r.charger||'', 'Cable provided': r.cable||'',
+      'Damage present': r.damage||'', 'Damage description': r.damage_what||'', 'Damage cause': r.damage_how||'',
+      'Handover email sent at': r.email_sent_at ? new Date(r.email_sent_at).toLocaleString() : ''
+    };
+  }
+
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    if(!currentSubs.length){ alert('No submissions to export yet.'); return; }
+    var ws = XLSX.utils.json_to_sheet(currentSubs.map(flattenSub));
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Mobile Audit Records');
+    XLSX.writeFile(wb, 'DNCC_Mobile_Audit_Records.xlsx');
+  });
+  document.getElementById('refreshSubsBtn').addEventListener('click', async function(){ await loadSubmissions(); renderStats(); });
+
+  // ---------- Inventory ----------
+  async function loadInventory(){
+    var area = document.getElementById('invArea');
+    try{
+      var { data, error } = await sb.from('devices').select('*').order('last_updated', { ascending:false });
+      if(error) throw error;
+      currentDevices = data || [];
+      renderInventory();
+    }catch(err){
+      console.error(err);
+      area.innerHTML = '<p class="empty-state">Could not load inventory. Check your Supabase config.</p>';
+    }
+  }
+
+  function renderInventory(){
+    var area = document.getElementById('invArea');
+    if(!currentDevices.length){ area.innerHTML = '<p class="empty-state">No devices in inventory yet.</p>'; return; }
+    var rows = currentDevices.map(function(d){
+      var actions = '';
+      if(d.status !== 'Retired') actions += '<button class="btn-small assign" data-action="assign" data-imei="'+esc(d.imei1)+'">'+(d.status==='Assigned'?'Reassign':'Assign')+'</button>';
+      if(d.status !== 'Spare' && d.status !== 'Retired') actions += '<button class="btn-small spare" data-action="spare" data-imei="'+esc(d.imei1)+'">Spare</button>';
+      if(d.status !== 'Retired') actions += '<button class="btn-small retire" data-action="retire" data-imei="'+esc(d.imei1)+'">Retire</button>';
+      actions += '<button class="btn-small edit" data-action="edit" data-imei="'+esc(d.imei1)+'">Edit</button>';
+      actions += '<button class="btn-small delete" data-action="delete" data-imei="'+esc(d.imei1)+'">Delete</button>';
+      return '<tr>'
+        + '<td>'+esc(d.brand)+' '+esc(d.model)+'</td>'
+        + '<td>'+esc(d.ram)+' / '+esc(d.storage)+'</td>'
+        + '<td>'+esc(d.imei1)+'</td>'
+        + '<td>'+esc(d.imei2)+'</td>'
+        + '<td><span class="badge-status '+esc(d.status)+'">'+esc(d.status)+'</span></td>'
+        + '<td>'+esc(d.assigned_to)+(d.assigned_employee_id?(' ('+esc(d.assigned_employee_id)+')'):'')+'</td>'
+        + '<td>'+esc(d.assigned_employee_email)+'</td>'
+        + '<td>'+esc(d.notes)+'</td>'
+        + '<td>'+esc(d.last_updated ? new Date(d.last_updated).toLocaleString() : '')+'</td>'
+        + '<td style="white-space:nowrap;">'+actions+'</td>'
+        + '</tr>';
+    }).join('');
+    area.innerHTML = '<div class="table-wrap"><table><thead><tr>'
+      + '<th>Device</th><th>RAM/Storage</th><th>IMEI 1</th><th>IMEI 2</th><th>Status</th><th>Assigned to</th><th>Employee email</th><th>Notes</th><th>Last updated</th><th>Actions</th>'
+      + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    area.querySelectorAll('button[data-action]').forEach(function(btn){
+      btn.addEventListener('click', function(){ handleInventoryAction(btn.dataset.action, btn.dataset.imei); });
+    });
+  }
+
+  async function handleInventoryAction(action, imei1){
+    var d = currentDevices.find(function(x){ return x.imei1===imei1; });
+    try{
+      if(action === 'assign'){
+        var wasAssigned = d.status === 'Assigned';
+        var name = prompt('Employee name to assign this device to:', d ? (d.assigned_to||'') : '');
+        if(!name) return;
+        var id = prompt('Employee ID (optional):', d ? (d.assigned_employee_id||'') : '') || '';
+        var email = prompt('Employee email (needed to send a confirmation):', d ? (d.assigned_employee_email||'') : '') || '';
+        await sb.from('devices').update({ status:'Assigned', assigned_to:name, assigned_employee_id:id, assigned_employee_email:email, last_updated:new Date().toISOString() }).eq('imei1', imei1);
+        var actionKey = wasAssigned ? 'reassign' : 'handover';
+        var pdfTitle = wasAssigned ? 'Device Reassignment Confirmation' : 'Device Handover Receipt';
+        await sb.from('device_history').insert([{ imei1:imei1, action:(wasAssigned?'Reassigned':'Assigned')+' (admin)', employee_name:name, notes:'' }]);
+        if(email && confirm('Email a ' + (wasAssigned?'reassignment':'handover') + ' confirmation to ' + name + ' now?')){
+          await sendActionEmail(actionKey, pdfTitle, { name:name, id:id, email:email }, d);
+        }
+      } else if(action === 'spare'){
+        if(!confirm('Mark this device as spare / unassigned?')) return;
+        var prevEmployee = { name:d.assigned_to, id:d.assigned_employee_id, email:d.assigned_employee_email };
+        await sb.from('devices').update({ status:'Spare', assigned_to:null, assigned_employee_id:null, assigned_employee_email:null, last_updated:new Date().toISOString() }).eq('imei1', imei1);
+        await sb.from('device_history').insert([{ imei1:imei1, action:'Marked spare (takeover)', employee_name:prevEmployee.name||'', notes:'' }]);
+        if(prevEmployee.email && confirm('Email a return/takeover confirmation to ' + prevEmployee.name + ' now?')){
+          await sendActionEmail('takeover', 'Device Return / Takeover Confirmation', prevEmployee, d);
+        }
+      } else if(action === 'retire'){
+        if(!confirm('Retire this device?')) return;
+        var prevEmployeeR = { name:d.assigned_to, id:d.assigned_employee_id, email:d.assigned_employee_email };
+        await sb.from('devices').update({ status:'Retired', last_updated:new Date().toISOString() }).eq('imei1', imei1);
+        await sb.from('device_history').insert([{ imei1:imei1, action:'Retired', employee_name:prevEmployeeR.name||'', notes:'' }]);
+        if(prevEmployeeR.email && confirm('Email a retirement notice to ' + prevEmployeeR.name + ' now?')){
+          await sendActionEmail('retire', 'Device Retirement Notice', prevEmployeeR, d);
+        }
+      } else if(action === 'delete'){
+        if(!confirm('Permanently delete this device from inventory? This cannot be undone.')) return;
+        await sb.from('devices').delete().eq('imei1', imei1);
+      } else if(action === 'edit'){
+        openModal('Edit device', [
+          { id:'brand', label:'Brand', value:d.brand }, { id:'model', label:'Model', value:d.model },
+          { id:'ram', label:'RAM', value:d.ram }, { id:'storage', label:'Storage', value:d.storage },
+          { id:'imei1', label:'IMEI 1', value:d.imei1 }, { id:'imei2', label:'IMEI 2', value:d.imei2 },
+          { id:'assigned_employee_email', label:'Assigned employee email', value:d.assigned_employee_email },
+          { id:'notes', label:'Notes', value:d.notes, type:'textarea' }
+        ], async function(values){
+          try{
+            await sb.from('devices').update({
+              brand:values.brand, model:values.model, ram:values.ram, storage:values.storage,
+              imei2:values.imei2, assigned_employee_email:values.assigned_employee_email, notes:values.notes, last_updated:new Date().toISOString()
+            }).eq('imei1', imei1);
+            closeModal(); await loadInventory(); renderStats();
+          }catch(err){ console.error(err); alert('Could not save: ' + (err.message||err)); }
+        });
+        return;
+      }
+      await loadInventory(); renderStats();
+    }catch(err){ console.error(err); alert('Action failed: ' + (err.message||err)); }
+  }
+
+  document.getElementById('addDeviceBtn').addEventListener('click', async function(){
+    var brand = document.getElementById('newBrand').value.trim();
+    var model = document.getElementById('newModel').value.trim();
+    var ram = document.getElementById('newRam').value.trim();
+    var storage = document.getElementById('newStorage').value.trim();
+    var imei1 = document.getElementById('newImei1').value.trim();
+    var imei2 = document.getElementById('newImei2').value.trim();
+    if(!brand || !model || !imei1){ alert('Brand, model and IMEI 1 are required.'); return; }
+    try{
+      await sb.from('devices').upsert([{ brand:brand, model:model, ram:ram, storage:storage, imei1:imei1, imei2:imei2, status:'Spare', assigned_to:null, assigned_employee_id:null, last_updated:new Date().toISOString() }], { onConflict:'imei1' });
+      await sb.from('device_history').insert([{ imei1:imei1, action:'Added to inventory', employee_name:'', notes:'Added as spare via admin panel' }]);
+      ['newBrand','newModel','newRam','newStorage','newImei1','newImei2'].forEach(function(id){ document.getElementById(id).value=''; });
+      await loadInventory(); renderStats();
+    }catch(err){ console.error(err); alert('Could not add device: ' + (err.message||err)); }
+  });
+  document.getElementById('refreshInvBtn').addEventListener('click', async function(){ await loadInventory(); renderStats(); });
+
+  function populateTemplateForm(){
+    var action = document.getElementById('tmplAction').value;
+    var t = currentTemplates[action] || DEFAULT_TEMPLATES[action] || {};
+    document.getElementById('tmplSubject').value = t.subject || '';
+    document.getElementById('tmplBody').value = t.body || '';
+  }
+  document.getElementById('tmplAction').addEventListener('change', populateTemplateForm);
+
+  document.getElementById('saveTmplBtn').addEventListener('click', async function(){
+    var action = document.getElementById('tmplAction').value;
+    var subject = document.getElementById('tmplSubject').value;
+    var body = document.getElementById('tmplBody').value;
+    try{
+      var { error } = await sb.from('email_templates').upsert([{ action:action, subject:subject, body:body }], { onConflict:'action' });
+      if(error) throw error;
+      currentTemplates[action] = { action:action, subject:subject, body:body };
+      showMsg('tmplMsg', 'Template saved.', 'ok');
+    }catch(err){ showMsg('tmplMsg', 'Could not save: ' + (err.message||err), 'err'); }
+  });
+
+  document.getElementById('resetTmplBtn').addEventListener('click', async function(){
+    var action = document.getElementById('tmplAction').value;
+    var def = DEFAULT_TEMPLATES[action];
+    if(!def) return;
+    if(!confirm('Reset the "' + action + '" template to its default wording?')) return;
+    try{
+      var { error } = await sb.from('email_templates').upsert([{ action:action, subject:def.subject, body:def.body }], { onConflict:'action' });
+      if(error) throw error;
+      currentTemplates[action] = Object.assign({ action:action }, def);
+      populateTemplateForm();
+      showMsg('tmplMsg', 'Reset to default.', 'ok');
+    }catch(err){ showMsg('tmplMsg', 'Could not reset: ' + (err.message||err), 'err'); }
+  });
+
+  function fillTemplate(str, vars){
+    return (str||'').replace(/\{\{(\w+)\}\}/g, function(_, k){ return (vars[k] !== undefined && vars[k] !== null) ? vars[k] : ''; });
+  }
+
+  function buildGenericPDFBase64(title, employee, device){
+    var jsPDFCtor = window.jspdf.jsPDF;
+    var doc = new jsPDFCtor({ unit:'pt', format:'a4' });
+    var y = 50, left = 48, lineH = 16;
+    doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text(window.DNCC_CONFIG.COMPANY_NAME, left, y); y += 20;
+    doc.setFontSize(11); doc.setFont('helvetica','normal');
+    doc.text(window.DNCC_CONFIG.DEPARTMENT + ' — ' + title, left, y); y += 10;
+    doc.setDrawColor(180); doc.line(left, y, 547, y); y += 24;
+    function row(label, value){
+      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(label, left, y);
+      doc.setFont('helvetica','normal'); doc.text(String(value||'—'), left+150, y); y += lineH;
+    }
+    function section(t){
+      y += 6; doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(30,60,90);
+      doc.text(t, left, y); doc.setTextColor(0,0,0); y += 16;
+    }
+    section('Employee');
+    row('Name', employee.name); row('Employee ID', employee.id); row('Email', employee.email); row('Date', new Date().toLocaleString());
+    section('Device');
+    row('Brand / Model', (device.brand||'')+' '+(device.model||''));
+    row('RAM / Storage', (device.ram||'')+' / '+(device.storage||''));
+    row('IMEI 1', device.imei1); row('IMEI 2', device.imei2);
+    y += 20; doc.setFont('helvetica','italic'); doc.setFontSize(9.5);
+    doc.text('This is a system-generated confirmation. Please retain this copy for your records.', left, y);
+    return doc.output('datauristring').split(',')[1];
+  }
+
+  async function sendActionEmail(actionKey, pdfTitle, employee, device){
+    if(!employee.email){ alert('No email on file for this employee — cannot send.'); return false; }
+    var t = currentTemplates[actionKey] || DEFAULT_TEMPLATES[actionKey] || {};
+    var vars = {
+      employee_name: employee.name||'', employee_id: employee.id||'',
+      device_brand: device.brand||'', device_model: device.model||'',
+      imei1: device.imei1||'', imei2: device.imei2||'',
+      action_date: new Date().toLocaleString(), company_name: window.DNCC_CONFIG.COMPANY_NAME
+    };
+    var subject = fillTemplate(t.subject, vars);
+    var html = fillTemplate(t.body, vars);
+    try{
+      var pdfBase64 = buildGenericPDFBase64(pdfTitle, employee, device);
+      var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY },
+        body: JSON.stringify({
+          to: employee.email, employeeName: employee.name, subject: subject, html: html,
+          pdfBase64: pdfBase64, pdfFilename: pdfTitle.replace(/[^a-z0-9]+/gi,'_') + '_' + (employee.name||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf'
+        })
+      });
+      var json = await res.json();
+      if(!res.ok || !json.ok) throw new Error(json.error || 'Send failed');
+      alert('Email sent to ' + employee.email);
+      return true;
+    }catch(err){
+      console.error(err);
+      alert('Could not send email: ' + (err.message||err));
+      return false;
+    }
+  }
+
+  // ---------- Settings ----------
+  function populateSettingsForm(){
+    if(!currentSettings) return;
+    document.getElementById('smtpHost').value = currentSettings.smtp_host || '';
+    document.getElementById('smtpPort').value = currentSettings.smtp_port || '587';
+    document.getElementById('smtpUsername').value = currentSettings.smtp_username || '';
+    document.getElementById('smtpPassword').value = currentSettings.smtp_password || '';
+    document.getElementById('smtpFromName').value = currentSettings.smtp_from_name || 'DNCC IT Department';
+    document.getElementById('smtpFromEmail').value = currentSettings.smtp_from_email || '';
+    document.getElementById('newUsername').value = currentSettings.admin_username || 'Varunit';
+  }
+
+  function showMsg(id, text, type){
+    var el = document.getElementById(id);
+    el.textContent = text; el.className = 'msg ' + type;
+  }
+
+  document.getElementById('saveSmtpBtn').addEventListener('click', async function(){
+    try{
+      var payload = {
+        smtp_host: document.getElementById('smtpHost').value.trim(),
+        smtp_port: document.getElementById('smtpPort').value.trim() || '587',
+        smtp_username: document.getElementById('smtpUsername').value.trim(),
+        smtp_password: document.getElementById('smtpPassword').value,
+        smtp_from_name: document.getElementById('smtpFromName').value.trim(),
+        smtp_from_email: document.getElementById('smtpFromEmail').value.trim(),
+        updated_at: new Date().toISOString()
+      };
+      var { error } = await sb.from('settings').update(payload).eq('id',1);
+      if(error) throw error;
+      currentSettings = Object.assign({}, currentSettings, payload);
+      showMsg('smtpMsg', 'SMTP settings saved.', 'ok');
+    }catch(err){ showMsg('smtpMsg', 'Could not save: ' + (err.message||err), 'err'); }
+  });
+
+  document.getElementById('testEmailBtn').addEventListener('click', async function(){
+    var to = prompt('Send a test email to:');
+    if(!to) return;
+    try{
+      var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY },
+        body: JSON.stringify({ to:to, subject:'DNCC IT — Test email', html:'<p>This is a test email from the DNCC IT Mobile Audit portal. If you received this, SMTP is working.</p>' })
+      });
+      var json = await res.json();
+      if(!res.ok || !json.ok) throw new Error(json.error || 'Send failed');
+      showMsg('smtpMsg', 'Test email sent to ' + to + '.', 'ok');
+    }catch(err){ showMsg('smtpMsg', 'Test failed: ' + (err.message||err), 'err'); }
+  });
+
+  document.getElementById('saveCredsBtn').addEventListener('click', async function(){
+    var u = document.getElementById('newUsername').value.trim();
+    var p = document.getElementById('newPassword').value;
+    var c = document.getElementById('confirmPassword').value;
+    if(!u){ showMsg('credMsg','Username cannot be blank.','err'); return; }
+    if(p && p !== c){ showMsg('credMsg','New password and confirmation do not match.','err'); return; }
+    try{
+      var payload = { admin_username:u, updated_at:new Date().toISOString() };
+      if(p) payload.admin_password = p;
+      var { error } = await sb.from('settings').update(payload).eq('id',1);
+      if(error) throw error;
+      currentSettings = Object.assign({}, currentSettings, payload);
+      document.getElementById('newPassword').value=''; document.getElementById('confirmPassword').value='';
+      showMsg('credMsg', 'Credentials updated. Use the new login next time.', 'ok');
+    }catch(err){ showMsg('credMsg', 'Could not update: ' + (err.message||err), 'err'); }
+  });
+
+  document.getElementById('resetCredsBtn').addEventListener('click', async function(){
+    if(!confirm('Reset admin login to username "Varunit" and the original default password?')) return;
+    try{
+      var payload = { admin_username:'Varunit', admin_password:'Shinchan@1121', updated_at:new Date().toISOString() };
+      var { error } = await sb.from('settings').update(payload).eq('id',1);
+      if(error) throw error;
+      currentSettings = Object.assign({}, currentSettings, payload);
+      populateSettingsForm();
+      showMsg('credMsg', 'Reset to default credentials.', 'ok');
+    }catch(err){ showMsg('credMsg', 'Could not reset: ' + (err.message||err), 'err'); }
+  });
+
+})();
+</script>
+</body>
+</html>

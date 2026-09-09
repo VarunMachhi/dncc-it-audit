@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DNCC — IT Mobile Audit Form</title>
+<style>
+  :root{
+    --navy:#132635; --navy-2:#1c384d; --accent:#2c6f97; --accent-light:#eaf2f6;
+    --amber-light:#fbeee1; --line:#d7dde1; --line-strong:#b7c1c8; --bg:#f4f6f7;
+    --card:#ffffff; --text:#182530; --text-soft:#5b6b74;
+    --danger:#a03a3a; --danger-light:#fbeaea; --ok:#2f7d5a; --ok-light:#e9f5ef;
+    --radius:10px; --mono:"IBM Plex Mono","Courier New",monospace; --sans:"IBM Plex Sans","Segoe UI",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.5;}
+  .wrap{max-width:760px; margin:0 auto; padding:32px 20px 80px;}
+  .masthead{display:flex; align-items:center; gap:14px; margin-bottom:8px;}
+  .masthead .badge{width:44px; height:44px; border-radius:8px; background:var(--navy); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex:none; text-align:center; line-height:1.1;}
+  .masthead h1{font-size:19px; margin:0; font-weight:700; color:var(--navy);}
+  .masthead p{margin:2px 0 0; font-size:13px; color:var(--text-soft);}
+  .intro{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; margin:20px 0 28px; font-size:13.5px; color:var(--text-soft);}
+  .intro strong{color:var(--text);}
+  form{display:flex; flex-direction:column; gap:22px;}
+  fieldset{border:1px solid var(--line); border-radius:var(--radius); background:var(--card); padding:20px; margin:0;}
+  legend{padding:0 8px; font-size:14px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:8px;}
+  legend .num{width:22px; height:22px; border-radius:50%; background:var(--accent-light); color:var(--accent); font-size:12px; display:flex; align-items:center; justify-content:center; font-weight:700; flex:none;}
+  .field{margin-bottom:16px;} .field:last-child{margin-bottom:0;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  label{display:block; font-size:13px; font-weight:600; margin-bottom:5px;}
+  .hint{font-size:12px; color:var(--text-soft); font-weight:400; margin-top:3px;}
+  input[type=text], input[type=tel], input[type=email], select, textarea{
+    width:100%; padding:9px 11px; border:1px solid var(--line-strong); border-radius:7px; font-size:14px; font-family:var(--sans); background:#fff; color:var(--text);}
+  input:focus, select:focus, textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-light);}
+  input[data-imei], input[data-sim]{font-family:var(--mono); letter-spacing:0.4px;}
+  textarea{min-height:70px; resize:vertical;}
+  .radiogroup{display:flex; gap:10px;}
+  .radiogroup label{flex:1; display:flex; align-items:center; justify-content:center; gap:7px; border:1px solid var(--line-strong); border-radius:7px; padding:9px 10px; font-weight:600; font-size:13.5px; cursor:pointer; margin:0; background:#fff;}
+  .radiogroup input{width:auto; margin:0;}
+  .radiogroup label.on{border-color:var(--accent); background:var(--accent-light); color:var(--accent);}
+  .photo-pair{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .photo-box{border:1.5px dashed var(--line-strong); border-radius:8px; padding:12px; text-align:center; background:#fbfcfc;}
+  .photo-box input{border:none; padding:0; font-size:12.5px;}
+  .photo-box img{display:block; max-width:100%; max-height:110px; margin:8px auto 0; border-radius:5px; border:1px solid var(--line);}
+  .device-block{border:1px solid var(--line); border-radius:8px; padding:16px; margin-top:14px; background:#fafbfc;}
+  .device-block h3{margin:0 0 14px; font-size:13.5px; color:var(--accent); border-bottom:1px solid var(--line); padding-bottom:8px;}
+  .sim-numbers{display:flex; flex-direction:column; gap:8px; margin-top:8px;}
+  .conditional{margin-top:12px; padding:12px 14px; border-radius:7px; background:var(--amber-light); border:1px solid #e6c9a3;}
+  .error-text{color:var(--danger); font-size:12.5px; margin-top:5px; display:none;}
+  .field.has-error input, .field.has-error select, .field.has-error textarea{border-color:var(--danger);}
+  .field.has-error .error-text{display:block;}
+  .submit-bar{display:flex; align-items:center; gap:14px; justify-content:space-between; flex-wrap:wrap;}
+  button{font-family:var(--sans); font-weight:700; font-size:14.5px; border-radius:8px; border:none; padding:12px 22px; cursor:pointer;}
+  .btn-primary{background:var(--navy); color:#fff;} .btn-primary:hover{background:var(--navy-2);}
+  .submit-note{font-size:12px; color:var(--text-soft);}
+  .toast{display:none; border-radius:var(--radius); padding:16px 18px; margin-top:18px; font-size:14px; font-weight:600;}
+  .toast.ok{display:block; background:var(--ok-light); color:var(--ok); border:1px solid #b8e0cb;}
+  .toast.err{display:block; background:var(--danger-light); color:var(--danger); border:1px solid #ecc4c4;}
+  .foot-link{text-align:center; margin-top:30px; font-size:12px;}
+  .foot-link a{color:var(--text-soft);}
+
+  @media (max-width: 600px){
+    .wrap{padding:20px 14px 60px;}
+    fieldset{padding:16px 14px;}
+    .row2, .photo-pair{grid-template-columns:1fr;}
+    .masthead h1{font-size:17px;}
+    .radiogroup{flex-direction:column;}
+    .submit-bar{flex-direction:column; align-items:stretch;}
+    .submit-bar button{width:100%;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="badge">DNCC</div>
+    <div>
+      <h1 id="companyTitle">IT Mobile Audit Form</h1>
+      <p id="companySub">IT Department</p>
+    </div>
+  </div>
+
+  <div class="intro">
+    <strong>Before you start:</strong> keep your phone(s) nearby to check the IMEI (dial <span style="font-family:var(--mono)">*#06#</span>), SIM numbers, and take clear front/back photos. This takes about 5 minutes. After submitting you'll get a handover PDF copy for your records.
+  </div>
+
+  <form id="intakeForm" novalidate>
+    <fieldset>
+      <legend><span class="num">1</span> Employee details</legend>
+      <div class="row2">
+        <div class="field"><label for="empName">Employee name</label>
+          <input type="text" id="empName" required /><div class="error-text">Enter the employee's name.</div></div>
+        <div class="field"><label for="empId">Employee ID / code</label>
+          <input type="text" id="empId" placeholder="e.g. EMP-0234" /></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="location">Location</label>
+          <input type="text" id="location" placeholder="Clinic / branch" required /><div class="error-text">Enter the location.</div></div>
+        <div class="field"><label for="designation">Designation</label>
+          <input type="text" id="designation" required /><div class="error-text">Enter the designation.</div></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="department">Department</label>
+          <input type="text" id="department" placeholder="e.g. Front Desk, Nursing" /></div>
+        <div class="field"><label for="contact">Alternate contact number</label>
+          <input type="text" id="contact" /></div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="empEmail">Employee email address</label>
+        <input type="email" id="empEmail" placeholder="name@company.com" required />
+        <div class="error-text">Enter a valid email address — this is where your handover confirmation will be sent.</div>
+        <div class="hint">Used by IT to email you a copy of your handover confirmation.</div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="num">2</span> How many mobile phones do you use for work?</legend>
+      <div class="radiogroup" id="deviceCountGroup">
+        <label><input type="radio" name="deviceCount" value="1" checked /> 1 mobile</label>
+        <label><input type="radio" name="deviceCount" value="2" /> 2 mobiles</label>
+      </div>
+    </fieldset>
+
+    <fieldset><legend><span class="num">3</span> Mobile phone details</legend>
+      <div id="device1Container"></div>
+    </fieldset>
+
+    <fieldset id="device2Fieldset" style="display:none;">
+      <legend><span class="num">4</span> Second mobile phone details</legend>
+      <div id="device2Container"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="num">5</span> Accessories</legend>
+      <div class="row2">
+        <div class="field" style="margin-bottom:0;"><label>Do you have the charger?</label>
+          <div class="radiogroup"><label><input type="radio" name="charger" value="Yes" /> Yes</label><label><input type="radio" name="charger" value="No" /> No</label></div></div>
+        <div class="field" style="margin-bottom:0;"><label>Do you have the data/USB cable?</label>
+          <div class="radiogroup"><label><input type="radio" name="cable" value="Yes" /> Yes</label><label><input type="radio" name="cable" value="No" /> No</label></div></div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="num">6</span> Physical damage</legend>
+      <div class="field" style="margin-bottom:0;"><label>Is there any damage on the phone?</label>
+        <div class="radiogroup"><label><input type="radio" name="damage" value="Yes" /> Yes</label><label><input type="radio" name="damage" value="No" /> No</label></div></div>
+      <div class="conditional" id="damageDetails" style="display:none;">
+        <div class="field"><label for="damageWhat">What is the damage?</label>
+          <textarea id="damageWhat" placeholder="e.g. cracked screen top-left corner"></textarea></div>
+        <div class="field" style="margin-bottom:0;"><label for="damageHow">How did this damage happen?</label>
+          <textarea id="damageHow" placeholder="e.g. dropped while boarding a cab"></textarea></div>
+      </div>
+    </fieldset>
+
+    <div class="submit-bar">
+      <button type="submit" class="btn-primary" id="submitBtn">Submit details</button>
+      <span class="submit-note">A handover PDF copy will download automatically after submission.</span>
+    </div>
+    <div class="toast" id="toast"></div>
+  </form>
+
+  <p class="foot-link"><a href="admin.html">IT admin login →</a></p>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="config.js"></script>
+<script>
+(function(){
+  document.getElementById('companyTitle').textContent = window.DNCC_CONFIG.COMPANY_NAME;
+  document.getElementById('companySub').textContent = window.DNCC_CONFIG.DEPARTMENT + ' — IT Mobile Audit Form';
+  document.title = window.DNCC_CONFIG.COMPANY_NAME + ' — IT Mobile Audit Form';
+
+  var sb = window.supabase.createClient(window.DNCC_CONFIG.SUPABASE_URL, window.DNCC_CONFIG.SUPABASE_ANON_KEY);
+
+  function uid(){ return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
+
+  function deviceBlockHTML(idx, label){
+    return ''
+    + '<div class="device-block" data-device="'+idx+'"><h3>'+label+'</h3>'
+    + '<div class="row2">'
+    + '<div class="field"><label for="d'+idx+'_brand">Brand / name</label><input type="text" id="d'+idx+'_brand" required /><div class="error-text">Enter the brand.</div></div>'
+    + '<div class="field"><label for="d'+idx+'_model">Model</label><input type="text" id="d'+idx+'_model" required /><div class="error-text">Enter the model.</div></div>'
+    + '</div><div class="row2">'
+    + '<div class="field"><label for="d'+idx+'_ram">RAM size</label><input type="text" id="d'+idx+'_ram" placeholder="e.g. 6 GB" required /><div class="error-text">Enter RAM size.</div></div>'
+    + '<div class="field"><label for="d'+idx+'_storage">Storage size</label><input type="text" id="d'+idx+'_storage" placeholder="e.g. 128 GB" required /><div class="error-text">Enter storage size.</div></div>'
+    + '</div>'
+    + '<div class="field"><label>Phone photos</label><div class="photo-pair">'
+    + '<div class="photo-box"><label for="d'+idx+'_front" style="font-weight:400;">Front photo</label><input type="file" accept="image/*" id="d'+idx+'_front" /><img id="d'+idx+'_frontPrev" style="display:none;" /></div>'
+    + '<div class="photo-box"><label for="d'+idx+'_back" style="font-weight:400;">Back photo</label><input type="file" accept="image/*" id="d'+idx+'_back" /><img id="d'+idx+'_backPrev" style="display:none;" /></div>'
+    + '</div></div>'
+    + '<div class="row2">'
+    + '<div class="field"><label for="d'+idx+'_imei1">IMEI number 1</label><input type="text" data-imei id="d'+idx+'_imei1" required /><div class="error-text">Enter IMEI 1 (dial *#06#).</div></div>'
+    + '<div class="field"><label for="d'+idx+'_imei2">IMEI number 2</label><input type="text" data-imei id="d'+idx+'_imei2" placeholder="Leave blank if single-SIM device" /></div>'
+    + '</div>'
+    + '<div class="field"><label for="d'+idx+'_simCount">How many SIMs does this phone have?</label>'
+    + '<select id="d'+idx+'_simCount"><option value="1">1</option><option value="2">2</option></select>'
+    + '<div class="sim-numbers" id="d'+idx+'_simNumbers"></div></div>'
+    + '<div class="field" style="margin-bottom:0;"><label for="d'+idx+'_usage">Mobile use — describe what this phone is used for</label><textarea id="d'+idx+'_usage"></textarea></div>'
+    + '</div>';
+  }
+
+  document.getElementById('device1Container').innerHTML = deviceBlockHTML(1, 'Mobile phone 1');
+  document.getElementById('device2Container').innerHTML = deviceBlockHTML(2, 'Mobile phone 2');
+
+  function wireSimNumbers(idx){
+    var sel = document.getElementById('d'+idx+'_simCount');
+    var box = document.getElementById('d'+idx+'_simNumbers');
+    function render(){
+      var n = parseInt(sel.value, 10), html='';
+      for(var i=1;i<=n;i++){ html += '<input type="text" data-sim id="d'+idx+'_sim'+i+'" placeholder="SIM '+i+' number" required />'; }
+      box.innerHTML = html;
+    }
+    sel.addEventListener('change', render); render();
+  }
+  wireSimNumbers(1); wireSimNumbers(2);
+
+  function wirePhotoPreview(idx, which){
+    var input = document.getElementById('d'+idx+'_'+which), prev = document.getElementById('d'+idx+'_'+which+'Prev');
+    input.addEventListener('change', function(){
+      if(!input.files || !input.files[0]){ prev.style.display='none'; return; }
+      var reader = new FileReader();
+      reader.onload = function(e){ prev.src = e.target.result; prev.style.display='block'; };
+      reader.readAsDataURL(input.files[0]);
+    });
+  }
+  ['front','back'].forEach(function(w){ wirePhotoPreview(1,w); wirePhotoPreview(2,w); });
+
+  function compressImage(file, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      if(!file){ resolve(''); return; }
+      var reader = new FileReader();
+      reader.onload = function(e){
+        var img = new Image();
+        img.onload = function(){
+          var w=img.width, h=img.height;
+          if(w>h && w>maxDim){ h=Math.round(h*maxDim/w); w=maxDim; }
+          else if(h>=w && h>maxDim){ w=Math.round(w*maxDim/h); h=maxDim; }
+          var canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+          canvas.getContext('2d').drawImage(img,0,0,w,h);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror=function(){ resolve(''); };
+        img.src=e.target.result;
+      };
+      reader.onerror=function(){ reject(reader.error); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  document.querySelectorAll('input[name="deviceCount"]').forEach(function(r){
+    r.addEventListener('change', function(){
+      document.getElementById('device2Fieldset').style.display = (this.value==='2') ? 'block' : 'none';
+    });
+  });
+  document.querySelectorAll('.radiogroup').forEach(function(group){
+    group.querySelectorAll('input[type=radio]').forEach(function(r){
+      r.addEventListener('change', function(){
+        group.querySelectorAll('label').forEach(function(l){ l.classList.remove('on'); });
+        r.parentElement.classList.add('on');
+      });
+    });
+  });
+  document.querySelectorAll('input[name="damage"]').forEach(function(r){
+    r.addEventListener('change', function(){
+      document.getElementById('damageDetails').style.display = (this.value==='Yes') ? 'block' : 'none';
+    });
+  });
+
+  function getRadioValue(name){ var el=document.querySelector('input[name="'+name+'"]:checked'); return el?el.value:''; }
+  function clearErrors(){ document.querySelectorAll('.field.has-error').forEach(function(f){ f.classList.remove('has-error'); }); }
+  function markError(input){ var f=input.closest('.field'); if(f) f.classList.add('has-error'); }
+
+  function validate(deviceCount){
+    clearErrors(); var ok=true;
+    ['empName','location','designation'].forEach(function(id){
+      var el=document.getElementById(id); if(!el.value.trim()){ markError(el); ok=false; }
+    });
+    var emailEl = document.getElementById('empEmail');
+    var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailPattern.test(emailEl.value.trim())){ markError(emailEl); ok=false; }
+    for(var d=1; d<=deviceCount; d++){
+      ['brand','model','ram','storage','imei1'].forEach(function(f){
+        var el=document.getElementById('d'+d+'_'+f); if(!el.value.trim()){ markError(el); ok=false; }
+      });
+      var simCount=parseInt(document.getElementById('d'+d+'_simCount').value,10);
+      for(var s=1;s<=simCount;s++){
+        var simEl=document.getElementById('d'+d+'_sim'+s);
+        if(simEl && !simEl.value.trim()){ markError(simEl); ok=false; }
+      }
+    }
+    if(!getRadioValue('charger')) ok=false;
+    if(!getRadioValue('cable')) ok=false;
+    if(!getRadioValue('damage')) ok=false;
+    return ok;
+  }
+
+  function showToast(msg, type){ var t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type; }
+
+  async function collectDevice(idx){
+    var simCount=parseInt(document.getElementById('d'+idx+'_simCount').value,10);
+    var sims=[];
+    for(var s=1;s<=simCount;s++){ var el=document.getElementById('d'+idx+'_sim'+s); if(el) sims.push(el.value.trim()); }
+    var frontFile=document.getElementById('d'+idx+'_front').files[0];
+    var backFile=document.getElementById('d'+idx+'_back').files[0];
+    var frontPhoto=await compressImage(frontFile,480,0.6);
+    var backPhoto=await compressImage(backFile,480,0.6);
+    return {
+      brand:document.getElementById('d'+idx+'_brand').value.trim(),
+      model:document.getElementById('d'+idx+'_model').value.trim(),
+      ram:document.getElementById('d'+idx+'_ram').value.trim(),
+      storage:document.getElementById('d'+idx+'_storage').value.trim(),
+      imei1:document.getElementById('d'+idx+'_imei1').value.trim(),
+      imei2:document.getElementById('d'+idx+'_imei2').value.trim(),
+      simCount:simCount, simNumbers:sims,
+      usage:document.getElementById('d'+idx+'_usage').value.trim(),
+      frontPhoto:frontPhoto, backPhoto:backPhoto
+    };
+  }
+
+  function buildHandoverPDF(record){
+    var jsPDFCtor = window.jspdf.jsPDF;
+    var doc = new jsPDFCtor({ unit:'pt', format:'a4' });
+    var y = 50, left = 48, lineH = 16;
+    doc.setFont('helvetica','bold'); doc.setFontSize(15);
+    doc.text(window.DNCC_CONFIG.COMPANY_NAME, left, y); y += 20;
+    doc.setFontSize(11); doc.setFont('helvetica','normal');
+    doc.text(window.DNCC_CONFIG.DEPARTMENT + ' — Mobile Device Handover Receipt', left, y); y += 10;
+    doc.setDrawColor(180); doc.line(left, y, 547, y); y += 24;
+
+    function row(label, value){
+      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(label, left, y);
+      doc.setFont('helvetica','normal'); doc.text(String(value||'—'), left+150, y);
+      y += lineH;
+      if(y > 780){ doc.addPage(); y = 50; }
+    }
+    function section(title){
+      y += 6; doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(30,60,90);
+      doc.text(title, left, y); doc.setTextColor(0,0,0); y += 16;
+    }
+
+    section('Employee');
+    row('Name', record.employeeName); row('Employee ID', record.employeeId);
+    row('Email', record.employeeEmail);
+    row('Department', record.department); row('Location', record.location);
+    row('Designation', record.designation); row('Date', new Date().toLocaleString());
+
+    [record.device1, record.deviceCount===2?record.device2:null].forEach(function(d, i){
+      if(!d) return;
+      section('Mobile phone ' + (i+1));
+      row('Brand / Model', (d.brand||'')+' '+(d.model||''));
+      row('RAM / Storage', (d.ram||'')+' / '+(d.storage||''));
+      row('IMEI 1', d.imei1); row('IMEI 2', d.imei2);
+      row('SIM number(s)', (d.simNumbers||[]).join(', '));
+      row('Usage', d.usage);
+    });
+
+    section('Accessories & condition');
+    row('Charger provided', record.charger);
+    row('Data/USB cable provided', record.cable);
+    row('Damage present', record.damage);
+    if(record.damage === 'Yes'){ row('Damage', record.damageWhat); row('Cause', record.damageHow); }
+
+    y += 20;
+    doc.setFont('helvetica','italic'); doc.setFontSize(9.5);
+    doc.text('This is a system-generated handover confirmation. Please retain this copy for your records.', left, y);
+
+    var fname = 'Handover_' + (record.employeeName||'Employee').replace(/[^a-z0-9]+/gi,'_') + '_' + new Date().toISOString().slice(0,10) + '.pdf';
+    doc.save(fname);
+  }
+
+  async function upsertDevice(d, employeeName, employeeId){
+    if(!d || !d.imei1) return;
+    try{
+      await sb.from('devices').upsert([{
+        brand:d.brand, model:d.model, ram:d.ram, storage:d.storage,
+        imei1:d.imei1, imei2:d.imei2, status:'Assigned',
+        assigned_to:employeeName, assigned_employee_id:employeeId,
+        last_updated:new Date().toISOString()
+      }], { onConflict:'imei1' });
+      await sb.from('device_history').insert([{
+        imei1:d.imei1, action:'Assigned (via audit form)', employee_name:employeeName, notes:''
+      }]);
+    }catch(e){ /* inventory sync is best-effort; submission already saved */ }
+  }
+
+  document.getElementById('intakeForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var deviceCount = parseInt(document.querySelector('input[name="deviceCount"]:checked').value, 10);
+    if(!validate(deviceCount)){ showToast('Please fill in the highlighted required fields before submitting.', 'err'); return; }
+
+    var submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true; submitBtn.textContent = 'Saving…';
+
+    try{
+      var record = {
+        employeeName: document.getElementById('empName').value.trim(),
+        employeeId: document.getElementById('empId').value.trim(),
+        employeeEmail: document.getElementById('empEmail').value.trim(),
+        department: document.getElementById('department').value.trim(),
+        location: document.getElementById('location').value.trim(),
+        designation: document.getElementById('designation').value.trim(),
+        contact: document.getElementById('contact').value.trim(),
+        deviceCount: deviceCount,
+        charger: getRadioValue('charger'), cable: getRadioValue('cable'), damage: getRadioValue('damage'),
+        damageWhat: document.getElementById('damageWhat').value.trim(),
+        damageHow: document.getElementById('damageHow').value.trim()
+      };
+      record.device1 = await collectDevice(1);
+      if(deviceCount === 2) record.device2 = await collectDevice(2);
+
+      var { error } = await sb.from('submissions').insert([{
+        employee_name: record.employeeName, employee_id: record.employeeId, employee_email: record.employeeEmail, department: record.department,
+        location: record.location, designation: record.designation, contact: record.contact,
+        device_count: record.deviceCount, charger: record.charger, cable: record.cable,
+        damage: record.damage, damage_what: record.damageWhat, damage_how: record.damageHow,
+        device1: record.device1, device2: record.device2 || null
+      }]);
+      if(error) throw error;
+
+      await upsertDevice(record.device1, record.employeeName, record.employeeId);
+      if(record.device2) await upsertDevice(record.device2, record.employeeName, record.employeeId);
+
+      buildHandoverPDF(record);
+      showToast('Submitted successfully — your handover PDF is downloading now.', 'ok');
+      this.reset();
+      document.getElementById('device2Fieldset').style.display = 'none';
+      document.getElementById('damageDetails').style.display = 'none';
+      document.querySelectorAll('.radiogroup label').forEach(function(l){ l.classList.remove('on'); });
+      ['frontPrev','backPrev'].forEach(function(k){
+        var i1=document.getElementById('d1_'+k), i2=document.getElementById('d2_'+k);
+        if(i1) i1.style.display='none'; if(i2) i2.style.display='none';
+      });
+      wireSimNumbers(1); wireSimNumbers(2);
+    }catch(err){
+      console.error(err);
+      showToast('Something went wrong saving your response. Please try again.', 'err');
+    }finally{
+      submitBtn.disabled=false; submitBtn.textContent='Submit details';
+    }
+  });
+})();
+</script>
+</body>
+</html>
