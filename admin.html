@@ -238,7 +238,7 @@
   document.title = window.DNCC_CONFIG.COMPANY_NAME + ' — IT Admin Panel';
 
   var sb = window.supabase.createClient(window.DNCC_CONFIG.SUPABASE_URL, window.DNCC_CONFIG.SUPABASE_ANON_KEY);
-  var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL.replace('.supabase.co', '.functions.supabase.co');
+  var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL + '/functions/v1';
   var currentSettings = null;
   var currentTemplates = {};
   var DEFAULT_TEMPLATES = {
@@ -431,6 +431,8 @@
       { id:'d1_imei1', label:'IMEI 1', value:d1.imei1 },
       { id:'d1_imei2', label:'IMEI 2', value:d1.imei2 },
       { id:'d1_sims', label:'SIM number(s), comma separated', value:(d1.simNumbers||[]).join(', ') },
+      { id:'d1_memoryCard', label:'Memory/SD card (Yes/No)', value:d1.memoryCard },
+      { id:'d1_memoryCardSize', label:'Memory card size', value:d1.memoryCardSize },
       { id:'d1_usage', label:'Usage', value:d1.usage, type:'textarea' },
       { section:'Device 2 (leave blank if only 1 phone)' },
       { id:'d2_brand', label:'Brand', value:d2.brand },
@@ -440,6 +442,8 @@
       { id:'d2_imei1', label:'IMEI 1', value:d2.imei1 },
       { id:'d2_imei2', label:'IMEI 2', value:d2.imei2 },
       { id:'d2_sims', label:'SIM number(s), comma separated', value:(d2.simNumbers||[]).join(', ') },
+      { id:'d2_memoryCard', label:'Memory/SD card (Yes/No)', value:d2.memoryCard },
+      { id:'d2_memoryCardSize', label:'Memory card size', value:d2.memoryCardSize },
       { id:'d2_usage', label:'Usage', value:d2.usage, type:'textarea' },
       { section:'Accessories & damage' },
       { id:'charger', label:'Charger provided (Yes/No)', value:r.charger },
@@ -456,6 +460,7 @@
       brand:v.d1_brand, model:v.d1_model, ram:v.d1_ram, storage:v.d1_storage,
       imei1:v.d1_imei1, imei2:v.d1_imei2,
       simNumbers: v.d1_sims ? v.d1_sims.split(',').map(function(s){return s.trim();}).filter(Boolean) : [],
+      memoryCard: v.d1_memoryCard, memoryCardSize: v.d1_memoryCardSize,
       usage:v.d1_usage,
       frontPhoto:(originalD1||{}).frontPhoto || '', backPhoto:(originalD1||{}).backPhoto || ''
     };
@@ -466,6 +471,7 @@
         brand:v.d2_brand, model:v.d2_model, ram:v.d2_ram, storage:v.d2_storage,
         imei1:v.d2_imei1, imei2:v.d2_imei2,
         simNumbers: v.d2_sims ? v.d2_sims.split(',').map(function(s){return s.trim();}).filter(Boolean) : [],
+        memoryCard: v.d2_memoryCard, memoryCardSize: v.d2_memoryCardSize,
         usage:v.d2_usage,
         frontPhoto:(originalD2||{}).frontPhoto || '', backPhoto:(originalD2||{}).backPhoto || ''
       };
@@ -541,7 +547,9 @@
       row('Brand / Model', (d.brand||'')+' '+(d.model||''));
       row('RAM / Storage', (d.ram||'')+' / '+(d.storage||''));
       row('IMEI 1', d.imei1); row('IMEI 2', d.imei2);
-      row('SIM number(s)', (d.simNumbers||[]).join(', ')); row('Usage', d.usage);
+      row('SIM number(s)', (d.simNumbers||[]).join(', '));
+      row('Memory/SD card', d.memoryCard === 'Yes' ? ('Yes — ' + d.memoryCardSize) : (d.memoryCard || '—'));
+      row('Usage', d.usage);
     });
     section('Accessories & condition');
     row('Charger provided', r.charger); row('Data/USB cable provided', r.cable); row('Damage present', r.damage);
@@ -602,9 +610,11 @@
       'Number of phones': r.device_count||'',
       'Device 1 brand': d1.brand||'', 'Device 1 model': d1.model||'', 'Device 1 RAM': d1.ram||'', 'Device 1 storage': d1.storage||'',
       'Device 1 IMEI 1': d1.imei1||'', 'Device 1 IMEI 2': d1.imei2||'', 'Device 1 SIM numbers': (d1.simNumbers||[]).join(', '),
+      'Device 1 memory card': d1.memoryCard||'', 'Device 1 memory card size': d1.memoryCardSize||'',
       'Device 1 usage': d1.usage||'',
       'Device 2 brand': d2.brand||'', 'Device 2 model': d2.model||'', 'Device 2 RAM': d2.ram||'', 'Device 2 storage': d2.storage||'',
       'Device 2 IMEI 1': d2.imei1||'', 'Device 2 IMEI 2': d2.imei2||'', 'Device 2 SIM numbers': (d2.simNumbers||[]).join(', '),
+      'Device 2 memory card': d2.memoryCard||'', 'Device 2 memory card size': d2.memoryCardSize||'',
       'Device 2 usage': d2.usage||'',
       'Charger provided': r.charger||'', 'Cable provided': r.cable||'',
       'Damage present': r.damage||'', 'Damage description': r.damage_what||'', 'Damage cause': r.damage_how||'',

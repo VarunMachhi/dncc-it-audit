@@ -198,6 +198,11 @@
     + '<div class="field"><label for="d'+idx+'_simCount">How many SIMs does this phone have?</label>'
     + '<select id="d'+idx+'_simCount"><option value="1">1</option><option value="2">2</option></select>'
     + '<div class="sim-numbers" id="d'+idx+'_simNumbers"></div></div>'
+    + '<div class="field"><label>Does this phone have a memory / SD card?</label>'
+    + '<div class="radiogroup"><label><input type="radio" name="d'+idx+'_memoryCard" value="Yes" required /> Yes</label><label><input type="radio" name="d'+idx+'_memoryCard" value="No" required /> No</label></div>'
+    + '<div class="conditional" id="d'+idx+'_memoryCardSizeWrap" style="display:none;">'
+    + '<div class="field" style="margin-bottom:0;"><label for="d'+idx+'_memoryCardSize">Memory card size</label><input type="text" id="d'+idx+'_memoryCardSize" placeholder="e.g. 64 GB" /></div>'
+    + '</div></div>'
     + '<div class="field" style="margin-bottom:0;"><label for="d'+idx+'_usage">Mobile use — describe what this phone is used for</label><textarea id="d'+idx+'_usage"></textarea></div>'
     + '</div>';
   }
@@ -216,6 +221,16 @@
     sel.addEventListener('change', render); render();
   }
   wireSimNumbers(1); wireSimNumbers(2);
+
+  function wireMemoryCard(idx){
+    var wrap = document.getElementById('d'+idx+'_memoryCardSizeWrap');
+    document.querySelectorAll('input[name="d'+idx+'_memoryCard"]').forEach(function(r){
+      r.addEventListener('change', function(){
+        wrap.style.display = (this.value === 'Yes') ? 'block' : 'none';
+      });
+    });
+  }
+  wireMemoryCard(1); wireMemoryCard(2);
 
   function wirePhotoPreview(idx, which){
     var input = document.getElementById('d'+idx+'_'+which), prev = document.getElementById('d'+idx+'_'+which+'Prev');
@@ -290,6 +305,12 @@
         var simEl=document.getElementById('d'+d+'_sim'+s);
         if(simEl && !simEl.value.trim()){ markError(simEl); ok=false; }
       }
+      var memCardVal = getRadioValue('d'+d+'_memoryCard');
+      if(!memCardVal) ok=false;
+      if(memCardVal === 'Yes'){
+        var sizeEl = document.getElementById('d'+d+'_memoryCardSize');
+        if(!sizeEl.value.trim()){ markError(sizeEl); ok=false; }
+      }
     }
     if(!getRadioValue('charger')) ok=false;
     if(!getRadioValue('cable')) ok=false;
@@ -315,6 +336,8 @@
       imei1:document.getElementById('d'+idx+'_imei1').value.trim(),
       imei2:document.getElementById('d'+idx+'_imei2').value.trim(),
       simCount:simCount, simNumbers:sims,
+      memoryCard: getRadioValue('d'+idx+'_memoryCard'),
+      memoryCardSize: getRadioValue('d'+idx+'_memoryCard')==='Yes' ? document.getElementById('d'+idx+'_memoryCardSize').value.trim() : '',
       usage:document.getElementById('d'+idx+'_usage').value.trim(),
       frontPhoto:frontPhoto, backPhoto:backPhoto
     };
@@ -354,6 +377,7 @@
       row('RAM / Storage', (d.ram||'')+' / '+(d.storage||''));
       row('IMEI 1', d.imei1); row('IMEI 2', d.imei2);
       row('SIM number(s)', (d.simNumbers||[]).join(', '));
+      row('Memory/SD card', d.memoryCard === 'Yes' ? ('Yes — ' + d.memoryCardSize) : 'No');
       row('Usage', d.usage);
     });
 
@@ -428,6 +452,10 @@
       this.reset();
       document.getElementById('device2Fieldset').style.display = 'none';
       document.getElementById('damageDetails').style.display = 'none';
+      ['1','2'].forEach(function(idx){
+        var wrap = document.getElementById('d'+idx+'_memoryCardSizeWrap');
+        if(wrap) wrap.style.display = 'none';
+      });
       document.querySelectorAll('.radiogroup label').forEach(function(l){ l.classList.remove('on'); });
       ['frontPrev','backPrev'].forEach(function(k){
         var i1=document.getElementById('d1_'+k), i2=document.getElementById('d2_'+k);
