@@ -59,6 +59,12 @@
   .toast.err{display:block; background:var(--danger-light); color:var(--danger); border:1px solid #ecc4c4;}
   .foot-link{text-align:center; margin-top:30px; font-size:12px;}
   .foot-link a{color:var(--text-soft);}
+  .correction-block{margin-top:26px; border-top:1px solid var(--line); padding-top:20px;}
+  .correction-toggle{
+    width:100%; text-align:left; background:none; border:none; padding:0; margin-bottom:14px;
+    font-family:var(--sans); font-size:13.5px; font-weight:600; color:var(--accent); cursor:pointer;
+  }
+  #correctionForm{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
 
   @media (max-width: 600px){
     .wrap{padding:20px 14px 60px;}
@@ -83,7 +89,7 @@
   </div>
 
   <div class="intro">
-    <strong>Before you start:</strong> keep your phone(s) nearby to check the IMEI (dial <span style="font-family:var(--mono)">*#06#</span>), SIM numbers, and take clear front/back photos. This takes about 5 minutes. After submitting you'll get a handover PDF copy for your records.
+    <strong>Before you start:</strong> keep your phone(s) nearby to check the IMEI (dial <span style="font-family:var(--mono)">*#06#</span>), SIM numbers, and take clear front/back photos. This takes about 5 minutes. After submitting, a handover PDF downloads automatically and a copy is emailed to the address you enter below.
   </div>
 
   <form id="intakeForm" novalidate>
@@ -107,12 +113,17 @@
         <div class="field"><label for="contact">Alternate contact number</label>
           <input type="text" id="contact" /></div>
       </div>
-      <div class="field" style="margin-bottom:0;">
-        <label for="empEmail">Employee email address</label>
-        <input type="email" id="empEmail" placeholder="name@company.com" required />
-        <div class="error-text">Enter a valid email address — this is where your handover confirmation will be sent.</div>
-        <div class="hint">Used by IT to email you a copy of your handover confirmation.</div>
+      <div class="row2">
+        <div class="field"><label for="companyEmail">Company email address</label>
+          <input type="email" id="companyEmail" placeholder="name@dncc.in" required />
+          <div class="error-text">Enter a valid company email address.</div>
+        </div>
+        <div class="field"><label for="personalEmail">Personal email address</label>
+          <input type="email" id="personalEmail" placeholder="name@gmail.com" required />
+          <div class="error-text">Enter a valid personal email address.</div>
+        </div>
       </div>
+      <p class="hint" style="margin:-8px 0 0;">Your handover confirmation and PDF copy will be sent to both addresses.</p>
     </fieldset>
 
     <fieldset>
@@ -161,6 +172,23 @@
     <div class="toast" id="toast"></div>
   </form>
 
+  <div class="correction-block">
+    <button type="button" class="correction-toggle" id="correctionToggle">Made a mistake? Request a correction to details you already submitted →</button>
+    <form id="correctionForm" style="display:none;">
+      <p class="hint" style="margin-top:0;">Describe what's wrong and what it should be instead (e.g. "IMEI 1 for my Samsung was typed wrong, it should be 356789012345678"). IT will review and update your record — you'll get an email once it's corrected.</p>
+      <div class="row2">
+        <div class="field"><label for="corrName">Your name</label><input type="text" id="corrName" required /></div>
+        <div class="field"><label for="corrEmail">Your email (company or personal)</label><input type="email" id="corrEmail" required /></div>
+      </div>
+      <div class="field"><label for="corrEmpId">Employee ID (if known)</label><input type="text" id="corrEmpId" /></div>
+      <div class="field" style="margin-bottom:0;"><label for="corrDetails">What needs to be corrected?</label><textarea id="corrDetails" required style="min-height:90px;"></textarea></div>
+      <div class="submit-bar" style="margin-top:14px;">
+        <button type="submit" class="btn-primary" id="corrSubmitBtn">Send correction request</button>
+      </div>
+      <div class="toast" id="corrToast"></div>
+    </form>
+  </div>
+
   <p class="foot-link"><a href="admin.html">IT admin login →</a></p>
 </div>
 
@@ -174,6 +202,68 @@
   document.title = window.DNCC_CONFIG.COMPANY_NAME + ' — IT Mobile Audit Form';
 
   var sb = window.supabase.createClient(window.DNCC_CONFIG.SUPABASE_URL, window.DNCC_CONFIG.SUPABASE_ANON_KEY);
+  var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL + '/functions/v1';
+
+  function fillTemplate(str, vars){
+    return (str||'').replace(/\{\{(\w+)\}\}/g, function(_, k){ return (vars[k] !== undefined && vars[k] !== null) ? vars[k] : ''; });
+  }
+
+  function buildDeviceDetailsHTML(record){
+    var devices = [record.device1];
+    if(record.deviceCount === 2 && record.device2) devices.push(record.device2);
+    var html = '';
+    devices.forEach(function(d, i){
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#f5f6f7;border-left:3px solid #2c6f97;">';
+      html += '<p style="margin:0 0 6px;font-weight:bold;color:#132635;">Device ' + (i+1) + (devices.length>1?'':'')  + '</p>';
+      html += '<p style="margin:0;">';
+      html += '<b>Model:</b> ' + (d.brand||'') + ' ' + (d.model||'') + '<br/>';
+      html += '<b>RAM:</b> ' + (d.ram||'—') + ' &nbsp; <b>Storage:</b> ' + (d.storage||'—') + '<br/>';
+      html += '<b>IMEI 1:</b> ' + (d.imei1||'—') + ' &nbsp; <b>IMEI 2:</b> ' + (d.imei2||'—') + '<br/>';
+      html += '<b>SIM number(s):</b> ' + ((d.simNumbers||[]).join(', ')||'—') + '<br/>';
+      html += '<b>Memory/SD card:</b> ' + (d.memoryCard==='Yes' ? ('Yes — '+d.memoryCardSize) : 'No');
+      html += '</p></div>';
+    });
+    if(record.damage === 'Yes'){
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeee1;border-left:3px solid #b5691f;">';
+      html += '<p style="margin:0;"><b>Reported damage:</b> ' + (record.damageWhat||'—') + '<br/><b>Cause:</b> ' + (record.damageHow||'—') + '</p></div>';
+    }
+    return html;
+  }
+
+  async function autoSendHandoverEmail(record, submissionId){
+    var recipients = [record.companyEmail, record.personalEmail].filter(Boolean);
+    if(recipients.length === 0) return;
+    try{
+      var { data: tmpl } = await sb.from('email_templates').select('*').eq('action','handover').single();
+      var vars = {
+        employee_name: record.employeeName||'', employee_id: record.employeeId||'',
+        location: record.location||'', designation: record.designation||'',
+        action_date: new Date().toLocaleString(), company_name: window.DNCC_CONFIG.COMPANY_NAME
+      };
+      var intro = tmpl ? fillTemplate(tmpl.body, vars) : ('<p>Dear ' + (record.employeeName||'') + ',</p><p>This confirms your mobile device handover with ' + window.DNCC_CONFIG.COMPANY_NAME + '.</p>');
+      var closing = tmpl ? fillTemplate(tmpl.closing, vars) : '';
+      var subject = tmpl ? fillTemplate(tmpl.subject, vars) : ('Your Mobile Device Handover Confirmation — ' + window.DNCC_CONFIG.COMPANY_NAME);
+      var html = intro + buildDeviceDetailsHTML(record) + closing;
+      var pdfBase64 = buildHandoverPDFBase64(record);
+      var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY },
+        body: JSON.stringify({
+          to: recipients, employeeName: record.employeeName, subject: subject, html: html,
+          pdfBase64: pdfBase64,
+          pdfFilename: 'Handover_' + (record.employeeName||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf'
+        })
+      });
+      var json = await res.json();
+      if(res.ok && json.ok && submissionId){
+        await sb.from('submissions').update({ email_sent_at: new Date().toISOString() }).eq('id', submissionId);
+      }
+      return res.ok && json.ok;
+    }catch(err){
+      console.error('Auto-email failed (submission was still saved successfully):', err);
+      return false;
+    }
+  }
 
   function uid(){ return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
 
@@ -187,9 +277,11 @@
     + '<div class="field"><label for="d'+idx+'_ram">RAM size</label><input type="text" id="d'+idx+'_ram" placeholder="e.g. 6 GB" required /><div class="error-text">Enter RAM size.</div></div>'
     + '<div class="field"><label for="d'+idx+'_storage">Storage size</label><input type="text" id="d'+idx+'_storage" placeholder="e.g. 128 GB" required /><div class="error-text">Enter storage size.</div></div>'
     + '</div>'
-    + '<div class="field"><label>Phone photos</label><div class="photo-pair">'
-    + '<div class="photo-box"><label for="d'+idx+'_front" style="font-weight:400;">Front photo</label><input type="file" accept="image/*" id="d'+idx+'_front" /><img id="d'+idx+'_frontPrev" style="display:none;" /></div>'
-    + '<div class="photo-box"><label for="d'+idx+'_back" style="font-weight:400;">Back photo</label><input type="file" accept="image/*" id="d'+idx+'_back" /><img id="d'+idx+'_backPrev" style="display:none;" /></div>'
+    + '<div class="field"><label>Phone photos</label>'
+    + '<p class="hint" style="margin-top:-2px;">For the front photo, switch the phone\'s screen ON before taking the picture (helps confirm the device is working and shows the lock screen/home screen).</p>'
+    + '<div class="photo-pair">'
+    + '<div class="photo-box"><label for="d'+idx+'_front" style="font-weight:400;">Front photo (screen ON)</label><input type="file" accept="image/*" id="d'+idx+'_front" required /><img id="d'+idx+'_frontPrev" style="display:none;" /></div>'
+    + '<div class="photo-box"><label for="d'+idx+'_back" style="font-weight:400;">Back photo</label><input type="file" accept="image/*" id="d'+idx+'_back" required /><img id="d'+idx+'_backPrev" style="display:none;" /></div>'
     + '</div></div>'
     + '<div class="row2">'
     + '<div class="field"><label for="d'+idx+'_imei1">IMEI number 1</label><input type="text" data-imei id="d'+idx+'_imei1" required /><div class="error-text">Enter IMEI 1 (dial *#06#).</div></div>'
@@ -293,13 +385,19 @@
     ['empName','location','designation'].forEach(function(id){
       var el=document.getElementById(id); if(!el.value.trim()){ markError(el); ok=false; }
     });
-    var emailEl = document.getElementById('empEmail');
     var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if(!emailPattern.test(emailEl.value.trim())){ markError(emailEl); ok=false; }
+    var companyEmailEl = document.getElementById('companyEmail');
+    var personalEmailEl = document.getElementById('personalEmail');
+    if(!emailPattern.test(companyEmailEl.value.trim())){ markError(companyEmailEl); ok=false; }
+    if(!emailPattern.test(personalEmailEl.value.trim())){ markError(personalEmailEl); ok=false; }
     for(var d=1; d<=deviceCount; d++){
       ['brand','model','ram','storage','imei1'].forEach(function(f){
         var el=document.getElementById('d'+d+'_'+f); if(!el.value.trim()){ markError(el); ok=false; }
       });
+      var frontFileEl = document.getElementById('d'+d+'_front');
+      var backFileEl = document.getElementById('d'+d+'_back');
+      if(!frontFileEl.files || !frontFileEl.files[0]){ markError(frontFileEl); ok=false; }
+      if(!backFileEl.files || !backFileEl.files[0]){ markError(backFileEl); ok=false; }
       var simCount=parseInt(document.getElementById('d'+d+'_simCount').value,10);
       for(var s=1;s<=simCount;s++){
         var simEl=document.getElementById('d'+d+'_sim'+s);
@@ -343,7 +441,7 @@
     };
   }
 
-  function buildHandoverPDF(record){
+  function buildHandoverDoc(record){
     var jsPDFCtor = window.jspdf.jsPDF;
     var doc = new jsPDFCtor({ unit:'pt', format:'a4' });
     var y = 50, left = 48, lineH = 16;
@@ -366,7 +464,7 @@
 
     section('Employee');
     row('Name', record.employeeName); row('Employee ID', record.employeeId);
-    row('Email', record.employeeEmail);
+    row('Company email', record.companyEmail); row('Personal email', record.personalEmail);
     row('Department', record.department); row('Location', record.location);
     row('Designation', record.designation); row('Date', new Date().toLocaleString());
 
@@ -391,8 +489,18 @@
     doc.setFont('helvetica','italic'); doc.setFontSize(9.5);
     doc.text('This is a system-generated handover confirmation. Please retain this copy for your records.', left, y);
 
+    return doc;
+  }
+
+  function buildHandoverPDF(record){
+    var doc = buildHandoverDoc(record);
     var fname = 'Handover_' + (record.employeeName||'Employee').replace(/[^a-z0-9]+/gi,'_') + '_' + new Date().toISOString().slice(0,10) + '.pdf';
     doc.save(fname);
+  }
+
+  function buildHandoverPDFBase64(record){
+    var doc = buildHandoverDoc(record);
+    return doc.output('datauristring').split(',')[1];
   }
 
   async function upsertDevice(d, employeeName, employeeId){
@@ -422,7 +530,8 @@
       var record = {
         employeeName: document.getElementById('empName').value.trim(),
         employeeId: document.getElementById('empId').value.trim(),
-        employeeEmail: document.getElementById('empEmail').value.trim(),
+        companyEmail: document.getElementById('companyEmail').value.trim(),
+        personalEmail: document.getElementById('personalEmail').value.trim(),
         department: document.getElementById('department').value.trim(),
         location: document.getElementById('location').value.trim(),
         designation: document.getElementById('designation').value.trim(),
@@ -435,20 +544,45 @@
       record.device1 = await collectDevice(1);
       if(deviceCount === 2) record.device2 = await collectDevice(2);
 
-      var { error } = await sb.from('submissions').insert([{
-        employee_name: record.employeeName, employee_id: record.employeeId, employee_email: record.employeeEmail, department: record.department,
+      // Duplicate check — has this IMEI already been submitted before?
+      submitBtn.textContent = 'Checking for duplicates…';
+      var imeisToCheck = [record.device1.imei1];
+      if(record.device2) imeisToCheck.push(record.device2.imei1);
+      for(var ci=0; ci<imeisToCheck.length; ci++){
+        var checkImei = imeisToCheck[ci];
+        if(!checkImei) continue;
+        var { data: dupes } = await sb.from('submissions')
+          .select('id, employee_name, created_at')
+          .or('device1->>imei1.eq.' + checkImei + ',device2->>imei1.eq.' + checkImei);
+        if(dupes && dupes.length > 0){
+          showToast('This device (IMEI ' + checkImei + ') already has a submission on file (by ' + (dupes[0].employee_name||'someone') + '). If this is a mistake, please use "Request a correction" below instead of submitting again.', 'err');
+          submitBtn.disabled = false; submitBtn.textContent = 'Submit details';
+          return;
+        }
+      }
+      submitBtn.textContent = 'Saving…';
+
+      var { data: inserted, error } = await sb.from('submissions').insert([{
+        employee_name: record.employeeName, employee_id: record.employeeId,
+        company_email: record.companyEmail, personal_email: record.personalEmail,
+        department: record.department,
         location: record.location, designation: record.designation, contact: record.contact,
         device_count: record.deviceCount, charger: record.charger, cable: record.cable,
         damage: record.damage, damage_what: record.damageWhat, damage_how: record.damageHow,
         device1: record.device1, device2: record.device2 || null
-      }]);
+      }]).select();
       if(error) throw error;
+      var submissionId = inserted && inserted[0] ? inserted[0].id : null;
 
       await upsertDevice(record.device1, record.employeeName, record.employeeId);
       if(record.device2) await upsertDevice(record.device2, record.employeeName, record.employeeId);
 
       buildHandoverPDF(record);
-      showToast('Submitted successfully — your handover PDF is downloading now.', 'ok');
+      submitBtn.textContent = 'Emailing your copy…';
+      var emailed = await autoSendHandoverEmail(record, submissionId);
+      showToast(emailed
+        ? 'Submitted successfully — your handover PDF is downloading, and a copy has been emailed to you.'
+        : 'Submitted successfully — your handover PDF is downloading now. (The email copy could not be sent — IT has been notified via the portal.)', 'ok');
       this.reset();
       document.getElementById('device2Fieldset').style.display = 'none';
       document.getElementById('damageDetails').style.display = 'none';
@@ -467,6 +601,55 @@
       showToast('Something went wrong saving your response. Please try again.', 'err');
     }finally{
       submitBtn.disabled=false; submitBtn.textContent='Submit details';
+    }
+  });
+
+  // ---------- Correction request ----------
+  document.getElementById('correctionToggle').addEventListener('click', function(){
+    var form = document.getElementById('correctionForm');
+    var open = form.style.display !== 'none';
+    form.style.display = open ? 'none' : 'block';
+    this.textContent = open ? "Made a mistake? Request a correction to details you already submitted →" : "Hide correction form ↑";
+  });
+
+  document.getElementById('correctionForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var name = document.getElementById('corrName').value.trim();
+    var email = document.getElementById('corrEmail').value.trim();
+    var empId = document.getElementById('corrEmpId').value.trim();
+    var details = document.getElementById('corrDetails').value.trim();
+    var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    var corrToast = document.getElementById('corrToast');
+    if(!name || !details || !emailPattern.test(email)){
+      corrToast.textContent = 'Please fill in your name, a valid email, and what needs correcting.';
+      corrToast.className = 'toast err';
+      return;
+    }
+    var btn = document.getElementById('corrSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try{
+      // Try to auto-link to their most recent submission by matching email
+      var submissionId = null;
+      var { data: matches } = await sb.from('submissions')
+        .select('id, created_at')
+        .or('company_email.eq.' + email + ',personal_email.eq.' + email)
+        .order('created_at', { ascending:false }).limit(1);
+      if(matches && matches[0]) submissionId = matches[0].id;
+
+      var { error } = await sb.from('change_requests').insert([{
+        submission_id: submissionId, employee_name: name, employee_id: empId,
+        employee_email: email, request_details: details, status: 'Pending'
+      }]);
+      if(error) throw error;
+      corrToast.textContent = 'Correction request sent. IT will review it and email you once it\'s updated.';
+      corrToast.className = 'toast ok';
+      this.reset();
+    }catch(err){
+      console.error(err);
+      corrToast.textContent = 'Could not send your request. Please try again.';
+      corrToast.className = 'toast err';
+    }finally{
+      btn.disabled = false; btn.textContent = 'Send correction request';
     }
   });
 })();

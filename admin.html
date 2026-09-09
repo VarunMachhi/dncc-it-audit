@@ -34,6 +34,8 @@
   .tabs{display:flex; gap:8px; margin-bottom:18px; border-bottom:1px solid var(--line); flex-wrap:wrap;}
   .tab-btn{background:none; border:none; padding:10px 4px; font-size:14px; font-weight:700; color:var(--text-soft); cursor:pointer; border-bottom:2px solid transparent; margin-right:18px;}
   .tab-btn.active{color:var(--navy); border-bottom-color:var(--accent);}
+  #pendingBadge{display:inline-block; min-width:16px; padding:1px 5px; border-radius:10px; background:var(--danger); color:#fff; font-size:10.5px; font-weight:700; vertical-align:middle; margin-left:2px;}
+  #pendingBadge:empty{display:none;}
   .tab-panel{display:none;} .tab-panel.active{display:block;}
   .panel-bar{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap;}
   .panel-bar h2{font-size:16px; margin:0; color:var(--navy);}
@@ -51,7 +53,7 @@
   table{width:100%; border-collapse:collapse; font-size:12.5px;}
   th, td{border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top;}
   th{background:var(--accent-light); color:var(--navy); font-weight:700; white-space:nowrap;}
-  img.thumb{width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:4px; border:1px solid var(--line);}
+  img.thumb{width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:4px; border:1px solid var(--line); cursor:pointer;}
   .badge-status{padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; display:inline-block;}
   .badge-status.Assigned{background:var(--ok-light); color:var(--ok);}
   .badge-status.Spare{background:var(--amber-light); color:var(--amber);}
@@ -75,6 +77,9 @@
   #modalBox h3{margin:0 0 14px; color:var(--navy); font-size:16px;}
   .modal-section-title{font-size:12px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:.03em; margin:14px 0 6px;}
   .modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:16px;}
+  #lightboxOverlay{display:none; position:fixed; inset:0; background:rgba(10,15,20,.85); z-index:90; align-items:center; justify-content:center; padding:30px; cursor:zoom-out;}
+  #lightboxOverlay.open{display:flex;}
+  #lightboxOverlay img{max-width:92vw; max-height:92vh; border-radius:6px; box-shadow:0 10px 40px rgba(0,0,0,.5);}
 
   @media (max-width: 640px){
     .wrap{padding:20px 12px 60px;}
@@ -118,6 +123,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="submissions">Submissions</button>
       <button class="tab-btn" data-tab="inventory">Inventory</button>
+      <button class="tab-btn" data-tab="changereqs">Change Requests <span id="pendingBadge"></span></button>
       <button class="tab-btn" data-tab="settings">Settings</button>
     </div>
 
@@ -156,6 +162,15 @@
       <div id="invArea"><p class="empty-state">Loading…</p></div>
     </div>
 
+    <!-- CHANGE REQUESTS -->
+    <div class="tab-panel" id="tab-changereqs">
+      <div class="panel-bar">
+        <h2>Employee correction requests</h2>
+        <button class="btn btn-secondary" id="refreshChangeReqsBtn">Refresh</button>
+      </div>
+      <div id="changeReqsArea"><p class="empty-state">Loading…</p></div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="tab-panel" id="tab-settings">
       <div class="card-form">
@@ -175,7 +190,7 @@
 
       <div class="card-form">
         <h3>Email templates</h3>
-        <p class="sub">One format per action — used automatically (with a PDF attached) when you email an employee from Submissions or Inventory. Placeholders: <code>{{employee_name}}</code> <code>{{employee_id}}</code> <code>{{device_brand}}</code> <code>{{device_model}}</code> <code>{{imei1}}</code> <code>{{imei2}}</code> <code>{{location}}</code> <code>{{designation}}</code> <code>{{action_date}}</code> <code>{{company_name}}</code></p>
+        <p class="sub">One format per action. The device details (model, RAM, storage, IMEI, SIM, damage) are always inserted automatically between your Intro and Closing text — accurate every time, regardless of wording changes. Placeholders: <code>{{employee_name}}</code> <code>{{employee_id}}</code> <code>{{location}}</code> <code>{{designation}}</code> <code>{{action_date}}</code> <code>{{company_name}}</code></p>
         <div id="tmplMsg" class="msg"></div>
         <div class="field">
           <label>Template for</label>
@@ -184,10 +199,12 @@
             <option value="reassign">Reassign (device moved to a different employee)</option>
             <option value="takeover">Takeover / Return (device taken back from employee)</option>
             <option value="retire">Retire (device removed from active use)</option>
+            <option value="update">Update / Correction (details corrected after employee request)</option>
           </select>
         </div>
         <div class="field"><label>Subject</label><input type="text" id="tmplSubject" /></div>
-        <div class="field"><label>Body (HTML)</label><textarea id="tmplBody" style="min-height:140px;"></textarea></div>
+        <div class="field"><label>Intro (shown above the device details)</label><textarea id="tmplBody" style="min-height:110px;"></textarea></div>
+        <div class="field"><label>Closing (shown below the device details)</label><textarea id="tmplClosing" style="min-height:110px;"></textarea></div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <button class="btn btn-primary" id="saveTmplBtn">Save template</button>
           <button class="btn btn-secondary" id="resetTmplBtn">Reset this one to default</button>
@@ -223,6 +240,10 @@
   </div>
 </div>
 
+<div id="lightboxOverlay">
+  <img id="lightboxImg" src="" alt="Device photo" />
+</div>
+
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -241,19 +262,28 @@
   var DEFAULT_TEMPLATES = {
     handover: {
       subject: 'Your Mobile Device Handover Confirmation — {{company_name}}',
-      body: '<p>Hi {{employee_name}},</p><p>This confirms your mobile device handover with {{company_name}} IT Department.</p><p><b>Device:</b> {{device_brand}} {{device_model}}<br/><b>IMEI:</b> {{imei1}}<br/><b>Date:</b> {{action_date}}</p><p>Your handover PDF is attached for your records. Please keep it safe.</p>'
+      body: '<p>Dear {{employee_name}},</p><p>Greetings from {{company_name}} IT Department.</p><p>This email confirms that the mobile device detailed below has been officially handed over to you for official use. Please review the details carefully and retain this email along with the attached PDF for your records.</p>',
+      closing: '<p>This device is assigned to you as company property under {{company_name}} IT Department records. Please take proper care of it at all times.</p><p>If you face any technical issue, malfunction, or fault with this device, please contact the IT Department immediately so it can be resolved.</p><p><b>Please note:</b> any damage caused to this device due to employee mishandling or negligence is not acceptable, and repair or replacement costs in such cases may be the responsibility of the employee.</p><p>Regards,<br/>{{company_name}} IT Department</p>'
     },
     reassign: {
       subject: 'Device Reassignment Confirmation — {{company_name}}',
-      body: '<p>Hi {{employee_name}},</p><p>A mobile device has been reassigned to you by {{company_name}} IT Department.</p><p><b>Device:</b> {{device_brand}} {{device_model}}<br/><b>IMEI:</b> {{imei1}}<br/><b>Date:</b> {{action_date}}</p><p>A confirmation PDF is attached for your records.</p>'
+      body: '<p>Dear {{employee_name}},</p><p>Greetings from {{company_name}} IT Department.</p><p>This email confirms that the mobile device detailed below has been reassigned to you for official use.</p>',
+      closing: '<p>This device is assigned to you as company property under {{company_name}} IT Department records. Please take proper care of it at all times.</p><p>If you face any technical issue, malfunction, or fault with this device, please contact the IT Department immediately.</p><p><b>Please note:</b> any damage caused due to employee mishandling or negligence is not acceptable, and repair or replacement costs in such cases may be the responsibility of the employee.</p><p>Regards,<br/>{{company_name}} IT Department</p>'
     },
     takeover: {
       subject: 'Device Return / Takeover Confirmation — {{company_name}}',
-      body: '<p>Hi {{employee_name}},</p><p>This confirms {{company_name}} IT Department has taken back the following device from you.</p><p><b>Device:</b> {{device_brand}} {{device_model}}<br/><b>IMEI:</b> {{imei1}}<br/><b>Date:</b> {{action_date}}</p><p>A confirmation PDF is attached for your records.</p>'
+      body: '<p>Dear {{employee_name}},</p><p>Greetings from {{company_name}} IT Department.</p><p>This email confirms that {{company_name}} IT Department has taken back the mobile device detailed below from you.</p>',
+      closing: '<p>Thank you for returning this device in a timely manner. If you have any questions regarding this return, please contact the IT Department.</p><p>Regards,<br/>{{company_name}} IT Department</p>'
     },
     retire: {
       subject: 'Device Retirement Notice — {{company_name}}',
-      body: '<p>Hi {{employee_name}},</p><p>This confirms the following device previously assigned to you has been retired from active use by {{company_name}} IT Department.</p><p><b>Device:</b> {{device_brand}} {{device_model}}<br/><b>IMEI:</b> {{imei1}}<br/><b>Date:</b> {{action_date}}</p>'
+      body: '<p>Dear {{employee_name}},</p><p>Greetings from {{company_name}} IT Department.</p><p>This email confirms that the mobile device detailed below, previously assigned to you, has now been retired from active use.</p>',
+      closing: '<p>If you have any questions regarding this, please contact the IT Department.</p><p>Regards,<br/>{{company_name}} IT Department</p>'
+    },
+    update: {
+      subject: 'Your Submitted Device Details Have Been Updated — {{company_name}}',
+      body: '<p>Dear {{employee_name}},</p><p>Greetings from {{company_name}} IT Department.</p><p>Following your correction request, your submitted mobile device details have been reviewed and updated. The corrected details are shown below.</p>',
+      closing: '<p>If anything here still looks incorrect, please submit another correction request from the employee form, or contact the IT Department directly.</p><p>Regards,<br/>{{company_name}} IT Department</p>'
     }
   };
 
@@ -299,7 +329,13 @@
       document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
       btn.classList.add('active');
       document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-      if(btn.dataset.tab === 'settings'){ populateSettingsForm(); populateTemplateForm(); }
+      if(btn.dataset.tab === 'settings'){
+        fetchSettings().then(function(s){
+          if(s) currentSettings = s;
+          populateSettingsForm();
+          populateTemplateForm();
+        });
+      }
     });
   });
 
@@ -324,9 +360,19 @@
   }
   function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
 
+  // ---------- Photo lightbox ----------
+  function openLightbox(url){
+    document.getElementById('lightboxImg').src = url;
+    document.getElementById('lightboxOverlay').classList.add('open');
+  }
+  document.getElementById('lightboxOverlay').addEventListener('click', function(){
+    this.classList.remove('open');
+    document.getElementById('lightboxImg').src = '';
+  });
+
   var currentSubs = [], currentDevices = [];
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates()]); renderStats(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests()]); renderStats(); }
 
   async function loadTemplates(){
     try{
@@ -337,6 +383,20 @@
     }catch(err){ console.error('Could not load email templates', err); }
   }
 
+  var currentChangeReqs = [];
+  async function loadChangeRequests(){
+    var area = document.getElementById('changeReqsArea');
+    try{
+      var { data, error } = await sb.from('change_requests').select('*').order('created_at', { ascending:false });
+      if(error) throw error;
+      currentChangeReqs = data || [];
+      renderChangeRequests();
+    }catch(err){
+      console.error(err);
+      area.innerHTML = '<p class="empty-state">Could not load change requests.</p>';
+    }
+  }
+
   function renderStats(){
     var total = currentSubs.length;
     var assigned = currentDevices.filter(function(d){ return d.status==='Assigned'; }).length;
@@ -344,15 +404,107 @@
     var retired = currentDevices.filter(function(d){ return d.status==='Retired'; }).length;
     var damaged = currentSubs.filter(function(s){ return s.damage==='Yes'; }).length;
     var emailed = currentSubs.filter(function(s){ return !!s.email_sent_at; }).length;
+    var pendingReqs = currentChangeReqs.filter(function(c){ return c.status==='Pending'; }).length;
     var cards = [
       ['Forms submitted', total], ['Devices tracked', currentDevices.length],
       ['Currently assigned', assigned], ['Spare / stock', spare],
-      ['Retired', retired], ['Reported damaged', damaged], ['Handover emails sent', emailed]
+      ['Retired', retired], ['Reported damaged', damaged], ['Handover emails sent', emailed],
+      ['Pending change requests', pendingReqs]
     ];
     document.getElementById('statsRow').innerHTML = cards.map(function(c){
       return '<div class="stat-card"><div class="num">'+c[1]+'</div><div class="label">'+c[0]+'</div></div>';
     }).join('');
+    document.getElementById('pendingBadge').textContent = pendingReqs > 0 ? pendingReqs : '';
   }
+
+  function renderChangeRequests(){
+    var area = document.getElementById('changeReqsArea');
+    if(!currentChangeReqs.length){ area.innerHTML = '<p class="empty-state">No correction requests yet.</p>'; return; }
+    var rows = currentChangeReqs.map(function(c){
+      var linked = c.submission_id ? currentSubs.find(function(s){ return s.id === c.submission_id; }) : null;
+      var linkedLabel = linked ? (esc(linked.employee_name) + ' — ' + esc(linked.location||'')) : (c.submission_id ? 'Submission not found (may be deleted)' : 'No submission matched automatically');
+      var actions = '';
+      if(c.status === 'Pending'){
+        if(c.submission_id) actions += '<button class="btn-small edit" data-action="editlinked" data-id="'+c.id+'">Edit linked submission</button>';
+        actions += '<button class="btn-small assign" data-action="approve" data-id="'+c.id+'">Approve & notify</button>';
+        actions += '<button class="btn-small retire" data-action="reject" data-id="'+c.id+'">Reject</button>';
+      } else {
+        actions = '<span class="badge-status ' + (c.status==='Approved'?'Assigned':'Retired') + '">' + esc(c.status) + '</span>';
+      }
+      return '<tr>'
+        + '<td>'+esc(new Date(c.created_at).toLocaleString())+'</td>'
+        + '<td>'+esc(c.employee_name)+'</td>'
+        + '<td>'+esc(c.employee_id)+'</td>'
+        + '<td>'+esc(c.employee_email)+'</td>'
+        + '<td style="max-width:280px; white-space:normal;">'+esc(c.request_details)+'</td>'
+        + '<td>'+linkedLabel+'</td>'
+        + '<td style="white-space:nowrap;">'+actions+'</td>'
+        + '</tr>';
+    }).join('');
+    area.innerHTML = '<div class="table-wrap"><table><thead><tr>'
+      + '<th>Submitted</th><th>Employee</th><th>Emp ID</th><th>Email</th><th>Requested change</th><th>Linked submission</th><th>Actions</th>'
+      + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    area.querySelectorAll('button[data-action]').forEach(function(btn){
+      btn.addEventListener('click', function(){ handleChangeReqAction(btn.dataset.action, btn.dataset.id); });
+    });
+  }
+
+  async function handleChangeReqAction(action, id){
+    var c = currentChangeReqs.find(function(x){ return String(x.id)===String(id); });
+    if(!c) return;
+    if(action === 'editlinked'){
+      var sub = currentSubs.find(function(s){ return s.id === c.submission_id; });
+      if(!sub){ alert('Linked submission not found — it may have been deleted.'); return; }
+      document.querySelector('.tab-btn[data-tab="submissions"]').click();
+      handleSubAction('edit', sub.id);
+      return;
+    }
+    if(action === 'reject'){
+      if(!confirm('Reject this correction request? The employee will not be notified automatically.')) return;
+      try{
+        await sb.from('change_requests').update({ status:'Rejected', resolved_at:new Date().toISOString() }).eq('id', id);
+        await loadChangeRequests(); renderStats();
+      }catch(err){ alert('Could not reject: ' + (err.message||err)); }
+      return;
+    }
+    if(action === 'approve'){
+      if(!confirm('Mark this as approved and email the employee their updated details now?\n\nMake sure you\'ve already corrected the record (use "Edit linked submission" first if needed) before approving.')) return;
+      try{
+        await sb.from('change_requests').update({ status:'Approved', resolved_at:new Date().toISOString() }).eq('id', id);
+        var sub = c.submission_id ? currentSubs.find(function(s){ return s.id === c.submission_id; }) : null;
+        if(sub){
+          var recipients = [sub.company_email, sub.personal_email].filter(Boolean);
+          if(recipients.length === 0){
+            recipients = [c.employee_email].filter(Boolean);
+          }
+          if(recipients.length > 0){
+            var t = currentTemplates.update || DEFAULT_TEMPLATES.update;
+            var vars = {
+              employee_name: sub.employee_name||c.employee_name||'', employee_id: sub.employee_id||c.employee_id||'',
+              location: sub.location||'', designation: sub.designation||'',
+              action_date: new Date().toLocaleString(), company_name: window.DNCC_CONFIG.COMPANY_NAME
+            };
+            var html = fillTemplate(t.body, vars) + buildDeviceDetailsHTML(sub) + fillTemplate(t.closing, vars);
+            var pdfBase64 = buildHandoverPDFBase64(sub);
+            await fetch(FUNCTIONS_URL + '/send-handover-email', {
+              method:'POST',
+              headers:{ 'Content-Type':'application/json', 'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY },
+              body: JSON.stringify({
+                to: recipients, employeeName: sub.employee_name, subject: fillTemplate(t.subject, vars), html: html,
+                pdfBase64: pdfBase64, pdfFilename: 'Updated_Details_' + (sub.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf'
+              })
+            });
+          }
+        } else if(c.employee_email){
+          alert('No linked submission found, so a full detail email could not be sent. The request is marked approved — please follow up with ' + c.employee_email + ' manually if needed.');
+        }
+        await loadChangeRequests(); renderStats();
+        alert('Marked approved' + (sub ? ' and notification sent.' : '.'));
+      }catch(err){ console.error(err); alert('Could not approve: ' + (err.message||err)); }
+    }
+  }
+
+  document.getElementById('refreshChangeReqsBtn').addEventListener('click', async function(){ await loadChangeRequests(); renderStats(); });
 
   // ---------- Submissions ----------
   async function loadSubmissions(){
@@ -374,15 +526,16 @@
     var rows = currentSubs.map(function(r){
       var d1 = r.device1 || {}, d2 = r.device2 || {};
       var thumbs = '';
-      if(d1.frontPhoto) thumbs += '<img class="thumb" src="'+d1.frontPhoto+'" title="D1 front" />';
-      if(d1.backPhoto) thumbs += '<img class="thumb" src="'+d1.backPhoto+'" title="D1 back" />';
-      if(d2.frontPhoto) thumbs += '<img class="thumb" src="'+d2.frontPhoto+'" title="D2 front" />';
-      if(d2.backPhoto) thumbs += '<img class="thumb" src="'+d2.backPhoto+'" title="D2 back" />';
+      if(d1.frontPhoto) thumbs += '<img class="thumb" src="'+d1.frontPhoto+'" title="Device 1 — Front (click to enlarge)" data-lightbox="'+encodeURIComponent(d1.frontPhoto)+'" />';
+      if(d1.backPhoto) thumbs += '<img class="thumb" src="'+d1.backPhoto+'" title="Device 1 — Back (click to enlarge)" data-lightbox="'+encodeURIComponent(d1.backPhoto)+'" />';
+      if(d2.frontPhoto) thumbs += '<img class="thumb" src="'+d2.frontPhoto+'" title="Device 2 — Front (click to enlarge)" data-lightbox="'+encodeURIComponent(d2.frontPhoto)+'" />';
+      if(d2.backPhoto) thumbs += '<img class="thumb" src="'+d2.backPhoto+'" title="Device 2 — Back (click to enlarge)" data-lightbox="'+encodeURIComponent(d2.backPhoto)+'" />';
       return '<tr>'
         + '<td>'+esc(new Date(r.created_at).toLocaleString())+'</td>'
         + '<td>'+esc(r.employee_name)+'</td>'
         + '<td>'+esc(r.employee_id)+'</td>'
-        + '<td>'+esc(r.employee_email)+'</td>'
+        + '<td>'+esc(r.company_email)+'</td>'
+        + '<td>'+esc(r.personal_email)+'</td>'
         + '<td>'+esc(r.location)+'</td>'
         + '<td>'+esc(d1.brand)+' '+esc(d1.model)+'</td>'
         + '<td>'+esc(d1.imei1)+'</td>'
@@ -398,12 +551,15 @@
     }).join('');
     area.innerHTML = '<p class="empty-state">'+currentSubs.length+' submission(s) on record.</p>'
       + '<div class="table-wrap"><table><thead><tr>'
-      + '<th>Submitted</th><th>Employee</th><th>Emp ID</th><th>Email</th><th>Location</th>'
+      + '<th>Submitted</th><th>Employee</th><th>Emp ID</th><th>Company email</th><th>Personal email</th><th>Location</th>'
       + '<th>Device 1</th><th>IMEI 1</th><th>Damage</th><th>Photos</th><th>Handover email</th><th>Actions</th>'
       + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
 
     area.querySelectorAll('button[data-action]').forEach(function(btn){
       btn.addEventListener('click', function(){ handleSubAction(btn.dataset.action, btn.dataset.id); });
+    });
+    area.querySelectorAll('img[data-lightbox]').forEach(function(img){
+      img.addEventListener('click', function(){ openLightbox(decodeURIComponent(img.dataset.lightbox)); });
     });
   }
 
@@ -414,7 +570,8 @@
       { section:'Employee' },
       { id:'employee_name', label:'Employee name', value:r.employee_name },
       { id:'employee_id', label:'Employee ID', value:r.employee_id },
-      { id:'employee_email', label:'Employee email', value:r.employee_email },
+      { id:'company_email', label:'Company email', value:r.company_email },
+      { id:'personal_email', label:'Personal email', value:r.personal_email },
       { id:'department', label:'Department', value:r.department },
       { id:'location', label:'Location', value:r.location },
       { id:'designation', label:'Designation', value:r.designation },
@@ -474,7 +631,7 @@
       };
     }
     return {
-      employee_name:v.employee_name, employee_id:v.employee_id, employee_email:v.employee_email,
+      employee_name:v.employee_name, employee_id:v.employee_id, company_email:v.company_email, personal_email:v.personal_email,
       department:v.department, location:v.location, designation:v.designation, contact:v.contact,
       device_count:deviceCount, charger:v.charger, cable:v.cable, damage:v.damage,
       damage_what:v.damage_what, damage_how:v.damage_how, device1:device1, device2:device2
@@ -535,7 +692,8 @@
       doc.text(title, left, y); doc.setTextColor(0,0,0); y += 16;
     }
     section('Employee');
-    row('Name', r.employee_name); row('Employee ID', r.employee_id); row('Email', r.employee_email);
+    row('Name', r.employee_name); row('Employee ID', r.employee_id);
+    row('Company email', r.company_email); row('Personal email', r.personal_email);
     row('Department', r.department); row('Location', r.location);
     row('Designation', r.designation); row('Date', new Date().toLocaleString());
     [r.device1, r.device_count===2?r.device2:null].forEach(function(d, i){
@@ -558,19 +716,42 @@
     return datauri.split(',')[1];
   }
 
+  function buildDeviceDetailsHTML(r){
+    var devices = [r.device1];
+    if(r.device_count === 2 && r.device2) devices.push(r.device2);
+    var html = '';
+    devices.forEach(function(d, i){
+      if(!d) return;
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#f5f6f7;border-left:3px solid #2c6f97;">';
+      html += '<p style="margin:0 0 6px;font-weight:bold;color:#132635;">Device ' + (i+1) + '</p>';
+      html += '<p style="margin:0;">';
+      html += '<b>Model:</b> ' + (d.brand||'') + ' ' + (d.model||'') + '<br/>';
+      html += '<b>RAM:</b> ' + (d.ram||'—') + ' &nbsp; <b>Storage:</b> ' + (d.storage||'—') + '<br/>';
+      html += '<b>IMEI 1:</b> ' + (d.imei1||'—') + ' &nbsp; <b>IMEI 2:</b> ' + (d.imei2||'—') + '<br/>';
+      html += '<b>SIM number(s):</b> ' + ((d.simNumbers||[]).join(', ')||'—') + '<br/>';
+      html += '<b>Memory/SD card:</b> ' + (d.memoryCard==='Yes' ? ('Yes — '+d.memoryCardSize) : (d.memoryCard||'No'));
+      html += '</p></div>';
+    });
+    if(r.damage === 'Yes'){
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeee1;border-left:3px solid #b5691f;">';
+      html += '<p style="margin:0;"><b>Reported damage:</b> ' + (r.damage_what||'—') + '<br/><b>Cause:</b> ' + (r.damage_how||'—') + '</p></div>';
+    }
+    return html;
+  }
+
   async function sendHandoverEmail(r){
-    if(!r.employee_email){ alert('This submission has no employee email on file.'); return; }
-    if(!confirm('Send the handover confirmation email to ' + r.employee_email + '?')) return;
+    var recipients = [r.company_email, r.personal_email].filter(Boolean);
+    if(recipients.length === 0){ alert('This submission has no email addresses on file.'); return; }
+    if(!confirm('Send the handover confirmation email to ' + recipients.join(' and ') + '?')) return;
     try{
       var pdfBase64 = buildHandoverPDFBase64(r);
       var t = currentTemplates.handover || DEFAULT_TEMPLATES.handover;
       var vars = {
         employee_name: r.employee_name||'', employee_id: r.employee_id||'',
-        device_brand: (r.device1||{}).brand||'', device_model: (r.device1||{}).model||'',
-        imei1: (r.device1||{}).imei1||'', imei2: (r.device1||{}).imei2||'',
         location: r.location||'', designation: r.designation||'',
         action_date: new Date().toLocaleString(), company_name: window.DNCC_CONFIG.COMPANY_NAME
       };
+      var html = fillTemplate(t.body, vars) + buildDeviceDetailsHTML(r) + fillTemplate(t.closing, vars);
       var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
         method:'POST',
         headers:{
@@ -579,10 +760,10 @@
           'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY
         },
         body: JSON.stringify({
-          to: r.employee_email,
+          to: recipients,
           employeeName: r.employee_name,
           subject: fillTemplate(t.subject, vars),
-          html: fillTemplate(t.body, vars),
+          html: html,
           pdfBase64: pdfBase64,
           pdfFilename: 'Handover_' + (r.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf'
         })
@@ -590,11 +771,11 @@
       var json = await res.json();
       if(!res.ok || !json.ok) throw new Error(json.error || 'Send failed');
       await sb.from('submissions').update({ email_sent_at: new Date().toISOString() }).eq('id', r.id);
-      alert('Email sent to ' + r.employee_email);
+      alert('Email sent to ' + recipients.join(' and '));
       await loadSubmissions(); renderStats();
     }catch(err){
       console.error(err);
-      alert('Could not send email: ' + (err.message||err) + '\n\nCheck Admin → Settings → SMTP, and that the send-handover-email function is deployed.');
+      alert('Could not send email: ' + (err.message||err) + '\n\nCheck Admin → Settings, and that the send-handover-email function is deployed.');
     }
   }
 
@@ -602,7 +783,8 @@
     var d1 = r.device1 || {}, d2 = r.device2 || {};
     return {
       'Submitted at': r.created_at ? new Date(r.created_at).toLocaleString() : '',
-      'Employee name': r.employee_name||'', 'Employee ID': r.employee_id||'', 'Employee email': r.employee_email||'',
+      'Employee name': r.employee_name||'', 'Employee ID': r.employee_id||'',
+      'Company email': r.company_email||'', 'Personal email': r.personal_email||'',
       'Department': r.department||'', 'Location': r.location||'', 'Designation': r.designation||'', 'Contact': r.contact||'',
       'Number of phones': r.device_count||'',
       'Device 1 brand': d1.brand||'', 'Device 1 model': d1.model||'', 'Device 1 RAM': d1.ram||'', 'Device 1 storage': d1.storage||'',
@@ -752,6 +934,7 @@
     var t = currentTemplates[action] || DEFAULT_TEMPLATES[action] || {};
     document.getElementById('tmplSubject').value = t.subject || '';
     document.getElementById('tmplBody').value = t.body || '';
+    document.getElementById('tmplClosing').value = t.closing || '';
   }
   document.getElementById('tmplAction').addEventListener('change', populateTemplateForm);
 
@@ -759,10 +942,11 @@
     var action = document.getElementById('tmplAction').value;
     var subject = document.getElementById('tmplSubject').value;
     var body = document.getElementById('tmplBody').value;
+    var closing = document.getElementById('tmplClosing').value;
     try{
-      var { error } = await sb.from('email_templates').upsert([{ action:action, subject:subject, body:body }], { onConflict:'action' });
+      var { error } = await sb.from('email_templates').upsert([{ action:action, subject:subject, body:body, closing:closing }], { onConflict:'action' });
       if(error) throw error;
-      currentTemplates[action] = { action:action, subject:subject, body:body };
+      currentTemplates[action] = { action:action, subject:subject, body:body, closing:closing };
       showMsg('tmplMsg', 'Template saved.', 'ok');
     }catch(err){ showMsg('tmplMsg', 'Could not save: ' + (err.message||err), 'err'); }
   });
@@ -773,7 +957,7 @@
     if(!def) return;
     if(!confirm('Reset the "' + action + '" template to its default wording?')) return;
     try{
-      var { error } = await sb.from('email_templates').upsert([{ action:action, subject:def.subject, body:def.body }], { onConflict:'action' });
+      var { error } = await sb.from('email_templates').upsert([{ action:action, subject:def.subject, body:def.body, closing:def.closing }], { onConflict:'action' });
       if(error) throw error;
       currentTemplates[action] = Object.assign({ action:action }, def);
       populateTemplateForm();
@@ -813,17 +997,25 @@
     return doc.output('datauristring').split(',')[1];
   }
 
+  function buildSingleDeviceDetailsHTML(device, damageNote){
+    var html = '<div style="margin:14px 0;padding:12px 14px;background:#f5f6f7;border-left:3px solid #2c6f97;">';
+    html += '<p style="margin:0;">';
+    html += '<b>Model:</b> ' + (device.brand||'') + ' ' + (device.model||'') + '<br/>';
+    html += '<b>RAM:</b> ' + (device.ram||'—') + ' &nbsp; <b>Storage:</b> ' + (device.storage||'—') + '<br/>';
+    html += '<b>IMEI 1:</b> ' + (device.imei1||'—') + ' &nbsp; <b>IMEI 2:</b> ' + (device.imei2||'—');
+    html += '</p></div>';
+    return html;
+  }
+
   async function sendActionEmail(actionKey, pdfTitle, employee, device){
     if(!employee.email){ alert('No email on file for this employee — cannot send.'); return false; }
     var t = currentTemplates[actionKey] || DEFAULT_TEMPLATES[actionKey] || {};
     var vars = {
       employee_name: employee.name||'', employee_id: employee.id||'',
-      device_brand: device.brand||'', device_model: device.model||'',
-      imei1: device.imei1||'', imei2: device.imei2||'',
       action_date: new Date().toLocaleString(), company_name: window.DNCC_CONFIG.COMPANY_NAME
     };
     var subject = fillTemplate(t.subject, vars);
-    var html = fillTemplate(t.body, vars);
+    var html = fillTemplate(t.body, vars) + buildSingleDeviceDetailsHTML(device) + fillTemplate(t.closing, vars);
     try{
       var pdfBase64 = buildGenericPDFBase64(pdfTitle, employee, device);
       var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
