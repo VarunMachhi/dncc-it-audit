@@ -159,19 +159,16 @@
     <!-- SETTINGS -->
     <div class="tab-panel" id="tab-settings">
       <div class="card-form">
-        <h3>SMTP email settings</h3>
-        <p class="sub">Used to send handover confirmation emails to employees. Changes here take effect immediately — no redeploy needed.</p>
+        <h3>Email sending settings (Resend)</h3>
+        <p class="sub">Used to send handover confirmation emails to employees. Changes here take effect immediately — no redeploy needed. Get a free API key at resend.com — see the README for the 2-minute setup.</p>
         <div id="smtpMsg" class="msg"></div>
         <div class="grid">
-          <div class="field"><label>SMTP host</label><input type="text" id="smtpHost" placeholder="smtp.gmail.com" /></div>
-          <div class="field"><label>SMTP port</label><input type="text" id="smtpPort" placeholder="587" /></div>
-          <div class="field"><label>SMTP username</label><input type="text" id="smtpUsername" placeholder="it@dncc.com" /></div>
-          <div class="field"><label>SMTP password</label><input type="password" id="smtpPassword" placeholder="App password" /></div>
-          <div class="field"><label>From name</label><input type="text" id="smtpFromName" placeholder="DNCC IT Department" /></div>
-          <div class="field"><label>From email</label><input type="text" id="smtpFromEmail" placeholder="it@dncc.com" /></div>
+          <div class="field"><label>Resend API key</label><input type="password" id="resendApiKey" placeholder="re_xxxxxxxxxxxx" /></div>
+          <div class="field"><label>From name</label><input type="text" id="resendFromName" placeholder="DNCC IT Department" /></div>
+          <div class="field"><label>From email</label><input type="text" id="resendFromEmail" placeholder="it@dncc.in (or onboarding@resend.dev for testing)" /></div>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-primary" id="saveSmtpBtn">Save SMTP settings</button>
+          <button class="btn btn-primary" id="saveSmtpBtn">Save email settings</button>
           <button class="btn btn-secondary" id="testEmailBtn">Send test email</button>
         </div>
       </div>
@@ -851,12 +848,9 @@
   // ---------- Settings ----------
   function populateSettingsForm(){
     if(!currentSettings) return;
-    document.getElementById('smtpHost').value = currentSettings.smtp_host || '';
-    document.getElementById('smtpPort').value = currentSettings.smtp_port || '587';
-    document.getElementById('smtpUsername').value = currentSettings.smtp_username || '';
-    document.getElementById('smtpPassword').value = currentSettings.smtp_password || '';
-    document.getElementById('smtpFromName').value = currentSettings.smtp_from_name || 'DNCC IT Department';
-    document.getElementById('smtpFromEmail').value = currentSettings.smtp_from_email || '';
+    document.getElementById('resendApiKey').value = currentSettings.resend_api_key || '';
+    document.getElementById('resendFromName').value = currentSettings.resend_from_name || 'DNCC IT Department';
+    document.getElementById('resendFromEmail').value = currentSettings.resend_from_email || '';
     document.getElementById('newUsername').value = currentSettings.admin_username || 'Varunit';
   }
 
@@ -868,18 +862,15 @@
   document.getElementById('saveSmtpBtn').addEventListener('click', async function(){
     try{
       var payload = {
-        smtp_host: document.getElementById('smtpHost').value.trim(),
-        smtp_port: document.getElementById('smtpPort').value.trim() || '587',
-        smtp_username: document.getElementById('smtpUsername').value.trim(),
-        smtp_password: document.getElementById('smtpPassword').value,
-        smtp_from_name: document.getElementById('smtpFromName').value.trim(),
-        smtp_from_email: document.getElementById('smtpFromEmail').value.trim(),
+        resend_api_key: document.getElementById('resendApiKey').value.trim(),
+        resend_from_name: document.getElementById('resendFromName').value.trim(),
+        resend_from_email: document.getElementById('resendFromEmail').value.trim(),
         updated_at: new Date().toISOString()
       };
       var { error } = await sb.from('settings').update(payload).eq('id',1);
       if(error) throw error;
       currentSettings = Object.assign({}, currentSettings, payload);
-      showMsg('smtpMsg', 'SMTP settings saved.', 'ok');
+      showMsg('smtpMsg', 'Email settings saved.', 'ok');
     }catch(err){ showMsg('smtpMsg', 'Could not save: ' + (err.message||err), 'err'); }
   });
 
