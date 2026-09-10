@@ -99,11 +99,25 @@
         <div class="field"><label for="empName">Employee name</label>
           <input type="text" id="empName" required /><div class="error-text">Enter the employee's name.</div></div>
         <div class="field"><label for="empId">Employee ID / code</label>
-          <input type="text" id="empId" placeholder="e.g. EMP-0234" /></div>
+          <input type="text" id="empId" placeholder="Auto-fills from location + name" />
+          <div class="hint">Auto-generated once you pick a location and enter a name — you can still edit it.</div>
+        </div>
       </div>
       <div class="row2">
         <div class="field"><label for="location">Location</label>
-          <input type="text" id="location" placeholder="Clinic / branch" required /><div class="error-text">Enter the location.</div></div>
+          <select id="location" required>
+            <option value="">Select location…</option>
+            <option value="Vadodara">Vadodara</option>
+            <option value="Surat">Surat</option>
+            <option value="Anand">Anand</option>
+            <option value="Ahmedabad">Ahmedabad</option>
+            <option value="Rajkot">Rajkot</option>
+            <option value="Bandra">Bandra</option>
+            <option value="Thane">Thane</option>
+            <option value="Borivali">Borivali</option>
+            <option value="Panjim">Panjim</option>
+          </select>
+          <div class="error-text">Select a location.</div></div>
         <div class="field"><label for="designation">Designation</label>
           <input type="text" id="designation" required /><div class="error-text">Enter the designation.</div></div>
       </div>
@@ -194,6 +208,7 @@
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="pdf-helpers.js"></script>
 <script src="config.js"></script>
 <script>
 (function(){
@@ -207,6 +222,27 @@
   function fillTemplate(str, vars){
     return (str||'').replace(/\{\{(\w+)\}\}/g, function(_, k){ return (vars[k] !== undefined && vars[k] !== null) ? vars[k] : ''; });
   }
+
+  // ---------- Auto-generate Employee ID from location + name ----------
+  var LOCATION_CODES = {
+    'Vadodara':'VAD', 'Surat':'SUR', 'Anand':'ANA', 'Ahmedabad':'AHM',
+    'Rajkot':'RAJ', 'Bandra':'BAN', 'Thane':'THA', 'Borivali':'BOR', 'Panjim':'PAN'
+  };
+  var empIdManuallyEdited = false;
+  function updateAutoEmpId(){
+    if(empIdManuallyEdited) return;
+    var loc = document.getElementById('location').value;
+    var name = document.getElementById('empName').value.trim();
+    var code = LOCATION_CODES[loc];
+    var firstName = name.split(/\s+/)[0] || '';
+    var idField = document.getElementById('empId');
+    if(code && firstName){
+      idField.value = code + '-' + firstName.toUpperCase();
+    }
+  }
+  document.getElementById('location').addEventListener('change', updateAutoEmpId);
+  document.getElementById('empName').addEventListener('input', updateAutoEmpId);
+  document.getElementById('empId').addEventListener('input', function(){ empIdManuallyEdited = true; });
 
   function buildDeviceDetailsHTML(record){
     var devices = [record.device1];
@@ -442,25 +478,9 @@
   }
 
   function buildHandoverDoc(record){
-    var jsPDFCtor = window.jspdf.jsPDF;
-    var doc = new jsPDFCtor({ unit:'pt', format:'a4' });
-    var y = 50, left = 48, lineH = 16;
-    doc.setFont('helvetica','bold'); doc.setFontSize(15);
-    doc.text(window.DNCC_CONFIG.COMPANY_NAME, left, y); y += 20;
-    doc.setFontSize(11); doc.setFont('helvetica','normal');
-    doc.text(window.DNCC_CONFIG.DEPARTMENT + ' — Mobile Device Handover Receipt', left, y); y += 10;
-    doc.setDrawColor(180); doc.line(left, y, 547, y); y += 24;
-
-    function row(label, value){
-      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(label, left, y);
-      doc.setFont('helvetica','normal'); doc.text(String(value||'—'), left+150, y);
-      y += lineH;
-      if(y > 780){ doc.addPage(); y = 50; }
-    }
-    function section(title){
-      y += 6; doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(30,60,90);
-      doc.text(title, left, y); doc.setTextColor(0,0,0); y += 16;
-    }
+    var ctx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, 'Mobile Device Handover Receipt');
+    var row = function(l,v){ window.DNCCPdf.row(ctx,l,v); };
+    var section = function(t){ window.DNCCPdf.section(ctx,t); };
 
     section('Employee');
     row('Name', record.employeeName); row('Employee ID', record.employeeId);
@@ -470,7 +490,7 @@
 
     [record.device1, record.deviceCount===2?record.device2:null].forEach(function(d, i){
       if(!d) return;
-      section('Mobile phone ' + (i+1));
+      section('Mobile Phone ' + (i+1));
       row('Brand / Model', (d.brand||'')+' '+(d.model||''));
       row('RAM / Storage', (d.ram||'')+' / '+(d.storage||''));
       row('IMEI 1', d.imei1); row('IMEI 2', d.imei2);
@@ -479,17 +499,15 @@
       row('Usage', d.usage);
     });
 
-    section('Accessories & condition');
+    section('Accessories & Condition');
     row('Charger provided', record.charger);
     row('Data/USB cable provided', record.cable);
     row('Damage present', record.damage);
-    if(record.damage === 'Yes'){ row('Damage', record.damageWhat); row('Cause', record.damageHow); }
+    if(record.damage === 'Yes'){ window.DNCCPdf.damageBlock(ctx, record.damageWhat, record.damageHow); }
 
-    y += 20;
-    doc.setFont('helvetica','italic'); doc.setFontSize(9.5);
-    doc.text('This is a system-generated handover confirmation. Please retain this copy for your records.', left, y);
+    window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
 
-    return doc;
+    return ctx.doc;
   }
 
   function buildHandoverPDF(record){
@@ -584,6 +602,7 @@
         ? 'Submitted successfully — your handover PDF is downloading, and a copy has been emailed to you.'
         : 'Submitted successfully — your handover PDF is downloading now. (The email copy could not be sent — IT has been notified via the portal.)', 'ok');
       this.reset();
+      empIdManuallyEdited = false;
       document.getElementById('device2Fieldset').style.display = 'none';
       document.getElementById('damageDetails').style.display = 'none';
       ['1','2'].forEach(function(idx){
