@@ -174,17 +174,34 @@
     <!-- SETTINGS -->
     <div class="tab-panel" id="tab-settings">
       <div class="card-form">
-        <h3>Email sending settings (Resend)</h3>
-        <p class="sub">Used to send handover confirmation emails to employees. Changes here take effect immediately — no redeploy needed. Get a free API key at resend.com — see the README for the 2-minute setup.</p>
+        <h3>Email sending — non-dncc.in addresses (Resend)</h3>
+        <p class="sub">Used for personal/Gmail/other addresses — company (@dncc.in) addresses use the Zoho settings below instead, automatically. Changes here take effect immediately — no redeploy needed.</p>
         <div id="smtpMsg" class="msg"></div>
         <div class="grid">
           <div class="field"><label>Resend API key</label><input type="password" id="resendApiKey" placeholder="re_xxxxxxxxxxxx" /></div>
           <div class="field"><label>From name</label><input type="text" id="resendFromName" placeholder="DNCC IT Department" /></div>
-          <div class="field"><label>From email</label><input type="text" id="resendFromEmail" placeholder="it@dncc.in (or onboarding@resend.dev for testing)" /></div>
+          <div class="field"><label>From email</label><input type="text" id="resendFromEmail" placeholder="onboarding@resend.dev (or your verified domain)" /></div>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-primary" id="saveSmtpBtn">Save email settings</button>
+          <button class="btn btn-primary" id="saveSmtpBtn">Save Resend settings</button>
           <button class="btn btn-secondary" id="testEmailBtn">Send test email</button>
+        </div>
+      </div>
+
+      <div class="card-form">
+        <h3>Email sending — @dncc.in addresses (Zoho SMTP)</h3>
+        <p class="sub">Any recipient ending in @dncc.in is sent through this Zoho mailbox instead of Resend, so it comes from your real company domain. This runs independently from the Resend settings above — a problem with one never affects the other. Note: SMTP can be less reliable on this hosting than Resend's HTTP-based sending — test it and watch for errors.</p>
+        <div id="zohoMsg" class="msg"></div>
+        <div class="grid">
+          <div class="field"><label>Zoho mailbox (username)</label><input type="text" id="zohoUsername" placeholder="varun.machhi@dncc.in" /></div>
+          <div class="field"><label>Zoho app password</label><input type="password" id="zohoPassword" placeholder="App-specific password" /></div>
+          <div class="field"><label>From name</label><input type="text" id="zohoFromName" placeholder="DNCC IT Department" /></div>
+          <div class="field"><label>SMTP host</label><input type="text" id="zohoHost" placeholder="smtp.zoho.com" /></div>
+          <div class="field"><label>SMTP port</label><input type="text" id="zohoPort" placeholder="465" /></div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="saveZohoBtn">Save Zoho settings</button>
+          <button class="btn btn-secondary" id="testZohoBtn">Send test email to a @dncc.in address</button>
         </div>
       </div>
 
@@ -1013,6 +1030,11 @@
     document.getElementById('resendApiKey').value = currentSettings.resend_api_key || '';
     document.getElementById('resendFromName').value = currentSettings.resend_from_name || 'DNCC IT Department';
     document.getElementById('resendFromEmail').value = currentSettings.resend_from_email || '';
+    document.getElementById('zohoUsername').value = currentSettings.zoho_smtp_username || '';
+    document.getElementById('zohoPassword').value = currentSettings.zoho_smtp_password || '';
+    document.getElementById('zohoFromName').value = currentSettings.zoho_smtp_from_name || 'DNCC IT Department';
+    document.getElementById('zohoHost').value = currentSettings.zoho_smtp_host || 'smtp.zoho.com';
+    document.getElementById('zohoPort').value = currentSettings.zoho_smtp_port || '465';
     document.getElementById('newUsername').value = currentSettings.admin_username || 'Varunit';
   }
 
@@ -1032,23 +1054,58 @@
       var { error } = await sb.from('settings').update(payload).eq('id',1);
       if(error) throw error;
       currentSettings = Object.assign({}, currentSettings, payload);
-      showMsg('smtpMsg', 'Email settings saved.', 'ok');
+      showMsg('smtpMsg', 'Resend settings saved.', 'ok');
     }catch(err){ showMsg('smtpMsg', 'Could not save: ' + (err.message||err), 'err'); }
   });
 
   document.getElementById('testEmailBtn').addEventListener('click', async function(){
-    var to = prompt('Send a test email to:');
+    var to = prompt('Send a test email to (non-@dncc.in address):');
     if(!to) return;
     try{
       var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
         method:'POST',
         headers:{ 'Content-Type':'application/json', 'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY },
-        body: JSON.stringify({ to:to, subject:'DNCC IT — Test email', html:'<p>This is a test email from the DNCC IT Mobile Audit portal. If you received this, SMTP is working.</p>' })
+        body: JSON.stringify({ to:to, subject:'DNCC IT — Test email (Resend)', html:'<p>This is a test email from the DNCC IT Mobile Audit portal, sent via Resend. If you received this, Resend is working.</p>' })
       });
       var json = await res.json();
       if(!res.ok || !json.ok) throw new Error(json.error || 'Send failed');
       showMsg('smtpMsg', 'Test email sent to ' + to + '.', 'ok');
     }catch(err){ showMsg('smtpMsg', 'Test failed: ' + (err.message||err), 'err'); }
+  });
+
+  document.getElementById('saveZohoBtn').addEventListener('click', async function(){
+    try{
+      var payload = {
+        zoho_smtp_username: document.getElementById('zohoUsername').value.trim(),
+        zoho_smtp_password: document.getElementById('zohoPassword').value,
+        zoho_smtp_from_name: document.getElementById('zohoFromName').value.trim(),
+        zoho_smtp_host: document.getElementById('zohoHost').value.trim() || 'smtp.zoho.com',
+        zoho_smtp_port: document.getElementById('zohoPort').value.trim() || '465',
+        updated_at: new Date().toISOString()
+      };
+      var { error } = await sb.from('settings').update(payload).eq('id',1);
+      if(error) throw error;
+      currentSettings = Object.assign({}, currentSettings, payload);
+      showMsg('zohoMsg', 'Zoho settings saved.', 'ok');
+    }catch(err){ showMsg('zohoMsg', 'Could not save: ' + (err.message||err), 'err'); }
+  });
+
+  document.getElementById('testZohoBtn').addEventListener('click', async function(){
+    var to = prompt('Send a test email to (must end in @dncc.in to test the Zoho path):');
+    if(!to) return;
+    if(!to.toLowerCase().endsWith('@dncc.in')){
+      if(!confirm('That address doesn\'t end in @dncc.in, so it will actually go through Resend, not Zoho. Continue anyway?')) return;
+    }
+    try{
+      var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY },
+        body: JSON.stringify({ to:to, subject:'DNCC IT — Test email (Zoho)', html:'<p>This is a test email from the DNCC IT Mobile Audit portal, sent via Zoho SMTP. If you received this, the Zoho path is working.</p>' })
+      });
+      var json = await res.json();
+      if(!res.ok || !json.ok) throw new Error(json.error || 'Send failed');
+      showMsg('zohoMsg', 'Test email sent to ' + to + '.', 'ok');
+    }catch(err){ showMsg('zohoMsg', 'Test failed: ' + (err.message||err), 'err'); }
   });
 
   document.getElementById('saveCredsBtn').addEventListener('click', async function(){
