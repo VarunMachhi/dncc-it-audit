@@ -469,16 +469,17 @@
       return;
     }
     if(action === 'approve'){
-      if(!confirm('Mark this as approved and email the employee their updated details now?\n\nMake sure you\'ve already corrected the record (use "Edit linked submission" first if needed) before approving.')) return;
+      if(!confirm('Mark this as approved and notify the employee of their updated details?\n\nMake sure you\'ve already corrected the record (use "Edit linked submission" first if needed) before approving.')) return;
       try{
         await sb.from('change_requests').update({ status:'Approved', resolved_at:new Date().toISOString() }).eq('id', id);
         var sub = c.submission_id ? currentSubs.find(function(s){ return s.id === c.submission_id; }) : null;
         if(sub){
-          var recipients = [sub.company_email, sub.personal_email].filter(Boolean);
-          if(recipients.length === 0){
-            recipients = [c.employee_email].filter(Boolean);
-          }
-          if(recipients.length > 0){
+          var allRecipients = [sub.company_email, sub.personal_email].filter(Boolean);
+          if(allRecipients.length === 0) allRecipients = [c.employee_email].filter(Boolean);
+          var dnccRecipients = allRecipients.filter(function(e){ return e.toLowerCase().endsWith('@dncc.in'); });
+          var otherRecipients = allRecipients.filter(function(e){ return !e.toLowerCase().endsWith('@dncc.in'); });
+
+          if(otherRecipients.length > 0){
             var t = currentTemplates.update || DEFAULT_TEMPLATES.update;
             var vars = {
               employee_name: sub.employee_name||c.employee_name||'', employee_id: sub.employee_id||c.employee_id||'',
@@ -491,16 +492,21 @@
               method:'POST',
               headers:{ 'Content-Type':'application/json', 'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY },
               body: JSON.stringify({
-                to: recipients, employeeName: sub.employee_name, subject: fillTemplate(t.subject, vars), html: html,
+                to: otherRecipients, employeeName: sub.employee_name, subject: fillTemplate(t.subject, vars), html: html,
                 pdfBase64: pdfBase64, pdfFilename: 'Updated_Details_' + (sub.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf'
               })
             });
+          }
+          if(dnccRecipients.length > 0){
+            if(confirm('This has a @dncc.in address (' + dnccRecipients.join(', ') + '), which uses the manual Zoho flow (downloads PDF + copies email text + opens Zoho Mail). Continue?')){
+              prepareManualEmail(sub, 'update');
+            }
           }
         } else if(c.employee_email){
           alert('No linked submission found, so a full detail email could not be sent. The request is marked approved — please follow up with ' + c.employee_email + ' manually if needed.');
         }
         await loadChangeRequests(); renderStats();
-        alert('Marked approved' + (sub ? ' and notification sent.' : '.'));
+        alert('Marked approved.');
       }catch(err){ console.error(err); alert('Could not approve: ' + (err.message||err)); }
     }
   }
@@ -682,18 +688,41 @@
     return (html||'').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g,' ').replace(/\n{3,}/g,'\n\n').trim();
   }
 
-  function prepareManualEmail(r){
+  // Reusable for every action type: copies To/Subject/Body to the clipboard and opens
+  // Zoho Mail in a new tab, ready to paste. Can be clicked as many times as needed —
+  // nothing is tracked or limited.
+  function copyAndOpenZoho(dnccRecipient, subject, plainBody, pdfFilename){
+    var clipboardText = 'To: ' + dnccRecipient + '\nSubject: ' + subject + '\n\n' + plainBody;
+    var afterCopy = function(copied){
+      window.open('https://mail.zoho.com/', '_blank');
+      alert(
+        (copied ? 'Copied the To/Subject/Body to your clipboard.\n\n' : 'Could not copy automatically — see the text below to copy by hand.\n\n')
+        + 'Opening Zoho Mail in a new tab. Click Compose, paste (Ctrl+V) into the body, then move the "To" and "Subject" lines into their proper fields, attach ' + pdfFilename + ' (just downloaded), and send.'
+        + (copied ? '' : '\n\n---\n' + clipboardText)
+      );
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(clipboardText).then(function(){ afterCopy(true); }, function(){ afterCopy(false); });
+    } else {
+      afterCopy(false);
+    }
+  }
+
+  // Used for both the initial Handover (Submissions tab) and Update/Correction
+  // (Change Requests → Approve) emails, since both work from a full submission record.
+  function prepareManualEmail(r, templateKey){
+    templateKey = templateKey || 'handover';
     var dnccRecipient = [r.company_email, r.personal_email].find(function(e){ return e && e.toLowerCase().endsWith('@dncc.in'); });
     if(!dnccRecipient){ alert('No @dncc.in address on this submission.'); return; }
 
-    // Download the PDF first so it's ready to attach manually.
-    var saveCtx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, 'Mobile Device Handover Receipt');
+    var pdfTitle = templateKey === 'update' ? 'Updated Device Details' : 'Mobile Device Handover Receipt';
+    var fnamePrefix = templateKey === 'update' ? 'Updated_Details_' : 'Handover_';
+    var saveCtx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, pdfTitle);
     _fillHandoverDoc(saveCtx, r);
-    var fname = 'Handover_' + (r.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf';
+    var fname = fnamePrefix + (r.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf';
     window.DNCCPdf.save(saveCtx, fname);
 
-    // Build the plain-text email body from the current templates.
-    var t = currentTemplates.handover || DEFAULT_TEMPLATES.handover;
+    var t = currentTemplates[templateKey] || DEFAULT_TEMPLATES[templateKey];
     var vars = {
       employee_name: r.employee_name||'', employee_id: r.employee_id||'',
       location: r.location||'', designation: r.designation||'',
@@ -713,21 +742,41 @@
     });
     var body = plainIntro + '\n\n' + deviceLines.join('\n') + '\n' + plainClosing;
     var subject = fillTemplate(t.subject, vars).replace(/[—]/g, '-');
-    var clipboardText = 'To: ' + dnccRecipient + '\nSubject: ' + subject + '\n\n' + body;
+    copyAndOpenZoho(dnccRecipient, subject, body, fname);
+  }
 
-    var afterCopy = function(copied){
-      window.open('https://mail.zoho.com/', '_blank');
-      alert(
-        (copied ? 'Copied the To/Subject/Body to your clipboard.\n\n' : 'Could not copy automatically — see the text below to copy by hand.\n\n')
-        + 'Opening Zoho Mail in a new tab. Click Compose, paste (Ctrl+V) into the body, then move the "To" and "Subject" lines into their proper fields, attach ' + fname + ' (just downloaded), and send.'
-        + (copied ? '' : '\n\n---\n' + clipboardText)
-      );
+  // Used for Reassign / Takeover / Retire (single-device, Inventory-driven actions).
+  function prepareManualActionEmail(actionKey, pdfTitle, employee, device){
+    var saveCtx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, pdfTitle);
+    var row = function(l,v){ window.DNCCPdf.row(saveCtx,l,v); };
+    var section = function(t){ window.DNCCPdf.section(saveCtx,t); };
+    section('Employee');
+    row('Name', employee.name); row('Employee ID', employee.id); row('Email', employee.email); row('Date', new Date().toLocaleString());
+    section('Device');
+    row('Brand / Model', (device.brand||'')+' '+(device.model||''));
+    row('RAM / Storage', (device.ram||'')+' / '+(device.storage||''));
+    row('IMEI 1', device.imei1); row('IMEI 2', device.imei2);
+    window.DNCCPdf.footer(saveCtx, 'This is a system-generated confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
+    var fname = pdfTitle.replace(/[^a-z0-9]+/gi,'_') + '_' + (employee.name||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf';
+    window.DNCCPdf.save(saveCtx, fname);
+
+    var t = currentTemplates[actionKey] || DEFAULT_TEMPLATES[actionKey];
+    var vars = {
+      employee_name: employee.name||'', employee_id: employee.id||'',
+      action_date: new Date().toLocaleString(), company_name: window.DNCC_CONFIG.COMPANY_NAME
     };
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(clipboardText).then(function(){ afterCopy(true); }, function(){ afterCopy(false); });
-    } else {
-      afterCopy(false);
-    }
+    var plainIntro = stripHtml(fillTemplate(t.body, vars));
+    var plainClosing = stripHtml(fillTemplate(t.closing, vars));
+    var deviceLines = [
+      'Device:',
+      '  Model: ' + (device.brand||'') + ' ' + (device.model||''),
+      '  RAM/Storage: ' + (device.ram||'—') + ' / ' + (device.storage||'—'),
+      '  IMEI 1: ' + (device.imei1||'—') + '   IMEI 2: ' + (device.imei2||'—'),
+      ''
+    ];
+    var body = plainIntro + '\n\n' + deviceLines.join('\n') + '\n' + plainClosing;
+    var subject = fillTemplate(t.subject, vars).replace(/[—]/g, '-');
+    copyAndOpenZoho(employee.email, subject, body, fname);
   }
 
   function _fillHandoverDoc(ctx, r){
@@ -932,7 +981,11 @@
         var actionKey = wasAssigned ? 'reassign' : 'handover';
         var pdfTitle = wasAssigned ? 'Device Reassignment Confirmation' : 'Device Handover Receipt';
         await sb.from('device_history').insert([{ imei1:imei1, action:(wasAssigned?'Reassigned':'Assigned')+' (admin)', employee_name:name, notes:'' }]);
-        if(email && confirm('Email a ' + (wasAssigned?'reassignment':'handover') + ' confirmation to ' + name + ' now?')){
+        if(email && email.toLowerCase().endsWith('@dncc.in')){
+          if(confirm('This is a @dncc.in address, so this uses the manual Zoho flow (downloads PDF + copies email text + opens Zoho Mail). Continue?')){
+            prepareManualActionEmail(actionKey, pdfTitle, { name:name, id:id, email:email }, d);
+          }
+        } else if(email && confirm('Email a ' + (wasAssigned?'reassignment':'handover') + ' confirmation to ' + name + ' now?')){
           await sendActionEmail(actionKey, pdfTitle, { name:name, id:id, email:email }, d);
         }
       } else if(action === 'spare'){
@@ -940,7 +993,11 @@
         var prevEmployee = { name:d.assigned_to, id:d.assigned_employee_id, email:d.assigned_employee_email };
         await sb.from('devices').update({ status:'Spare', assigned_to:null, assigned_employee_id:null, assigned_employee_email:null, last_updated:new Date().toISOString() }).eq('imei1', imei1);
         await sb.from('device_history').insert([{ imei1:imei1, action:'Marked spare (takeover)', employee_name:prevEmployee.name||'', notes:'' }]);
-        if(prevEmployee.email && confirm('Email a return/takeover confirmation to ' + prevEmployee.name + ' now?')){
+        if(prevEmployee.email && prevEmployee.email.toLowerCase().endsWith('@dncc.in')){
+          if(confirm('This is a @dncc.in address, so this uses the manual Zoho flow (downloads PDF + copies email text + opens Zoho Mail). Continue?')){
+            prepareManualActionEmail('takeover', 'Device Return / Takeover Confirmation', prevEmployee, d);
+          }
+        } else if(prevEmployee.email && confirm('Email a return/takeover confirmation to ' + prevEmployee.name + ' now?')){
           await sendActionEmail('takeover', 'Device Return / Takeover Confirmation', prevEmployee, d);
         }
       } else if(action === 'retire'){
@@ -948,7 +1005,11 @@
         var prevEmployeeR = { name:d.assigned_to, id:d.assigned_employee_id, email:d.assigned_employee_email };
         await sb.from('devices').update({ status:'Retired', last_updated:new Date().toISOString() }).eq('imei1', imei1);
         await sb.from('device_history').insert([{ imei1:imei1, action:'Retired', employee_name:prevEmployeeR.name||'', notes:'' }]);
-        if(prevEmployeeR.email && confirm('Email a retirement notice to ' + prevEmployeeR.name + ' now?')){
+        if(prevEmployeeR.email && prevEmployeeR.email.toLowerCase().endsWith('@dncc.in')){
+          if(confirm('This is a @dncc.in address, so this uses the manual Zoho flow (downloads PDF + copies email text + opens Zoho Mail). Continue?')){
+            prepareManualActionEmail('retire', 'Device Retirement Notice', prevEmployeeR, d);
+          }
+        } else if(prevEmployeeR.email && confirm('Email a retirement notice to ' + prevEmployeeR.name + ' now?')){
           await sendActionEmail('retire', 'Device Retirement Notice', prevEmployeeR, d);
         }
       } else if(action === 'delete'){
