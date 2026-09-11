@@ -33,6 +33,8 @@
   input[type=text], input[type=tel], input[type=email], select, textarea{
     width:100%; padding:9px 11px; border:1px solid var(--line-strong); border-radius:7px; font-size:14px; font-family:var(--sans); background:#fff; color:var(--text);}
   input:focus, select:focus, textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-light);}
+  input[readonly]{background:#f0f2f3; color:var(--text-soft); cursor:not-allowed;}
+  input[readonly]:focus{box-shadow:none; border-color:var(--line-strong);}
   input[data-imei], input[data-sim]{font-family:var(--mono); letter-spacing:0.4px;}
   textarea{min-height:70px; resize:vertical;}
   .radiogroup{display:flex; gap:10px;}
@@ -97,10 +99,10 @@
       <legend><span class="num">1</span> Employee details</legend>
       <div class="row2">
         <div class="field"><label for="empName">Employee name</label>
-          <input type="text" id="empName" required /><div class="error-text">Enter the employee's name.</div></div>
+          <input type="text" id="empName" placeholder="First name Surname, e.g. Smit Patel" autocomplete="off" required /><div class="error-text">Enter the employee's first name and surname.</div></div>
         <div class="field"><label for="empId">Employee ID / code</label>
-          <input type="text" id="empId" placeholder="Auto-fills from location + name" />
-          <div class="hint">Auto-generated once you pick a location and enter a name — you can still edit it.</div>
+          <input type="text" id="empId" placeholder="Auto-generated" readonly autocomplete="off" />
+          <div class="hint">Automatically generated from location + name. Not editable.</div>
         </div>
       </div>
       <div class="row2">
@@ -223,26 +225,21 @@
     return (str||'').replace(/\{\{(\w+)\}\}/g, function(_, k){ return (vars[k] !== undefined && vars[k] !== null) ? vars[k] : ''; });
   }
 
-  // ---------- Auto-generate Employee ID from location + name ----------
+  // ---------- Auto-generate Employee ID from location + name (read-only, always in sync) ----------
   var LOCATION_CODES = {
     'Vadodara':'VAD', 'Surat':'SUR', 'Anand':'ANA', 'Ahmedabad':'AHM',
     'Rajkot':'RAJ', 'Bandra':'BAN', 'Thane':'THA', 'Borivali':'BOR', 'Panjim':'PAN'
   };
-  var empIdManuallyEdited = false;
   function updateAutoEmpId(){
-    if(empIdManuallyEdited) return;
     var loc = document.getElementById('location').value;
     var name = document.getElementById('empName').value.trim();
     var code = LOCATION_CODES[loc];
     var firstName = name.split(/\s+/)[0] || '';
     var idField = document.getElementById('empId');
-    if(code && firstName){
-      idField.value = code + '-' + firstName.toUpperCase();
-    }
+    idField.value = (code && firstName) ? (code + '-' + firstName.toUpperCase()) : '';
   }
   document.getElementById('location').addEventListener('change', updateAutoEmpId);
   document.getElementById('empName').addEventListener('input', updateAutoEmpId);
-  document.getElementById('empId').addEventListener('input', function(){ empIdManuallyEdited = true; });
 
   function buildDeviceDetailsHTML(record){
     var devices = [record.device1];
@@ -602,7 +599,7 @@
         ? 'Submitted successfully — your handover PDF is downloading, and a copy has been emailed to you.'
         : 'Submitted successfully — your handover PDF is downloading now. (The email copy could not be sent — IT has been notified via the portal.)', 'ok');
       this.reset();
-      empIdManuallyEdited = false;
+      document.getElementById('empId').value = '';
       document.getElementById('device2Fieldset').style.display = 'none';
       document.getElementById('damageDetails').style.display = 'none';
       ['1','2'].forEach(function(idx){
