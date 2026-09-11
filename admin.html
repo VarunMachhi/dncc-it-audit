@@ -546,7 +546,7 @@
         + '<td>'+ (r.email_sent_at ? ('Sent '+new Date(r.email_sent_at).toLocaleDateString()) : '—') +'</td>'
         + '<td style="white-space:nowrap;">'
         +   '<button class="btn-small email" data-action="email" data-id="'+r.id+'">Email</button>'
-        +   (hasDnccRecipient ? '<button class="btn-small assign" data-action="manual" data-id="'+r.id+'" title="Downloads the PDF and opens your email client for the @dncc.in address">Manual email (dncc.in)</button>' : '')
+        +   (hasDnccRecipient ? '<button class="btn-small assign" data-action="manual" data-id="'+r.id+'" title="Downloads the PDF, copies the email text, and opens Zoho Mail so you can paste and send">Manual email (dncc.in)</button>' : '')
         +   '<button class="btn-small edit" data-action="edit" data-id="'+r.id+'">Edit</button>'
         +   '<button class="btn-small delete" data-action="delete" data-id="'+r.id+'">Delete</button>'
         + '</td>'
@@ -711,14 +711,23 @@
       deviceLines.push('  SIM number(s): ' + ((d.simNumbers||[]).join(', ')||'—'));
       deviceLines.push('');
     });
-    var body = plainIntro + '\n\n' + deviceLines.join('\n') + '\n' + plainClosing
-      + '\n\n[A PDF copy (' + fname + ') just downloaded to your computer — attach it to this email before sending.]';
+    var body = plainIntro + '\n\n' + deviceLines.join('\n') + '\n' + plainClosing;
     var subject = fillTemplate(t.subject, vars).replace(/[—]/g, '-');
+    var clipboardText = 'To: ' + dnccRecipient + '\nSubject: ' + subject + '\n\n' + body;
 
-    var mailto = 'mailto:' + encodeURIComponent(dnccRecipient)
-      + '?subject=' + encodeURIComponent(subject)
-      + '&body=' + encodeURIComponent(body);
-    window.location.href = mailto;
+    var afterCopy = function(copied){
+      window.open('https://mail.zoho.com/', '_blank');
+      alert(
+        (copied ? 'Copied the To/Subject/Body to your clipboard.\n\n' : 'Could not copy automatically — see the text below to copy by hand.\n\n')
+        + 'Opening Zoho Mail in a new tab. Click Compose, paste (Ctrl+V) into the body, then move the "To" and "Subject" lines into their proper fields, attach ' + fname + ' (just downloaded), and send.'
+        + (copied ? '' : '\n\n---\n' + clipboardText)
+      );
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(clipboardText).then(function(){ afterCopy(true); }, function(){ afterCopy(false); });
+    } else {
+      afterCopy(false);
+    }
   }
 
   function _fillHandoverDoc(ctx, r){
