@@ -474,7 +474,7 @@
         await sb.from('change_requests').update({ status:'Approved', resolved_at:new Date().toISOString() }).eq('id', id);
         var sub = c.submission_id ? currentSubs.find(function(s){ return s.id === c.submission_id; }) : null;
         if(sub){
-          var allRecipients = [sub.company_email, sub.personal_email].filter(Boolean);
+          var allRecipients = [sub.company_email, sub.personal_email].filter(isRealEmail);
           if(allRecipients.length === 0) allRecipients = [c.employee_email].filter(Boolean);
           var dnccRecipients = allRecipients.filter(function(e){ return e.toLowerCase().endsWith('@dncc.in'); });
           var otherRecipients = allRecipients.filter(function(e){ return !e.toLowerCase().endsWith('@dncc.in'); });
@@ -784,7 +784,8 @@
     var section = function(t){ window.DNCCPdf.section(ctx,t); };
     section('Employee');
     row('Name', r.employee_name); row('Employee ID', r.employee_id);
-    row('Company email', r.company_email); row('Personal email', r.personal_email);
+    if(r.company_email) row('Company email', r.company_email);
+    if(r.personal_email) row('Personal email', r.personal_email);
     row('Department', r.department); row('Location', r.location);
     row('Designation', r.designation); row('Date', new Date().toLocaleString());
     [r.device1, r.device_count===2?r.device2:null].forEach(function(d, i){
@@ -809,7 +810,8 @@
     var section = function(t){ window.DNCCPdf.section(ctx,t); };
     section('Employee');
     row('Name', r.employee_name); row('Employee ID', r.employee_id);
-    row('Company email', r.company_email); row('Personal email', r.personal_email);
+    if(r.company_email) row('Company email', r.company_email);
+    if(r.personal_email) row('Personal email', r.personal_email);
     row('Department', r.department); row('Location', r.location);
     row('Designation', r.designation); row('Date', new Date().toLocaleString());
     [r.device1, r.device_count===2?r.device2:null].forEach(function(d, i){
@@ -853,8 +855,8 @@
   }
 
   async function sendHandoverEmail(r){
-    var recipients = [r.company_email, r.personal_email].filter(Boolean);
-    if(recipients.length === 0){ alert('This submission has no email addresses on file.'); return; }
+    var recipients = [r.company_email, r.personal_email].filter(isRealEmail);
+    if(recipients.length === 0){ alert('This submission has no real email addresses on file (company email may be set to "NOT").'); return; }
     if(!confirm('Send the handover confirmation email to ' + recipients.join(' and ') + '?')) return;
     try{
       var pdfBase64 = buildHandoverPDFBase64(r);
@@ -1093,6 +1095,8 @@
   function fillTemplate(str, vars){
     return (str||'').replace(/\{\{(\w+)\}\}/g, function(_, k){ return (vars[k] !== undefined && vars[k] !== null) ? vars[k] : ''; });
   }
+  var EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function isRealEmail(v){ return !!v && EMAIL_FORMAT.test(String(v).trim()); }
 
   function buildGenericPDFBase64(title, employee, device){
     var ctx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, title);

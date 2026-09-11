@@ -131,8 +131,8 @@
       </div>
       <div class="row2">
         <div class="field"><label for="companyEmail">Company email address</label>
-          <input type="email" id="companyEmail" placeholder="name@dncc.in" required />
-          <div class="error-text">Enter a valid company email address.</div>
+          <input type="text" id="companyEmail" placeholder="name@dncc.in — or type NOT if you don't have one" required />
+          <div class="error-text">Enter a valid company email address, or type NOT if you don't have a company email.</div>
         </div>
         <div class="field"><label for="personalEmail">Personal email address</label>
           <input type="email" id="personalEmail" placeholder="name@gmail.com" required />
@@ -263,8 +263,11 @@
     return html;
   }
 
+  var EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function isRealEmail(v){ return !!v && EMAIL_FORMAT.test(String(v).trim()); }
+
   async function autoSendHandoverEmail(record, submissionId){
-    var recipients = [record.companyEmail, record.personalEmail].filter(Boolean);
+    var recipients = [record.companyEmail, record.personalEmail].filter(isRealEmail);
     if(recipients.length === 0) return;
     try{
       var { data: tmpl } = await sb.from('email_templates').select('*').eq('action','handover').single();
@@ -421,7 +424,8 @@
     var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     var companyEmailEl = document.getElementById('companyEmail');
     var personalEmailEl = document.getElementById('personalEmail');
-    if(!emailPattern.test(companyEmailEl.value.trim())){ markError(companyEmailEl); ok=false; }
+    var companyEmailVal = companyEmailEl.value.trim();
+    if(!(emailPattern.test(companyEmailVal) || companyEmailVal.toUpperCase() === 'NOT')){ markError(companyEmailEl); ok=false; }
     if(!emailPattern.test(personalEmailEl.value.trim())){ markError(personalEmailEl); ok=false; }
     for(var d=1; d<=deviceCount; d++){
       ['brand','model','ram','storage','imei1'].forEach(function(f){
@@ -481,7 +485,8 @@
 
     section('Employee');
     row('Name', record.employeeName); row('Employee ID', record.employeeId);
-    row('Company email', record.companyEmail); row('Personal email', record.personalEmail);
+    if(record.companyEmail) row('Company email', record.companyEmail);
+    if(record.personalEmail) row('Personal email', record.personalEmail);
     row('Department', record.department); row('Location', record.location);
     row('Designation', record.designation); row('Date', new Date().toLocaleString());
 
