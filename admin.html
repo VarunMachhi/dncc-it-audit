@@ -531,6 +531,7 @@
       if(d1.backPhoto) thumbs += '<img class="thumb" src="'+d1.backPhoto+'" title="Device 1 — Back (click to enlarge)" data-lightbox="'+encodeURIComponent(d1.backPhoto)+'" />';
       if(d2.frontPhoto) thumbs += '<img class="thumb" src="'+d2.frontPhoto+'" title="Device 2 — Front (click to enlarge)" data-lightbox="'+encodeURIComponent(d2.frontPhoto)+'" />';
       if(d2.backPhoto) thumbs += '<img class="thumb" src="'+d2.backPhoto+'" title="Device 2 — Back (click to enlarge)" data-lightbox="'+encodeURIComponent(d2.backPhoto)+'" />';
+      var hasDnccRecipient = [r.company_email, r.personal_email].some(function(e){ return e && e.toLowerCase().endsWith('@dncc.in'); });
       return '<tr>'
         + '<td>'+esc(new Date(r.created_at).toLocaleString())+'</td>'
         + '<td>'+esc(r.employee_name)+'</td>'
@@ -545,6 +546,7 @@
         + '<td>'+ (r.email_sent_at ? ('Sent '+new Date(r.email_sent_at).toLocaleDateString()) : '—') +'</td>'
         + '<td style="white-space:nowrap;">'
         +   '<button class="btn-small email" data-action="email" data-id="'+r.id+'">Email</button>'
+        +   (hasDnccRecipient ? '<button class="btn-small assign" data-action="manual" data-id="'+r.id+'" title="Downloads the PDF and opens your email client for the @dncc.in address">Manual email (dncc.in)</button>' : '')
         +   '<button class="btn-small edit" data-action="edit" data-id="'+r.id+'">Edit</button>'
         +   '<button class="btn-small delete" data-action="delete" data-id="'+r.id+'">Delete</button>'
         + '</td>'
@@ -671,7 +673,76 @@
       }catch(err){ console.error(err); alert('Could not delete: ' + (err.message||err)); }
     } else if(action === 'email'){
       await sendHandoverEmail(r);
+    } else if(action === 'manual'){
+      prepareManualEmail(r);
     }
+  }
+
+  function stripHtml(html){
+    return (html||'').replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n\n').replace(/<[^>]+>/g, '').replace(/&nbsp;/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+  }
+
+  function prepareManualEmail(r){
+    var dnccRecipient = [r.company_email, r.personal_email].find(function(e){ return e && e.toLowerCase().endsWith('@dncc.in'); });
+    if(!dnccRecipient){ alert('No @dncc.in address on this submission.'); return; }
+
+    // Download the PDF first so it's ready to attach manually.
+    var saveCtx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, 'Mobile Device Handover Receipt');
+    _fillHandoverDoc(saveCtx, r);
+    var fname = 'Handover_' + (r.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf';
+    window.DNCCPdf.save(saveCtx, fname);
+
+    // Build the plain-text email body from the current templates.
+    var t = currentTemplates.handover || DEFAULT_TEMPLATES.handover;
+    var vars = {
+      employee_name: r.employee_name||'', employee_id: r.employee_id||'',
+      location: r.location||'', designation: r.designation||'',
+      action_date: new Date().toLocaleString(), company_name: window.DNCC_CONFIG.COMPANY_NAME
+    };
+    var plainIntro = stripHtml(fillTemplate(t.body, vars));
+    var plainClosing = stripHtml(fillTemplate(t.closing, vars));
+    var deviceLines = [];
+    [r.device1, r.device_count===2?r.device2:null].forEach(function(d, i){
+      if(!d) return;
+      deviceLines.push('Device ' + (i+1) + ':');
+      deviceLines.push('  Model: ' + (d.brand||'') + ' ' + (d.model||''));
+      deviceLines.push('  RAM/Storage: ' + (d.ram||'—') + ' / ' + (d.storage||'—'));
+      deviceLines.push('  IMEI 1: ' + (d.imei1||'—') + '   IMEI 2: ' + (d.imei2||'—'));
+      deviceLines.push('  SIM number(s): ' + ((d.simNumbers||[]).join(', ')||'—'));
+      deviceLines.push('');
+    });
+    var body = plainIntro + '\n\n' + deviceLines.join('\n') + '\n' + plainClosing
+      + '\n\n[A PDF copy (' + fname + ') just downloaded to your computer — attach it to this email before sending.]';
+    var subject = fillTemplate(t.subject, vars).replace(/[—]/g, '-');
+
+    var mailto = 'mailto:' + encodeURIComponent(dnccRecipient)
+      + '?subject=' + encodeURIComponent(subject)
+      + '&body=' + encodeURIComponent(body);
+    window.location.href = mailto;
+  }
+
+  function _fillHandoverDoc(ctx, r){
+    var row = function(l,v){ window.DNCCPdf.row(ctx,l,v); };
+    var section = function(t){ window.DNCCPdf.section(ctx,t); };
+    section('Employee');
+    row('Name', r.employee_name); row('Employee ID', r.employee_id);
+    row('Company email', r.company_email); row('Personal email', r.personal_email);
+    row('Department', r.department); row('Location', r.location);
+    row('Designation', r.designation); row('Date', new Date().toLocaleString());
+    [r.device1, r.device_count===2?r.device2:null].forEach(function(d, i){
+      if(!d) return;
+      section('Mobile Phone ' + (i+1));
+      row('Brand / Model', (d.brand||'')+' '+(d.model||''));
+      row('RAM / Storage', (d.ram||'')+' / '+(d.storage||''));
+      row('IMEI 1', d.imei1); row('IMEI 2', d.imei2);
+      row('SIM number(s)', (d.simNumbers||[]).join(', '));
+      row('Memory/SD card', d.memoryCard === 'Yes' ? ('Yes — ' + d.memoryCardSize) : (d.memoryCard || '—'));
+      row('Usage', d.usage);
+    });
+    section('Accessories & Condition');
+    row('Charger provided', r.charger); row('Data/USB cable provided', r.cable); row('Damage present', r.damage);
+    if(r.damage === 'Yes'){ window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how); }
+    window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
   }
 
   function buildHandoverPDFBase64(r){
