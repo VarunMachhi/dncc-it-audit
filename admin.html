@@ -691,7 +691,7 @@
   // Reusable for every action type: copies To/Subject/Body to the clipboard and opens
   // Zoho Mail in a new tab, ready to paste. Can be clicked as many times as needed —
   // nothing is tracked or limited.
-  function copyAndOpenZoho(dnccRecipient, subject, plainBody, pdfFilename){
+  function copyAndOpenZoho(dnccRecipient, subject, plainBody, pdfFilename, onDone){
     var clipboardText = 'To: ' + dnccRecipient + '\nSubject: ' + subject + '\n\n' + plainBody;
     var afterCopy = function(copied){
       window.open('https://mail.zoho.com/', '_blank');
@@ -700,6 +700,7 @@
         + 'Opening Zoho Mail in a new tab. Click Compose, paste (Ctrl+V) into the body, then move the "To" and "Subject" lines into their proper fields, attach ' + pdfFilename + ' (just downloaded), and send.'
         + (copied ? '' : '\n\n---\n' + clipboardText)
       );
+      if(onDone) onDone();
     };
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(clipboardText).then(function(){ afterCopy(true); }, function(){ afterCopy(false); });
@@ -742,7 +743,16 @@
     });
     var body = plainIntro + '\n\n' + deviceLines.join('\n') + '\n' + plainClosing;
     var subject = fillTemplate(t.subject, vars).replace(/[—]/g, '-');
-    copyAndOpenZoho(dnccRecipient, subject, body, fname);
+    copyAndOpenZoho(dnccRecipient, subject, body, fname, function(){
+      setTimeout(async function(){
+        if(confirm('Did you finish sending this in Zoho Mail?\n\nClick OK to mark it as sent in the portal (so it shows correctly in the Submissions list), or Cancel to leave it unmarked for now — you can always come back and send it later.')){
+          try{
+            await sb.from('submissions').update({ email_sent_at: new Date().toISOString() }).eq('id', r.id);
+            await loadSubmissions(); renderStats();
+          }catch(err){ console.error('Could not mark as sent:', err); }
+        }
+      }, 200);
+    });
   }
 
   // Used for Reassign / Takeover / Retire (single-device, Inventory-driven actions).
