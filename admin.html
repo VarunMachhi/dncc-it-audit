@@ -404,12 +404,14 @@
     var spare = currentDevices.filter(function(d){ return d.status==='Spare'; }).length;
     var retired = currentDevices.filter(function(d){ return d.status==='Retired'; }).length;
     var damaged = currentSubs.filter(function(s){ return s.damage==='Yes'; }).length;
-    var emailed = currentSubs.filter(function(s){ return !!s.email_sent_at; }).length;
+    var emailedAuto = currentSubs.filter(function(s){ return !!s.email_sent_at && s.email_sent_via !== 'manual'; }).length;
+    var emailedManual = currentSubs.filter(function(s){ return !!s.email_sent_at && s.email_sent_via === 'manual'; }).length;
     var pendingReqs = currentChangeReqs.filter(function(c){ return c.status==='Pending'; }).length;
     var cards = [
       ['Forms submitted', total], ['Devices tracked', currentDevices.length],
       ['Currently assigned', assigned], ['Spare / stock', spare],
-      ['Retired', retired], ['Reported damaged', damaged], ['Handover emails sent', emailed],
+      ['Retired', retired], ['Reported damaged', damaged],
+      ['Auto emails sent (Resend)', emailedAuto], ['Manual emails sent (Zoho)', emailedManual],
       ['Pending change requests', pendingReqs]
     ];
     document.getElementById('statsRow').innerHTML = cards.map(function(c){
@@ -747,7 +749,7 @@
       setTimeout(async function(){
         if(confirm('Did you finish sending this in Zoho Mail?\n\nClick OK to mark it as sent in the portal (so it shows correctly in the Submissions list), or Cancel to leave it unmarked for now — you can always come back and send it later.')){
           try{
-            await sb.from('submissions').update({ email_sent_at: new Date().toISOString() }).eq('id', r.id);
+            await sb.from('submissions').update({ email_sent_at: new Date().toISOString(), email_sent_via: 'manual' }).eq('id', r.id);
             await loadSubmissions(); renderStats();
           }catch(err){ console.error('Could not mark as sent:', err); }
         }
@@ -895,7 +897,7 @@
       });
       var json = await res.json();
       if(!res.ok || !json.ok) throw new Error(json.error || 'Send failed');
-      await sb.from('submissions').update({ email_sent_at: new Date().toISOString() }).eq('id', r.id);
+      await sb.from('submissions').update({ email_sent_at: new Date().toISOString(), email_sent_via: 'resend' }).eq('id', r.id);
       alert('Email sent to ' + recipients.join(' and '));
       await loadSubmissions(); renderStats();
     }catch(err){
@@ -922,7 +924,8 @@
       'Device 2 usage': d2.usage||'',
       'Charger provided': r.charger||'', 'Cable provided': r.cable||'',
       'Damage present': r.damage||'', 'Damage description': r.damage_what||'', 'Damage cause': r.damage_how||'',
-      'Handover email sent at': r.email_sent_at ? new Date(r.email_sent_at).toLocaleString() : ''
+      'Handover email sent at': r.email_sent_at ? new Date(r.email_sent_at).toLocaleString() : '',
+      'Handover email sent via': r.email_sent_via || ''
     };
   }
 

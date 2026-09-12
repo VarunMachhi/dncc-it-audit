@@ -292,7 +292,7 @@
       });
       var json = await res.json();
       if(res.ok && json.ok && submissionId){
-        await sb.from('submissions').update({ email_sent_at: new Date().toISOString() }).eq('id', submissionId);
+        await sb.from('submissions').update({ email_sent_at: new Date().toISOString(), email_sent_via: 'resend' }).eq('id', submissionId);
       }
       return res.ok && json.ok;
     }catch(err){
