@@ -7,7 +7,7 @@
 <style>
   :root{
     --navy:#132635; --navy-2:#1c384d; --accent:#2c6f97; --accent-light:#eaf2f6;
-    --amber-light:#fbeee1; --line:#d7dde1; --line-strong:#b7c1c8; --bg:#f4f6f7;
+    --amber-light:#fbeee1; --amber:#b5691f; --line:#d7dde1; --line-strong:#b7c1c8; --bg:#f4f6f7;
     --card:#ffffff; --text:#182530; --text-soft:#5b6b74;
     --danger:#a03a3a; --danger-light:#fbeaea; --ok:#2f7d5a; --ok-light:#e9f5ef;
     --radius:10px; --mono:"IBM Plex Mono","Courier New",monospace; --sans:"IBM Plex Sans","Segoe UI",Arial,sans-serif;
@@ -15,7 +15,13 @@
   *{box-sizing:border-box;}
   body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.5;}
   .wrap{max-width:760px; margin:0 auto; padding:32px 20px 80px;}
-  .masthead{display:flex; align-items:center; gap:14px; margin-bottom:8px;}
+  .masthead{display:flex; align-items:center; gap:14px; margin-bottom:8px; flex-wrap:wrap;}
+  .masthead > div{flex:1; min-width:0;}
+  .lang-toggle{
+    flex:none; width:auto; padding:8px 12px; border:1px solid var(--line-strong); border-radius:7px; background:#fff;
+    color:var(--navy); font-weight:700; font-size:13px; cursor:pointer; font-family:var(--sans);
+  }
+  .lang-toggle:hover{background:var(--accent-light);}
   .masthead .badge{width:44px; height:44px; border-radius:8px; background:var(--navy); color:#fff;
     display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex:none; text-align:center; line-height:1.1;}
   .masthead h1{font-size:19px; margin:0; font-weight:700; color:var(--navy);}
@@ -33,6 +39,16 @@
   input[type=text], input[type=tel], input[type=email], select, textarea{
     width:100%; padding:9px 11px; border:1px solid var(--line-strong); border-radius:7px; font-size:14px; font-family:var(--sans); background:#fff; color:var(--text);}
   input:focus, select:focus, textarea:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-light);}
+  input[readonly]{background:#f0f2f3; color:var(--text-soft); cursor:not-allowed;}
+  input[readonly]:focus{box-shadow:none; border-color:var(--line-strong);}
+  .id-with-copy{display:flex; gap:6px;}
+  .id-with-copy input{flex:1;}
+  .copy-btn{
+    flex:none; padding:0 12px; border:1px solid var(--line-strong); border-radius:7px; background:#fff;
+    color:var(--accent); font-weight:600; font-size:12.5px; cursor:pointer;
+  }
+  .copy-btn:hover{background:var(--accent-light);}
+  .copy-btn.copied{color:var(--ok); border-color:#b8e0cb;}
   input[data-imei], input[data-sim]{font-family:var(--mono); letter-spacing:0.4px;}
   textarea{min-height:70px; resize:vertical;}
   .radiogroup{display:flex; gap:10px;}
@@ -50,6 +66,8 @@
   .error-text{color:var(--danger); font-size:12.5px; margin-top:5px; display:none;}
   .field.has-error input, .field.has-error select, .field.has-error textarea{border-color:var(--danger);}
   .field.has-error .error-text{display:block;}
+  .dup-warning{color:var(--amber, #b5691f); font-size:12.5px; margin-top:5px; display:none; font-weight:600;}
+  .dup-warning.show{display:block;}
   .submit-bar{display:flex; align-items:center; gap:14px; justify-content:space-between; flex-wrap:wrap;}
   button{font-family:var(--sans); font-weight:700; font-size:14.5px; border-radius:8px; border:none; padding:12px 22px; cursor:pointer;}
   .btn-primary{background:var(--navy); color:#fff;} .btn-primary:hover{background:var(--navy-2);}
@@ -60,14 +78,43 @@
   .foot-link{text-align:center; margin-top:30px; font-size:12px;}
   .foot-link a{color:var(--text-soft);}
 
+  #reviewOverlay{display:none; position:fixed; inset:0; background:rgba(15,25,35,.5); z-index:80; align-items:center; justify-content:center; padding:20px; overflow-y:auto;}
+  #reviewOverlay.open{display:flex;}
+  .review-box{background:#fff; border-radius:var(--radius); padding:26px; max-width:600px; width:100%; max-height:88vh; overflow-y:auto; margin:auto;}
+  .review-box h2{margin:0 0 16px; font-size:18px; color:var(--navy);}
+  .review-section{margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--line);}
+  .review-section:last-child{border-bottom:none;}
+  .review-section h4{margin:0 0 10px; font-size:13px; color:var(--accent); text-transform:uppercase; letter-spacing:.03em;}
+  .review-row{display:flex; justify-content:space-between; gap:14px; padding:5px 0; font-size:13.5px; border-bottom:1px dashed var(--line);}
+  .review-row:last-of-type{border-bottom:none;}
+  .review-label{color:var(--text-soft); font-weight:600; flex:none; width:44%;}
+  .review-value{color:var(--text); text-align:right; word-break:break-word;}
+  .review-photos{display:flex; gap:10px; margin-top:10px;}
+  .review-photos img{width:90px; height:90px; object-fit:cover; border-radius:6px; border:1px solid var(--line);}
+  .review-actions{display:flex; justify-content:space-between; gap:12px; margin-top:10px; flex-wrap:wrap;}
+  .btn-secondary-review{background:#fff; color:var(--navy); border:1px solid var(--line-strong); border-radius:8px; padding:12px 20px; font-weight:700; font-size:14.5px; cursor:pointer;}
+  .btn-secondary-review:hover{background:#f0f2f3;}
+  .correction-block{margin-top:26px; border-top:1px solid var(--line); padding-top:20px;}
+  .correction-toggle{
+    width:100%; text-align:left; background:none; border:none; padding:0; margin-bottom:14px;
+    font-family:var(--sans); font-size:13.5px; font-weight:600; color:var(--accent); cursor:pointer;
+  }
+  #correctionForm{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
+
   @media (max-width: 600px){
     .wrap{padding:20px 14px 60px;}
     fieldset{padding:16px 14px;}
     .row2, .photo-pair{grid-template-columns:1fr;}
     .masthead h1{font-size:17px;}
+    .lang-toggle{width:100%;}
     .radiogroup{flex-direction:column;}
     .submit-bar{flex-direction:column; align-items:stretch;}
     .submit-bar button{width:100%;}
+    .review-row{flex-direction:column; gap:2px;}
+    .review-label{width:auto;}
+    .review-value{text-align:left;}
+    .review-actions{flex-direction:column-reverse;}
+    .review-actions button{width:100%;}
   }
 </style>
 </head>
@@ -80,92 +127,149 @@
       <h1 id="companyTitle">IT Mobile Audit Form</h1>
       <p id="companySub">IT Department</p>
     </div>
+    <select id="langToggle" class="lang-toggle">
+      <option value="en">English</option>
+      <option value="gu">ગુજરાતી</option>
+      <option value="mr">मराठी</option>
+      <option value="kok">कोंकणी</option>
+    </select>
   </div>
 
-  <div class="intro">
-    <strong>Before you start:</strong> keep your phone(s) nearby to check the IMEI (dial <span style="font-family:var(--mono)">*#06#</span>), SIM numbers, and take clear front/back photos. This takes about 5 minutes. After submitting you'll get a handover PDF copy for your records.
+  <div class="intro" data-i18n-html="intro">
+    <strong>Before you start:</strong> keep your phone(s) nearby to check the IMEI (dial <span style="font-family:var(--mono)">*#06#</span>), SIM numbers, and take clear front/back photos. This takes about 5 minutes. After submitting, a handover PDF downloads automatically and a copy is emailed to the address you enter below.
   </div>
 
   <form id="intakeForm" novalidate>
     <fieldset>
-      <legend><span class="num">1</span> Employee details</legend>
+      <legend><span class="num">1</span> <span data-i18n="legend1">Employee details</span></legend>
       <div class="row2">
-        <div class="field"><label for="empName">Employee name</label>
-          <input type="text" id="empName" required /><div class="error-text">Enter the employee's name.</div></div>
-        <div class="field"><label for="empId">Employee ID / code</label>
-          <input type="text" id="empId" placeholder="e.g. EMP-0234" /></div>
+        <div class="field"><label for="empName" data-i18n="empNameLabel">Employee name</label>
+          <input type="text" id="empName" placeholder="First name Surname, e.g. Smit Patel" data-i18n-ph="empNamePlaceholder" autocomplete="off" required /><div class="error-text" data-i18n="empNameError">Enter the employee's first name and surname.</div></div>
+        <div class="field"><label for="empId" data-i18n="empIdLabel">Employee ID / code</label>
+          <div class="id-with-copy">
+            <input type="text" id="empId" placeholder="Auto-generated" data-i18n-ph="empIdPlaceholder" readonly autocomplete="off" />
+            <button type="button" class="copy-btn" id="copyEmpIdBtn" data-i18n="copyBtn">Copy</button>
+          </div>
+          <div class="hint" data-i18n="empIdHint">Automatically generated from location + name. Not editable.</div>
+        </div>
       </div>
       <div class="row2">
-        <div class="field"><label for="location">Location</label>
-          <input type="text" id="location" placeholder="Clinic / branch" required /><div class="error-text">Enter the location.</div></div>
-        <div class="field"><label for="designation">Designation</label>
-          <input type="text" id="designation" required /><div class="error-text">Enter the designation.</div></div>
+        <div class="field"><label for="location" data-i18n="locationLabel">Location</label>
+          <select id="location" required>
+            <option value="" data-i18n="locationDefaultOption">Select location…</option>
+            <option value="Vadodara">Vadodara</option>
+            <option value="Surat">Surat</option>
+            <option value="Anand">Anand</option>
+            <option value="Ahmedabad">Ahmedabad</option>
+            <option value="Rajkot">Rajkot</option>
+            <option value="Bandra">Bandra</option>
+            <option value="Thane">Thane</option>
+            <option value="Borivali">Borivali</option>
+            <option value="Panjim">Panjim</option>
+          </select>
+          <div class="error-text" data-i18n="locationError">Select a location.</div></div>
+        <div class="field"><label for="designation" data-i18n="designationLabel">Designation</label>
+          <input type="text" id="designation" required /><div class="error-text" data-i18n="designationError">Enter the designation.</div></div>
       </div>
       <div class="row2">
-        <div class="field"><label for="department">Department</label>
-          <input type="text" id="department" placeholder="e.g. Front Desk, Nursing" /></div>
-        <div class="field"><label for="contact">Alternate contact number</label>
+        <div class="field"><label for="department" data-i18n="departmentLabel">Department</label>
+          <input type="text" id="department" placeholder="e.g. Front Desk, Nursing" data-i18n-ph="departmentPlaceholder" /></div>
+        <div class="field"><label for="contact" data-i18n="contactLabel">Alternate contact number</label>
           <input type="text" id="contact" /></div>
       </div>
-      <div class="field" style="margin-bottom:0;">
-        <label for="empEmail">Employee email address</label>
-        <input type="email" id="empEmail" placeholder="name@company.com" required />
-        <div class="error-text">Enter a valid email address — this is where your handover confirmation will be sent.</div>
-        <div class="hint">Used by IT to email you a copy of your handover confirmation.</div>
+      <div class="row2">
+        <div class="field"><label for="companyEmail" data-i18n="companyEmailLabel">Company email address</label>
+          <input type="text" id="companyEmail" placeholder="name@dncc.in — or type NOT if you don't have one" data-i18n-ph="companyEmailPlaceholder" required />
+          <div class="error-text" data-i18n="companyEmailError">Enter a valid company email address, or type NOT if you don't have a company email.</div>
+        </div>
+        <div class="field"><label for="personalEmail" data-i18n="personalEmailLabel">Personal email address</label>
+          <input type="email" id="personalEmail" placeholder="name@gmail.com" data-i18n-ph="personalEmailPlaceholder" required />
+          <div class="error-text" data-i18n="personalEmailError">Enter a valid personal email address.</div>
+        </div>
       </div>
+      <p class="hint" style="margin:-8px 0 0;" data-i18n="emailsHint">Your handover confirmation and PDF copy will be sent to both addresses.</p>
     </fieldset>
 
     <fieldset>
-      <legend><span class="num">2</span> How many mobile phones do you use for work?</legend>
+      <legend><span class="num">2</span> <span data-i18n="legend2">How many mobile phones do you use for work?</span></legend>
       <div class="radiogroup" id="deviceCountGroup">
-        <label><input type="radio" name="deviceCount" value="1" checked /> 1 mobile</label>
-        <label><input type="radio" name="deviceCount" value="2" /> 2 mobiles</label>
+        <label><input type="radio" name="deviceCount" value="1" checked /> <span data-i18n="deviceCount1">1 mobile</span></label>
+        <label><input type="radio" name="deviceCount" value="2" /> <span data-i18n="deviceCount2">2 mobiles</span></label>
       </div>
     </fieldset>
 
-    <fieldset><legend><span class="num">3</span> Mobile phone details</legend>
+    <fieldset><legend><span class="num">3</span> <span data-i18n="legend3">Mobile phone details</span></legend>
       <div id="device1Container"></div>
     </fieldset>
 
     <fieldset id="device2Fieldset" style="display:none;">
-      <legend><span class="num">4</span> Second mobile phone details</legend>
+      <legend><span class="num">4</span> <span data-i18n="legend4">Second mobile phone details</span></legend>
       <div id="device2Container"></div>
     </fieldset>
 
     <fieldset>
-      <legend><span class="num">5</span> Accessories</legend>
+      <legend><span class="num">5</span> <span data-i18n="legend5">Accessories</span></legend>
       <div class="row2">
-        <div class="field" style="margin-bottom:0;"><label>Do you have the charger?</label>
-          <div class="radiogroup"><label><input type="radio" name="charger" value="Yes" /> Yes</label><label><input type="radio" name="charger" value="No" /> No</label></div></div>
-        <div class="field" style="margin-bottom:0;"><label>Do you have the data/USB cable?</label>
-          <div class="radiogroup"><label><input type="radio" name="cable" value="Yes" /> Yes</label><label><input type="radio" name="cable" value="No" /> No</label></div></div>
+        <div class="field" style="margin-bottom:0;"><label data-i18n="chargerLabel">Do you have the charger?</label>
+          <div class="radiogroup"><label><input type="radio" name="charger" value="Yes" /> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="charger" value="No" /> <span data-i18n="no">No</span></label></div></div>
+        <div class="field" style="margin-bottom:0;"><label data-i18n="cableLabel">Do you have the data/USB cable?</label>
+          <div class="radiogroup"><label><input type="radio" name="cable" value="Yes" /> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="cable" value="No" /> <span data-i18n="no">No</span></label></div></div>
       </div>
     </fieldset>
 
     <fieldset>
-      <legend><span class="num">6</span> Physical damage</legend>
-      <div class="field" style="margin-bottom:0;"><label>Is there any damage on the phone?</label>
-        <div class="radiogroup"><label><input type="radio" name="damage" value="Yes" /> Yes</label><label><input type="radio" name="damage" value="No" /> No</label></div></div>
+      <legend><span class="num">6</span> <span data-i18n="legend6">Physical damage</span></legend>
+      <div class="field" style="margin-bottom:0;"><label data-i18n="damageLabel">Is there any damage on the phone?</label>
+        <div class="radiogroup"><label><input type="radio" name="damage" value="Yes" /> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="damage" value="No" /> <span data-i18n="no">No</span></label></div></div>
       <div class="conditional" id="damageDetails" style="display:none;">
-        <div class="field"><label for="damageWhat">What is the damage?</label>
-          <textarea id="damageWhat" placeholder="e.g. cracked screen top-left corner"></textarea></div>
-        <div class="field" style="margin-bottom:0;"><label for="damageHow">How did this damage happen?</label>
-          <textarea id="damageHow" placeholder="e.g. dropped while boarding a cab"></textarea></div>
+        <div class="field"><label for="damageWhat" data-i18n="damageWhatLabel">What is the damage?</label>
+          <textarea id="damageWhat" placeholder="e.g. cracked screen top-left corner" data-i18n-ph="damageWhatPlaceholder"></textarea></div>
+        <div class="field" style="margin-bottom:0;"><label for="damageHow" data-i18n="damageHowLabel">How did this damage happen?</label>
+          <textarea id="damageHow" placeholder="e.g. dropped while boarding a cab" data-i18n-ph="damageHowPlaceholder"></textarea></div>
       </div>
     </fieldset>
 
     <div class="submit-bar">
-      <button type="submit" class="btn-primary" id="submitBtn">Submit details</button>
-      <span class="submit-note">A handover PDF copy will download automatically after submission.</span>
+      <button type="submit" class="btn-primary" id="submitBtn" data-i18n="submitBtn">Submit details</button>
+      <span class="submit-note" data-i18n="submitNote">A handover PDF copy will download automatically after submission.</span>
     </div>
     <div class="toast" id="toast"></div>
   </form>
 
+  <div class="correction-block">
+    <button type="button" class="correction-toggle" id="correctionToggle" data-i18n="correctionToggle">Made a mistake? Request a correction to details you already submitted →</button>
+    <form id="correctionForm" style="display:none;">
+      <p class="hint" style="margin-top:0;" data-i18n="correctionHint">Describe what's wrong and what it should be instead (e.g. "IMEI 1 for my Samsung was typed wrong, it should be 356789012345678"). IT will review and update your record — you'll get an email once it's corrected.</p>
+      <div class="row2">
+        <div class="field"><label for="corrName" data-i18n="corrNameLabel">Your name</label><input type="text" id="corrName" required /></div>
+        <div class="field"><label for="corrEmail" data-i18n="corrEmailLabel">Your email (company or personal)</label><input type="email" id="corrEmail" required /></div>
+      </div>
+      <div class="field"><label for="corrEmpId" data-i18n="corrEmpIdLabel">Employee ID (if known)</label><input type="text" id="corrEmpId" /></div>
+      <div class="field" style="margin-bottom:0;"><label for="corrDetails" data-i18n="corrDetailsLabel">What needs to be corrected?</label><textarea id="corrDetails" required style="min-height:90px;"></textarea></div>
+      <div class="submit-bar" style="margin-top:14px;">
+        <button type="submit" class="btn-primary" id="corrSubmitBtn">Send correction request</button>
+      </div>
+      <div class="toast" id="corrToast"></div>
+    </form>
+  </div>
+
   <p class="foot-link"><a href="admin.html">IT admin login →</a></p>
+</div>
+
+<div id="reviewOverlay" class="review-overlay">
+  <div class="review-box">
+    <h2 data-i18n="reviewTitle">Review your details</h2>
+    <div id="reviewContent"></div>
+    <div class="review-actions">
+      <button type="button" class="btn-secondary-review" id="reviewBackBtn" data-i18n="reviewBackBtn">← Back to form</button>
+      <button type="button" class="btn-primary" id="reviewConfirmBtn" data-i18n="reviewConfirmBtn">Confirm and submit</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="pdf-helpers.js"></script>
 <script src="config.js"></script>
 <script>
 (function(){
@@ -174,59 +278,504 @@
   document.title = window.DNCC_CONFIG.COMPANY_NAME + ' — IT Mobile Audit Form';
 
   var sb = window.supabase.createClient(window.DNCC_CONFIG.SUPABASE_URL, window.DNCC_CONFIG.SUPABASE_ANON_KEY);
+  var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL + '/functions/v1';
+
+  function fillTemplate(str, vars){
+    return (str||'').replace(/\{\{(\w+)\}\}/g, function(_, k){ return (vars[k] !== undefined && vars[k] !== null) ? vars[k] : ''; });
+  }
+
+  // ---------- English / Gujarati translations ----------
+  var TRANSLATIONS = {
+    en: {
+      intro: '<strong>Before you start:</strong> keep your phone(s) nearby to check the IMEI (dial <span style="font-family:\'IBM Plex Mono\',monospace">*#06#</span>), SIM numbers, and take clear front/back photos. This takes about 5 minutes. After submitting, a handover PDF downloads automatically and a copy is emailed to the address you enter below.',
+      legend1:'Employee details', empNameLabel:'Employee name', empNamePlaceholder:'First name Surname, e.g. Smit Patel',
+      empNameError:"Enter the employee's first name and surname.", empIdLabel:'Employee ID / code', empIdPlaceholder:'Auto-generated',
+      copyBtn:'Copy', copiedBtn:'Copied!', empIdHint:'Automatically generated from location + name. Not editable.',
+      locationLabel:'Location', locationDefaultOption:'Select location…', locationError:'Select a location.',
+      designationLabel:'Designation', designationError:'Enter the designation.', departmentLabel:'Department',
+      departmentPlaceholder:'e.g. Front Desk, Nursing', contactLabel:'Alternate contact number',
+      companyEmailLabel:'Company email address', companyEmailPlaceholder:"name@dncc.in — or type NOT if you don't have one",
+      companyEmailError:"Enter a valid company email address, or type NOT if you don't have a company email.",
+      personalEmailLabel:'Personal email address', personalEmailPlaceholder:'name@gmail.com',
+      personalEmailError:'Enter a valid personal email address.',
+      emailsHint:'Your handover confirmation and PDF copy will be sent to both addresses.',
+      legend2:'How many mobile phones do you use for work?', deviceCount1:'1 mobile', deviceCount2:'2 mobiles',
+      legend3:'Mobile phone details', legend4:'Second mobile phone details', legend5:'Accessories',
+      chargerLabel:'Do you have the charger?', cableLabel:'Do you have the data/USB cable?', yes:'Yes', no:'No',
+      legend6:'Physical damage', damageLabel:'Is there any damage on the phone?', damageWhatLabel:'What is the damage?',
+      damageWhatPlaceholder:'e.g. cracked screen top-left corner', damageHowLabel:'How did this damage happen?',
+      damageHowPlaceholder:'e.g. dropped while boarding a cab',
+      submitBtn:'Submit details', submitNote:'A handover PDF copy will download automatically after submission.',
+      correctionToggleClosed:'Made a mistake? Request a correction to details you already submitted →',
+      correctionToggleOpen:'Hide correction form ↑',
+      correctionHint:'Describe what\'s wrong and what it should be instead (e.g. "IMEI 1 for my Samsung was typed wrong, it should be 356789012345678"). IT will review and update your record — you\'ll get an email once it\'s corrected.',
+      corrNameLabel:'Your name', corrEmailLabel:'Your email (company or personal)', corrEmpIdLabel:'Employee ID (if known)',
+      corrDetailsLabel:'What needs to be corrected?', corrSubmitBtn:'Send correction request',
+      brandLabel:'Brand / name', brandError:'Enter the brand.', modelLabel:'Model', modelError:'Enter the model.',
+      ramLabel:'RAM size', ramPlaceholder:'e.g. 6 GB', ramError:'Enter RAM size.',
+      storageLabel:'Storage size', storagePlaceholder:'e.g. 128 GB', storageError:'Enter storage size.',
+      photosLabel:'Phone photos', photosHint:"For the front photo, switch the phone's screen ON before taking the picture (helps confirm the device is working and shows the lock screen/home screen).",
+      frontPhotoLabel:'Front photo (screen ON)', backPhotoLabel:'Back photo',
+      imei1Label:'IMEI number 1', imei1Error:'Enter IMEI 1 (dial *#06#).', imei2Label:'IMEI number 2',
+      imei2Placeholder:'Leave blank if single-SIM device', simCountLabel:'How many SIMs does this phone have?',
+      memCardLabel:'Does this phone have a memory / SD card?', memCardSizeLabel:'Memory card size',
+      memCardSizePlaceholder:'e.g. 64 GB', usageLabel:'Mobile use — describe what this phone is used for',
+      footLink:'IT admin login →', reviewTitle:'Review your details', reviewEditBtn:'Edit', reviewConfirmBtn:'Confirm and submit',
+      reviewBackBtn:'← Back to form', deviceBlockTitle1:'Mobile phone 1', deviceBlockTitle2:'Mobile phone 2'
+    },
+    gu: {
+      intro: '<strong>શરૂ કરતા પહેલા:</strong> તમારો ફોન(ફોન્સ) સાથે રાખો જેથી IMEI (<span style="font-family:\'IBM Plex Mono\',monospace">*#06#</span> ડાયલ કરો), સિમ નંબર ચકાસી શકાય, અને ફોનના આગળ/પાછળના સ્પષ્ટ ફોટા લઈ શકાય. આમાં લગભગ 5 મિનિટ લાગશે. સબમિટ કર્યા પછી, હેન્ડઓવર PDF આપમેળે ડાઉનલોડ થશે અને નીચે આપેલા ઈમેલ પર એક નકલ મોકલવામાં આવશે.',
+      legend1:'કર્મચારીની વિગતો', empNameLabel:'કર્મચારીનું નામ', empNamePlaceholder:'પ્રથમ નામ અટક, દા.ત. સ્મિત પટેલ',
+      empNameError:'કર્મચારીનું પ્રથમ નામ અને અટક દાખલ કરો.', empIdLabel:'કર્મચારી ID / કોડ', empIdPlaceholder:'આપમેળે બને છે',
+      copyBtn:'કોપી', copiedBtn:'કોપી થયું!', empIdHint:'લોકેશન + નામ પરથી આપમેળે બને છે. બદલી શકાતું નથી.',
+      locationLabel:'લોકેશન', locationDefaultOption:'લોકેશન પસંદ કરો…', locationError:'લોકેશન પસંદ કરો.',
+      designationLabel:'હોદ્દો', designationError:'હોદ્દો દાખલ કરો.', departmentLabel:'વિભાગ',
+      departmentPlaceholder:'દા.ત. ફ્રન્ટ ડેસ્ક, નર્સિંગ', contactLabel:'વૈકલ્પિક સંપર્ક નંબર',
+      companyEmailLabel:'કંપની ઈમેલ સરનામું', companyEmailPlaceholder:'name@dncc.in — અથવા ન હોય તો NOT લખો',
+      companyEmailError:'માન્ય કંપની ઈમેલ દાખલ કરો, અથવા કંપની ઈમેલ ન હોય તો NOT લખો.',
+      personalEmailLabel:'વ્યક્તિગત ઈમેલ સરનામું', personalEmailPlaceholder:'name@gmail.com',
+      personalEmailError:'માન્ય વ્યક્તિગત ઈમેલ દાખલ કરો.',
+      emailsHint:'તમારું હેન્ડઓવર કન્ફર્મેશન અને PDF નકલ બંને સરનામાં પર મોકલવામાં આવશે.',
+      legend2:'તમે કામ માટે કેટલા મોબાઈલ ફોન વાપરો છો?', deviceCount1:'1 મોબાઈલ', deviceCount2:'2 મોબાઈલ',
+      legend3:'મોબાઈલ ફોનની વિગતો', legend4:'બીજા મોબાઈલ ફોનની વિગતો', legend5:'એસેસરીઝ',
+      chargerLabel:'શું તમારી પાસે ચાર્જર છે?', cableLabel:'શું તમારી પાસે ડેટા/USB કેબલ છે?', yes:'હા', no:'ના',
+      legend6:'શારીરિક નુકસાન', damageLabel:'શું ફોનમાં કોઈ નુકસાન છે?', damageWhatLabel:'નુકસાન શું છે?',
+      damageWhatPlaceholder:'દા.ત. સ્ક્રીનના ઉપર-ડાબા ખૂણે તિરાડ', damageHowLabel:'આ નુકસાન કેવી રીતે થયું?',
+      damageHowPlaceholder:'દા.ત. કેબમાંથી ઉતરતી વખતે પડી ગયો',
+      submitBtn:'વિગતો સબમિટ કરો', submitNote:'સબમિટ કર્યા પછી હેન્ડઓવર PDF નકલ આપમેળે ડાઉનલોડ થશે.',
+      correctionToggleClosed:'ભૂલ થઈ ગઈ? પહેલાં સબમિટ કરેલી વિગતોમાં સુધારો કરવા વિનંતી કરો →',
+      correctionToggleOpen:'સુધારા ફોર્મ છુપાવો ↑',
+      correctionHint:'શું ખોટું છે અને તેની જગ્યાએ શું હોવું જોઈએ તે વર્ણવો (દા.ત. "મારા સેમસંગનો IMEI 1 ખોટો ટાઈપ થયો હતો, તે 356789012345678 હોવો જોઈએ"). IT તેની સમીક્ષા કરશે અને તમારો રેકોર્ડ અપડેટ કરશે — અપડેટ થયા પછી તમને ઈમેલ મળશે.',
+      corrNameLabel:'તમારું નામ', corrEmailLabel:'તમારો ઈમેલ (કંપની અથવા વ્યક્તિગત)', corrEmpIdLabel:'કર્મચારી ID (જો ખબર હોય તો)',
+      corrDetailsLabel:'શું સુધારવાની જરૂર છે?', corrSubmitBtn:'સુધારા વિનંતી મોકલો',
+      brandLabel:'બ્રાન્ડ / નામ', brandError:'બ્રાન્ડ દાખલ કરો.', modelLabel:'મોડેલ', modelError:'મોડેલ દાખલ કરો.',
+      ramLabel:'RAM સાઈઝ', ramPlaceholder:'દા.ત. 6 GB', ramError:'RAM સાઈઝ દાખલ કરો.',
+      storageLabel:'સ્ટોરેજ સાઈઝ', storagePlaceholder:'દા.ત. 128 GB', storageError:'સ્ટોરેજ સાઈઝ દાખલ કરો.',
+      photosLabel:'ફોનના ફોટા', photosHint:'આગળના ફોટા માટે, ફોટો લેતા પહેલા ફોનની સ્ક્રીન ચાલુ (ON) કરો (આનાથી ખાતરી થાય છે કે ડિવાઈસ કામ કરે છે અને લોક સ્ક્રીન/હોમ સ્ક્રીન દેખાય છે).',
+      frontPhotoLabel:'આગળનો ફોટો (સ્ક્રીન ON)', backPhotoLabel:'પાછળનો ફોટો',
+      imei1Label:'IMEI નંબર 1', imei1Error:'IMEI 1 દાખલ કરો (*#06# ડાયલ કરો).', imei2Label:'IMEI નંબર 2',
+      imei2Placeholder:'એક જ સિમ હોય તો ખાલી રાખો', simCountLabel:'આ ફોનમાં કેટલા સિમ છે?',
+      memCardLabel:'શું આ ફોનમાં મેમરી / SD કાર્ડ છે?', memCardSizeLabel:'મેમરી કાર્ડ સાઈઝ',
+      memCardSizePlaceholder:'દા.ત. 64 GB', usageLabel:'મોબાઈલનો ઉપયોગ — આ ફોન શેના માટે વપરાય છે તે વર્ણવો',
+      footLink:'IT એડમિન લોગિન →', reviewTitle:'તમારી વિગતોની સમીક્ષા કરો', reviewEditBtn:'ફેરફાર કરો', reviewConfirmBtn:'પુષ્ટિ કરો અને સબમિટ કરો',
+      reviewBackBtn:'← ફોર્મ પર પાછા જાઓ', deviceBlockTitle1:'મોબાઈલ ફોન 1', deviceBlockTitle2:'મોબાઈલ ફોન 2'
+    },
+    mr: {
+      intro: '<strong>सुरुवात करण्यापूर्वी:</strong> तुमचा फोन (फोन्स) जवळ ठेवा जेणेकरून IMEI (<span style="font-family:\'IBM Plex Mono\',monospace">*#06#</span> डायल करा), सिम नंबर तपासता येतील, आणि फोनचे पुढील/मागील स्पष्ट फोटो घेता येतील. यासाठी सुमारे 5 मिनिटे लागतील. सबमिट केल्यानंतर, हँडओव्हर PDF आपोआप डाउनलोड होईल आणि खाली दिलेल्या ईमेलवर एक प्रत पाठवली जाईल.',
+      legend1:'कर्मचाऱ्याचा तपशील', empNameLabel:'कर्मचाऱ्याचे नाव', empNamePlaceholder:'पहिले नाव आडनाव, उदा. स्मित पटेल',
+      empNameError:'कर्मचाऱ्याचे पहिले नाव आणि आडनाव टाका.', empIdLabel:'कर्मचारी ID / कोड', empIdPlaceholder:'आपोआप तयार होते',
+      copyBtn:'कॉपी', copiedBtn:'कॉपी झाले!', empIdHint:'लोकेशन + नावावरून आपोआप तयार होते. बदलता येत नाही.',
+      locationLabel:'लोकेशन', locationDefaultOption:'लोकेशन निवडा…', locationError:'लोकेशन निवडा.',
+      designationLabel:'पदनाम', designationError:'पदनाम टाका.', departmentLabel:'विभाग',
+      departmentPlaceholder:'उदा. फ्रंट डेस्क, नर्सिंग', contactLabel:'पर्यायी संपर्क क्रमांक',
+      companyEmailLabel:'कंपनी ईमेल पत्ता', companyEmailPlaceholder:'name@dncc.in — किंवा नसल्यास NOT लिहा',
+      companyEmailError:'वैध कंपनी ईमेल टाका, किंवा कंपनी ईमेल नसल्यास NOT लिहा.',
+      personalEmailLabel:'वैयक्तिक ईमेल पत्ता', personalEmailPlaceholder:'name@gmail.com',
+      personalEmailError:'वैध वैयक्तिक ईमेल टाका.',
+      emailsHint:'तुमची हँडओव्हर कन्फर्मेशन आणि PDF प्रत दोन्ही पत्त्यांवर पाठवली जाईल.',
+      legend2:'तुम्ही कामासाठी किती मोबाईल फोन वापरता?', deviceCount1:'1 मोबाईल', deviceCount2:'2 मोबाईल',
+      legend3:'मोबाईल फोनचा तपशील', legend4:'दुसऱ्या मोबाईल फोनचा तपशील', legend5:'अॅक्सेसरीज',
+      chargerLabel:'तुमच्याकडे चार्जर आहे का?', cableLabel:'तुमच्याकडे डेटा/USB केबल आहे का?', yes:'होय', no:'नाही',
+      legend6:'शारीरिक नुकसान', damageLabel:'फोनमध्ये काही नुकसान आहे का?', damageWhatLabel:'नुकसान काय आहे?',
+      damageWhatPlaceholder:'उदा. स्क्रीनच्या वरच्या डाव्या कोपऱ्यात तडा', damageHowLabel:'हे नुकसान कसे झाले?',
+      damageHowPlaceholder:'उदा. कॅबमधून उतरताना पडला',
+      submitBtn:'तपशील सबमिट करा', submitNote:'सबमिट केल्यानंतर हँडओव्हर PDF प्रत आपोआप डाउनलोड होईल.',
+      correctionToggleClosed:'चूक झाली का? आधी सबमिट केलेल्या तपशीलात सुधारणा करण्याची विनंती करा →',
+      correctionToggleOpen:'सुधारणा फॉर्म लपवा ↑',
+      correctionHint:'काय चुकीचे आहे आणि त्याऐवजी काय असावे ते सांगा (उदा. "माझ्या सॅमसंगचा IMEI 1 चुकीचा टाईप झाला होता, तो 356789012345678 असावा"). IT त्याचे पुनरावलोकन करेल आणि तुमचा रेकॉर्ड अपडेट करेल — अपडेट झाल्यावर तुम्हाला ईमेल मिळेल.',
+      corrNameLabel:'तुमचे नाव', corrEmailLabel:'तुमचा ईमेल (कंपनी किंवा वैयक्तिक)', corrEmpIdLabel:'कर्मचारी ID (माहीत असल्यास)',
+      corrDetailsLabel:'काय सुधारायचे आहे?', corrSubmitBtn:'सुधारणा विनंती पाठवा',
+      brandLabel:'ब्रँड / नाव', brandError:'ब्रँड टाका.', modelLabel:'मॉडेल', modelError:'मॉडेल टाका.',
+      ramLabel:'RAM आकार', ramPlaceholder:'उदा. 6 GB', ramError:'RAM आकार टाका.',
+      storageLabel:'स्टोरेज आकार', storagePlaceholder:'उदा. 128 GB', storageError:'स्टोरेज आकार टाका.',
+      photosLabel:'फोनचे फोटो', photosHint:'पुढील फोटोसाठी, फोटो घेण्यापूर्वी फोनची स्क्रीन चालू (ON) करा (यामुळे डिव्हाइस काम करत असल्याची खात्री होते आणि लॉक स्क्रीन/होम स्क्रीन दिसते).',
+      frontPhotoLabel:'पुढील फोटो (स्क्रीन ON)', backPhotoLabel:'मागील फोटो',
+      imei1Label:'IMEI क्रमांक 1', imei1Error:'IMEI 1 टाका (*#06# डायल करा).', imei2Label:'IMEI क्रमांक 2',
+      imei2Placeholder:'एकच सिम असल्यास रिकामे ठेवा', simCountLabel:'या फोनमध्ये किती सिम आहेत?',
+      memCardLabel:'या फोनमध्ये मेमरी / SD कार्ड आहे का?', memCardSizeLabel:'मेमरी कार्ड आकार',
+      memCardSizePlaceholder:'उदा. 64 GB', usageLabel:'मोबाईलचा वापर — हा फोन कशासाठी वापरला जातो ते सांगा',
+      footLink:'IT अॅडमिन लॉगिन →', reviewTitle:'तुमच्या तपशीलाचे पुनरावलोकन करा', reviewEditBtn:'बदल करा', reviewConfirmBtn:'पुष्टी करा आणि सबमिट करा',
+      reviewBackBtn:'← फॉर्मवर परत जा', deviceBlockTitle1:'मोबाईल फोन 1', deviceBlockTitle2:'मोबाईल फोन 2'
+    },
+    kok: {
+      intro: '<strong>सुरू करचे पयली:</strong> तुमचो फोन (फोन्स) लागीं दवरात जेणे करून IMEI (<span style="font-family:\'IBM Plex Mono\',monospace">*#06#</span> डायल करात), सिम नंबर तपासूं येतले, आनी फोनाचे फुडलें/फाटलें स्पश्ट फोटो काडूं येतले. ह्याक सुमार 5 मिनटां लागतली. सबमिट केल्या उपरांत, हॅन्डओव्हर PDF आपशीच डावनलोड जातलो आनी सकयल दिल्ल्या ई-मेलार एक प्रत धाडली वतली.',
+      legend1:'कामगाराची म्हायती', empNameLabel:'कामगाराचें नांव', empNamePlaceholder:'पयलें नांव आडनांव, दा. स्मित पटेल',
+      empNameError:'कामगाराचें पयलें नांव आनी आडनांव भरात.', empIdLabel:'कामगार ID / कोड', empIdPlaceholder:'आपशीच तयार जाता',
+      copyBtn:'कॉपी', copiedBtn:'कॉपी जालें!', empIdHint:'जाग्या + नांवाचेर आपशीच तयार जाता. बदलूं येना.',
+      locationLabel:'जागो', locationDefaultOption:'जागो निवडात…', locationError:'जागो निवडात.',
+      designationLabel:'हुद्दो', designationError:'हुद्दो भरात.', departmentLabel:'विभाग',
+      departmentPlaceholder:'दा. फ्रंट डेस्क, नर्सिंग', contactLabel:'पर्यायी संपर्क क्रमांक',
+      companyEmailLabel:'कंपनीचो ई-मेल पत्तो', companyEmailPlaceholder:'name@dncc.in — वा ना जाल्यार NOT बरयात',
+      companyEmailError:'बरोबर कंपनी ई-मेल भरात, वा कंपनी ई-मेल ना जाल्यार NOT बरयात.',
+      personalEmailLabel:'व्यक्तीगत ई-मेल पत्तो', personalEmailPlaceholder:'name@gmail.com',
+      personalEmailError:'बरोबर व्यक्तीगत ई-मेल भरात.',
+      emailsHint:'तुमची हॅन्डओव्हर खात्री आनी PDF प्रत दोनूय पत्त्यांचेर धाडली वतली.',
+      legend2:'तुमी कामाखातीर किदले मोबायल फोन वापरतात?', deviceCount1:'1 मोबायल', deviceCount2:'2 मोबायल',
+      legend3:'मोबायल फोनाची म्हायती', legend4:'दुसऱ्या मोबायल फोनाची म्हायती', legend5:'अॅक्सेसरीज',
+      chargerLabel:'तुमच्याकडेन चार्जर आसा?', cableLabel:'तुमच्याकडेन डेटा/USB केबल आसा?', yes:'व्हय', no:'ना',
+      legend6:'शारीरीक हानी', damageLabel:'फोनाक कसलीच हानी जाल्या?', damageWhatLabel:'हानी कितें आसा?',
+      damageWhatPlaceholder:'दा. स्क्रीनाच्या वयल्या दाव्या कोनशांत तडो', damageHowLabel:'ही हानी कशी जाली?',
+      damageHowPlaceholder:'दा. कॅबींतल्यान देंवतना पडलो',
+      submitBtn:'म्हायती सबमिट करात', submitNote:'सबमिट केल्या उपरांत हॅन्डओव्हर PDF प्रत आपशीच डावनलोड जातली.',
+      correctionToggleClosed:'चूक जाली? पयलीं सबमिट केल्ल्या म्हायतींत बदल करपाची विनंती करात →',
+      correctionToggleOpen:'बदल फॉर्म लिपयात ↑',
+      correctionHint:'कितें चूक आसा आनी त्याऐवजी कितें आसपाक जाय हें सांगात (दा. "म्हज्या सॅमसंगाचो IMEI 1 चुकीचो टाइप जाल्लो, तो 356789012345678 आसपाक जाय"). IT हाची तपासणी करतली आनी तुमचो रेकॉर्ड अपडेट करतली — अपडेट जाल्या उपरांत तुमकां ई-मेल मेळटलो.',
+      corrNameLabel:'तुमचें नांव', corrEmailLabel:'तुमचो ई-मेल (कंपनी वा व्यक्तीगत)', corrEmpIdLabel:'कामगार ID (म्हायत आसल्यार)',
+      corrDetailsLabel:'कितें बदल जाय?', corrSubmitBtn:'बदल विनंती धाडात',
+      brandLabel:'ब्रँड / नांव', brandError:'ब्रँड भरात.', modelLabel:'मॉडेल', modelError:'मॉडेल भरात.',
+      ramLabel:'RAM आकार', ramPlaceholder:'दा. 6 GB', ramError:'RAM आकार भरात.',
+      storageLabel:'स्टोरेज आकार', storagePlaceholder:'दा. 128 GB', storageError:'स्टोरेज आकार भरात.',
+      photosLabel:'फोनाचे फोटो', photosHint:'फुडल्या फोटोखातीर, फोटो काडचे पयलीं फोनाची स्क्रीन चालू (ON) करात (हाका लागून डिव्हाइस काम करता हें खात्री जाता आनी लॉक स्क्रीन/होम स्क्रीन दिसता).',
+      frontPhotoLabel:'फुडलो फोटो (स्क्रीन ON)', backPhotoLabel:'फाटलो फोटो',
+      imei1Label:'IMEI क्रमांक 1', imei1Error:'IMEI 1 भरात (*#06# डायल करात).', imei2Label:'IMEI क्रमांक 2',
+      imei2Placeholder:'एकूच सिम आसल्यार रिकामें दवरात', simCountLabel:'ह्या फोनांत किदले सिम आसात?',
+      memCardLabel:'ह्या फोनांत मेमरी / SD कार्ड आसा?', memCardSizeLabel:'मेमरी कार्ड आकार',
+      memCardSizePlaceholder:'दा. 64 GB', usageLabel:'मोबायलाचो वापर — हो फोन कित्याक वापरतात तें सांगात',
+      footLink:'IT अॅडमिन लॉगिन →', reviewTitle:'तुमची म्हायती परतून पळयात', reviewEditBtn:'बदल करात', reviewConfirmBtn:'खात्री करात आनी सबमिट करात',
+      reviewBackBtn:'← फॉर्माकडेन परत वचात', deviceBlockTitle1:'मोबायल फोन 1', deviceBlockTitle2:'मोबायल फोन 2'
+    }
+  };
+  var currentLang = (function(){ try{ return localStorage.getItem('dncc_lang') || 'en'; }catch(e){ return 'en'; } })();
+
+  function t(key){ return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || TRANSLATIONS.en[key] || key; }
+
+  function applyLanguage(){
+    document.querySelectorAll('[data-i18n]').forEach(function(el){
+      var key = el.getAttribute('data-i18n');
+      el.textContent = t(key);
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(function(el){
+      var key = el.getAttribute('data-i18n-html');
+      el.innerHTML = t(key);
+    });
+    document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
+      var key = el.getAttribute('data-i18n-ph');
+      el.placeholder = t(key);
+    });
+    document.getElementById('langToggle').value = currentLang;
+    var corrForm = document.getElementById('correctionForm');
+    var corrOpen = corrForm && corrForm.style.display !== 'none';
+    document.getElementById('correctionToggle').textContent = corrOpen ? t('correctionToggleOpen') : t('correctionToggleClosed');
+    document.querySelector('.foot-link a').textContent = t('footLink');
+  }
+
+  document.getElementById('langToggle').addEventListener('change', function(){
+    currentLang = this.value;
+    try{ localStorage.setItem('dncc_lang', currentLang); }catch(e){}
+    applyLanguage();
+  });
+
+  // ---------- Auto-generate Employee ID from location + name (read-only, always in sync) ----------
+  var LOCATION_CODES = {
+    'Vadodara':'VAD', 'Surat':'SUR', 'Anand':'ANA', 'Ahmedabad':'AHM',
+    'Rajkot':'RAJ', 'Bandra':'BAN', 'Thane':'THA', 'Borivali':'BOR', 'Panjim':'PAN'
+  };
+  function updateAutoEmpId(){
+    var loc = document.getElementById('location').value;
+    var name = document.getElementById('empName').value.trim();
+    var code = LOCATION_CODES[loc];
+    var firstName = name.split(/\s+/)[0] || '';
+    var idField = document.getElementById('empId');
+    idField.value = (code && firstName) ? (code + '-' + firstName.toUpperCase()) : '';
+  }
+  document.getElementById('location').addEventListener('change', updateAutoEmpId);
+  document.getElementById('empName').addEventListener('input', updateAutoEmpId);
+
+  // ---------- Draft autosave (localStorage) ----------
+  var DRAFT_KEY = 'dncc_form_draft_v1';
+  var DRAFT_FIELDS = [
+    'empName','location','designation','department','contact','companyEmail','personalEmail',
+    'damageWhat','damageHow'
+  ];
+  function getDeviceDraftFields(idx){
+    return ['brand','model','ram','storage','imei1','imei2','simCount','memoryCardSize','usage'];
+  }
+
+  function collectDraft(){
+    var draft = { fields:{}, devices:{}, radios:{}, sims:{}, deviceCount: (document.querySelector('input[name="deviceCount"]:checked')||{}).value };
+    DRAFT_FIELDS.forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) draft.fields[id] = el.value;
+    });
+    ['charger','cable','damage'].forEach(function(name){ draft.radios[name] = getRadioValue(name); });
+    [1,2].forEach(function(idx){
+      draft.devices[idx] = {};
+      getDeviceDraftFields(idx).forEach(function(f){
+        var el = document.getElementById('d'+idx+'_'+f);
+        if(el) draft.devices[idx][f] = el.value;
+      });
+      draft.radios['d'+idx+'_memoryCard'] = getRadioValue('d'+idx+'_memoryCard');
+      var simCount = parseInt(document.getElementById('d'+idx+'_simCount').value, 10);
+      draft.sims[idx] = [];
+      for(var s=1; s<=simCount; s++){
+        var simEl = document.getElementById('d'+idx+'_sim'+s);
+        if(simEl) draft.sims[idx].push(simEl.value);
+      }
+    });
+    return draft;
+  }
+
+  function saveDraft(){
+    try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraft())); }catch(e){ /* storage full/unavailable — non-critical */ }
+  }
+  var saveDraftDebounced = debounce(saveDraft, 800);
+
+  function clearDraft(){
+    try{ localStorage.removeItem(DRAFT_KEY); }catch(e){}
+  }
+
+  function restoreDraft(){
+    var raw;
+    try{ raw = localStorage.getItem(DRAFT_KEY); }catch(e){ return; }
+    if(!raw) return;
+    var draft;
+    try{ draft = JSON.parse(raw); }catch(e){ return; }
+    if(!draft || !confirm('You have an unfinished form saved from before. Restore it and continue where you left off?')) { if(draft) clearDraft(); return; }
+
+    Object.keys(draft.fields||{}).forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.value = draft.fields[id];
+    });
+    Object.keys(draft.radios||{}).forEach(function(name){
+      var val = draft.radios[name];
+      if(!val) return;
+      var el = document.querySelector('input[name="'+name+'"][value="'+val+'"]');
+      if(el){ el.checked = true; el.dispatchEvent(new Event('change')); }
+    });
+    if(draft.deviceCount){
+      var dcEl = document.querySelector('input[name="deviceCount"][value="'+draft.deviceCount+'"]');
+      if(dcEl){ dcEl.checked = true; dcEl.dispatchEvent(new Event('change')); }
+    }
+    [1,2].forEach(function(idx){
+      var dd = (draft.devices||{})[idx] || {};
+      Object.keys(dd).forEach(function(f){
+        var el = document.getElementById('d'+idx+'_'+f);
+        if(el){
+          el.value = dd[f];
+          if(f === 'simCount') el.dispatchEvent(new Event('change')); // rebuild SIM inputs first
+        }
+      });
+      var sims = (draft.sims||{})[idx] || [];
+      sims.forEach(function(v, i){
+        var el = document.getElementById('d'+idx+'_sim'+(i+1));
+        if(el) el.value = v;
+      });
+    });
+    updateAutoEmpId();
+    showToast('Your unfinished form has been restored.', 'ok');
+  }
+
+  // Autosave on any change/input across the whole form (photos are not saved — too large for localStorage).
+  // (autosave listeners are attached further below, after the device fields exist in the DOM)
+
+  document.getElementById('copyEmpIdBtn').addEventListener('click', function(){
+    var val = document.getElementById('empId').value;
+    var btn = this;
+    if(!val){ return; }
+    var showCopied = function(){
+      var original = 'Copy';
+      btn.textContent = 'Copied!'; btn.classList.add('copied');
+      setTimeout(function(){ btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(val).then(showCopied, function(){
+        var temp = document.createElement('input');
+        temp.value = val; document.body.appendChild(temp); temp.select();
+        document.execCommand('copy'); document.body.removeChild(temp);
+        showCopied();
+      });
+    } else {
+      var temp = document.createElement('input');
+      temp.value = val; document.body.appendChild(temp); temp.select();
+      document.execCommand('copy'); document.body.removeChild(temp);
+      showCopied();
+    }
+  });
+
+  function buildDeviceDetailsHTML(record){
+    var devices = [record.device1];
+    if(record.deviceCount === 2 && record.device2) devices.push(record.device2);
+    var html = '';
+    devices.forEach(function(d, i){
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#f5f6f7;border-left:3px solid #2c6f97;">';
+      html += '<p style="margin:0 0 6px;font-weight:bold;color:#132635;">Device ' + (i+1) + (devices.length>1?'':'')  + '</p>';
+      html += '<p style="margin:0;">';
+      html += '<b>Model:</b> ' + (d.brand||'') + ' ' + (d.model||'') + '<br/>';
+      html += '<b>RAM:</b> ' + (d.ram||'—') + ' &nbsp; <b>Storage:</b> ' + (d.storage||'—') + '<br/>';
+      html += '<b>IMEI 1:</b> ' + (d.imei1||'—') + ' &nbsp; <b>IMEI 2:</b> ' + (d.imei2||'—') + '<br/>';
+      html += '<b>SIM number(s):</b> ' + ((d.simNumbers||[]).join(', ')||'—') + '<br/>';
+      html += '<b>Memory/SD card:</b> ' + (d.memoryCard==='Yes' ? ('Yes — '+d.memoryCardSize) : 'No');
+      html += '</p></div>';
+    });
+    if(record.damage === 'Yes'){
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeee1;border-left:3px solid #b5691f;">';
+      html += '<p style="margin:0;"><b>Reported damage:</b> ' + (record.damageWhat||'—') + '<br/><b>Cause:</b> ' + (record.damageHow||'—') + '</p></div>';
+    }
+    return html;
+  }
+
+  var EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function isRealEmail(v){ return !!v && EMAIL_FORMAT.test(String(v).trim()); }
+
+  async function autoSendHandoverEmail(record, submissionId){
+    var recipients = [record.companyEmail, record.personalEmail].filter(isRealEmail);
+    if(recipients.length === 0) return;
+    try{
+      var { data: tmpl } = await sb.from('email_templates').select('*').eq('action','handover').single();
+      var vars = {
+        employee_name: record.employeeName||'', employee_id: record.employeeId||'',
+        location: record.location||'', designation: record.designation||'',
+        action_date: new Date().toLocaleString(), company_name: window.DNCC_CONFIG.COMPANY_NAME
+      };
+      var intro = tmpl ? fillTemplate(tmpl.body, vars) : ('<p>Dear ' + (record.employeeName||'') + ',</p><p>This confirms your mobile device handover with ' + window.DNCC_CONFIG.COMPANY_NAME + '.</p>');
+      var closing = tmpl ? fillTemplate(tmpl.closing, vars) : '';
+      var subject = tmpl ? fillTemplate(tmpl.subject, vars) : ('Your Mobile Device Handover Confirmation — ' + window.DNCC_CONFIG.COMPANY_NAME);
+      var html = intro + buildDeviceDetailsHTML(record) + closing;
+      var pdfBase64 = buildHandoverPDFBase64(record);
+      var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY },
+        body: JSON.stringify({
+          to: recipients, employeeName: record.employeeName, subject: subject, html: html,
+          pdfBase64: pdfBase64,
+          pdfFilename: 'Handover_' + (record.employeeName||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf'
+        })
+      });
+      var json = await res.json();
+      if(res.ok && json.ok && submissionId){
+        await sb.from('submissions').update({ email_sent_at: new Date().toISOString(), email_sent_via: 'resend' }).eq('id', submissionId);
+      }
+      return res.ok && json.ok;
+    }catch(err){
+      console.error('Auto-email failed (submission was still saved successfully):', err);
+      return false;
+    }
+  }
 
   function uid(){ return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,8); }
 
   function deviceBlockHTML(idx, label){
     return ''
-    + '<div class="device-block" data-device="'+idx+'"><h3>'+label+'</h3>'
+    + '<div class="device-block" data-device="'+idx+'"><h3 data-i18n="deviceBlockTitle'+idx+'">'+label+'</h3>'
     + '<div class="row2">'
-    + '<div class="field"><label for="d'+idx+'_brand">Brand / name</label><input type="text" id="d'+idx+'_brand" required /><div class="error-text">Enter the brand.</div></div>'
-    + '<div class="field"><label for="d'+idx+'_model">Model</label><input type="text" id="d'+idx+'_model" required /><div class="error-text">Enter the model.</div></div>'
+    + '<div class="field"><label for="d'+idx+'_brand" data-i18n="brandLabel">Brand / name</label><input type="text" id="d'+idx+'_brand" required /><div class="error-text" data-i18n="brandError">Enter the brand.</div></div>'
+    + '<div class="field"><label for="d'+idx+'_model" data-i18n="modelLabel">Model</label><input type="text" id="d'+idx+'_model" required /><div class="error-text" data-i18n="modelError">Enter the model.</div></div>'
     + '</div><div class="row2">'
-    + '<div class="field"><label for="d'+idx+'_ram">RAM size</label><input type="text" id="d'+idx+'_ram" placeholder="e.g. 6 GB" required /><div class="error-text">Enter RAM size.</div></div>'
-    + '<div class="field"><label for="d'+idx+'_storage">Storage size</label><input type="text" id="d'+idx+'_storage" placeholder="e.g. 128 GB" required /><div class="error-text">Enter storage size.</div></div>'
+    + '<div class="field"><label for="d'+idx+'_ram" data-i18n="ramLabel">RAM size</label><input type="text" id="d'+idx+'_ram" placeholder="e.g. 6 GB" data-i18n-ph="ramPlaceholder" required /><div class="error-text" data-i18n="ramError">Enter RAM size.</div></div>'
+    + '<div class="field"><label for="d'+idx+'_storage" data-i18n="storageLabel">Storage size</label><input type="text" id="d'+idx+'_storage" placeholder="e.g. 128 GB" data-i18n-ph="storagePlaceholder" required /><div class="error-text" data-i18n="storageError">Enter storage size.</div></div>'
     + '</div>'
-    + '<div class="field"><label>Phone photos</label><div class="photo-pair">'
-    + '<div class="photo-box"><label for="d'+idx+'_front" style="font-weight:400;">Front photo</label><input type="file" accept="image/*" id="d'+idx+'_front" /><img id="d'+idx+'_frontPrev" style="display:none;" /></div>'
-    + '<div class="photo-box"><label for="d'+idx+'_back" style="font-weight:400;">Back photo</label><input type="file" accept="image/*" id="d'+idx+'_back" /><img id="d'+idx+'_backPrev" style="display:none;" /></div>'
+    + '<div class="field"><label data-i18n="photosLabel">Phone photos</label>'
+    + '<p class="hint" style="margin-top:-2px;" data-i18n="photosHint">For the front photo, switch the phone\'s screen ON before taking the picture (helps confirm the device is working and shows the lock screen/home screen).</p>'
+    + '<div class="photo-pair">'
+    + '<div class="photo-box"><label for="d'+idx+'_front" style="font-weight:400;" data-i18n="frontPhotoLabel">Front photo (screen ON)</label><input type="file" accept="image/*" id="d'+idx+'_front" required /><img id="d'+idx+'_frontPrev" style="display:none;" /></div>'
+    + '<div class="photo-box"><label for="d'+idx+'_back" style="font-weight:400;" data-i18n="backPhotoLabel">Back photo</label><input type="file" accept="image/*" id="d'+idx+'_back" required /><img id="d'+idx+'_backPrev" style="display:none;" /></div>'
     + '</div></div>'
     + '<div class="row2">'
-    + '<div class="field"><label for="d'+idx+'_imei1">IMEI number 1</label><input type="text" data-imei id="d'+idx+'_imei1" required /><div class="error-text">Enter IMEI 1 (dial *#06#).</div></div>'
-    + '<div class="field"><label for="d'+idx+'_imei2">IMEI number 2</label><input type="text" data-imei id="d'+idx+'_imei2" placeholder="Leave blank if single-SIM device" /></div>'
+    + '<div class="field"><label for="d'+idx+'_imei1" data-i18n="imei1Label">IMEI number 1</label><input type="text" data-imei id="d'+idx+'_imei1" required /><div class="error-text" data-i18n="imei1Error">Enter IMEI 1 (dial *#06#).</div><div class="dup-warning" id="d'+idx+'_imei1DupWarning"></div></div>'
+    + '<div class="field"><label for="d'+idx+'_imei2" data-i18n="imei2Label">IMEI number 2</label><input type="text" data-imei id="d'+idx+'_imei2" placeholder="Leave blank if single-SIM device" data-i18n-ph="imei2Placeholder" /></div>'
     + '</div>'
-    + '<div class="field"><label for="d'+idx+'_simCount">How many SIMs does this phone have?</label>'
+    + '<div class="field"><label for="d'+idx+'_simCount" data-i18n="simCountLabel">How many SIMs does this phone have?</label>'
     + '<select id="d'+idx+'_simCount"><option value="1">1</option><option value="2">2</option></select>'
     + '<div class="sim-numbers" id="d'+idx+'_simNumbers"></div></div>'
-    + '<div class="field" style="margin-bottom:0;"><label for="d'+idx+'_usage">Mobile use — describe what this phone is used for</label><textarea id="d'+idx+'_usage"></textarea></div>'
+    + '<div class="field"><label data-i18n="memCardLabel">Does this phone have a memory / SD card?</label>'
+    + '<div class="radiogroup"><label><input type="radio" name="d'+idx+'_memoryCard" value="Yes" required /> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="d'+idx+'_memoryCard" value="No" required /> <span data-i18n="no">No</span></label></div>'
+    + '<div class="conditional" id="d'+idx+'_memoryCardSizeWrap" style="display:none;">'
+    + '<div class="field" style="margin-bottom:0;"><label for="d'+idx+'_memoryCardSize" data-i18n="memCardSizeLabel">Memory card size</label><input type="text" id="d'+idx+'_memoryCardSize" placeholder="e.g. 64 GB" data-i18n-ph="memCardSizePlaceholder" /></div>'
+    + '</div></div>'
+    + '<div class="field" style="margin-bottom:0;"><label for="d'+idx+'_usage" data-i18n="usageLabel">Mobile use — describe what this phone is used for</label><textarea id="d'+idx+'_usage"></textarea></div>'
     + '</div>';
   }
 
   document.getElementById('device1Container').innerHTML = deviceBlockHTML(1, 'Mobile phone 1');
   document.getElementById('device2Container').innerHTML = deviceBlockHTML(2, 'Mobile phone 2');
+  applyLanguage();
+
+  [1,2].forEach(function(idx){
+    wireImeiLiveValidation(document.getElementById('d'+idx+'_imei1'), true);
+    wireImeiLiveValidation(document.getElementById('d'+idx+'_imei2'), false);
+  });
+
+  // ---------- Live duplicate-IMEI check (debounced, runs right after typing IMEI 1) ----------
+  function debounce(fn, wait){
+    var t;
+    return function(){
+      var args = arguments, ctx = this;
+      clearTimeout(t);
+      t = setTimeout(function(){ fn.apply(ctx, args); }, wait);
+    };
+  }
+
+  function wireLiveDuplicateCheck(idx){
+    var el = document.getElementById('d'+idx+'_imei1');
+    var warnEl = document.getElementById('d'+idx+'_imei1DupWarning');
+    var checkNow = debounce(async function(){
+      var v = el.value.trim();
+      warnEl.classList.remove('show'); warnEl.textContent = '';
+      if(!IMEI_PATTERN.test(v)) return; // only check once it's a well-formed 15-digit IMEI
+      try{
+        var { data: dupes } = await sb.from('submissions')
+          .select('id, employee_name')
+          .or('device1->>imei1.eq.' + v + ',device2->>imei1.eq.' + v);
+        if(dupes && dupes.length > 0){
+          warnEl.textContent = 'This IMEI already has a submission on file (by ' + (dupes[0].employee_name||'someone') + '). You can still edit it below, or use "Request a correction" instead if this is a mistake.';
+          warnEl.classList.add('show');
+        }
+      }catch(err){ /* non-blocking — the real check still runs again at submit time */ }
+    }, 500);
+    el.addEventListener('input', checkNow);
+  }
+  wireLiveDuplicateCheck(1);
+  wireLiveDuplicateCheck(2);
 
   function wireSimNumbers(idx){
     var sel = document.getElementById('d'+idx+'_simCount');
     var box = document.getElementById('d'+idx+'_simNumbers');
     function render(){
       var n = parseInt(sel.value, 10), html='';
-      for(var i=1;i<=n;i++){ html += '<input type="text" data-sim id="d'+idx+'_sim'+i+'" placeholder="SIM '+i+' number" required />'; }
+      for(var i=1;i<=n;i++){ html += '<input type="text" data-sim id="d'+idx+'_sim'+i+'" placeholder="SIM '+i+' number (10 digits)" required />'; }
       box.innerHTML = html;
+      for(var i=1;i<=n;i++){ wirePhoneLiveValidation(document.getElementById('d'+idx+'_sim'+i), true); }
     }
     sel.addEventListener('change', render); render();
   }
   wireSimNumbers(1); wireSimNumbers(2);
 
+  function wireMemoryCard(idx){
+    var wrap = document.getElementById('d'+idx+'_memoryCardSizeWrap');
+    document.querySelectorAll('input[name="d'+idx+'_memoryCard"]').forEach(function(r){
+      r.addEventListener('change', function(){
+        wrap.style.display = (this.value === 'Yes') ? 'block' : 'none';
+      });
+    });
+  }
+  wireMemoryCard(1); wireMemoryCard(2);
+
   function wirePhotoPreview(idx, which){
     var input = document.getElementById('d'+idx+'_'+which), prev = document.getElementById('d'+idx+'_'+which+'Prev');
     input.addEventListener('change', function(){
       if(!input.files || !input.files[0]){ prev.style.display='none'; return; }
+      var file = input.files[0];
+      var MAX_BYTES = 15 * 1024 * 1024; // 15MB
+      if(!file.type || file.type.indexOf('image/') !== 0){
+        setFieldMessage(input, 'That file doesn\'t look like an image. Please choose a photo (JPG, PNG, etc.).');
+        input.value = ''; prev.style.display = 'none'; return;
+      }
+      if(file.size > MAX_BYTES){
+        setFieldMessage(input, 'That photo is too large (over 15MB). Please choose a smaller photo.');
+        input.value = ''; prev.style.display = 'none'; return;
+      }
+      setFieldMessage(input, null);
       var reader = new FileReader();
       reader.onload = function(e){ prev.src = e.target.result; prev.style.display='block'; };
-      reader.readAsDataURL(input.files[0]);
+      reader.readAsDataURL(file);
     });
   }
   ['front','back'].forEach(function(w){ wirePhotoPreview(1,w); wirePhotoPreview(2,w); });
+
+  // Autosave on any change/input across the whole form (photos are not saved — too large for localStorage).
+  document.getElementById('intakeForm').addEventListener('input', saveDraftDebounced);
+  document.getElementById('intakeForm').addEventListener('change', saveDraftDebounced);
+  restoreDraft();
 
   function compressImage(file, maxDim, quality){
     return new Promise(function(resolve, reject){
@@ -273,22 +822,85 @@
   function clearErrors(){ document.querySelectorAll('.field.has-error').forEach(function(f){ f.classList.remove('has-error'); }); }
   function markError(input){ var f=input.closest('.field'); if(f) f.classList.add('has-error'); }
 
+  // ---------- Live format validation: IMEI (15 digits) and phone numbers (10 digits) ----------
+  var IMEI_PATTERN = /^\d{15}$/;
+  var PHONE_PATTERN = /^\d{10}$/;
+
+  function setFieldMessage(el, msg){
+    var field = el.closest('.field');
+    if(!field) return;
+    var errEl = field.querySelector('.error-text');
+    if(msg){
+      field.classList.add('has-error');
+      if(errEl) errEl.textContent = msg;
+    } else {
+      field.classList.remove('has-error');
+    }
+  }
+
+  // required=true also fails (with a message) on empty; returns whether the field is currently valid.
+  function checkImeiField(el, required, defaultRequiredMsg){
+    var v = el.value.trim();
+    if(v === ''){
+      if(required){ setFieldMessage(el, defaultRequiredMsg || 'This IMEI is required.'); return false; }
+      setFieldMessage(el, null); return true;
+    }
+    if(!IMEI_PATTERN.test(v)){ setFieldMessage(el, 'IMEI must be exactly 15 digits, numbers only.'); return false; }
+    setFieldMessage(el, null); return true;
+  }
+
+  function checkPhoneField(el, required, defaultRequiredMsg){
+    var v = el.value.trim();
+    if(v === ''){
+      if(required){ setFieldMessage(el, defaultRequiredMsg || 'This phone number is required.'); return false; }
+      setFieldMessage(el, null); return true;
+    }
+    if(!PHONE_PATTERN.test(v)){ setFieldMessage(el, 'Phone number must be exactly 10 digits, numbers only.'); return false; }
+    setFieldMessage(el, null); return true;
+  }
+
+  // Wire live validation as the person types/leaves the field (not just at submit time).
+  function wireImeiLiveValidation(el, required){
+    el.addEventListener('input', function(){ checkImeiField(el, required); });
+    el.addEventListener('blur', function(){ checkImeiField(el, required); });
+  }
+  function wirePhoneLiveValidation(el, required){
+    el.addEventListener('input', function(){ checkPhoneField(el, required); });
+    el.addEventListener('blur', function(){ checkPhoneField(el, required); });
+  }
+  wirePhoneLiveValidation(document.getElementById('contact'), false);
+
   function validate(deviceCount){
     clearErrors(); var ok=true;
     ['empName','location','designation'].forEach(function(id){
       var el=document.getElementById(id); if(!el.value.trim()){ markError(el); ok=false; }
     });
-    var emailEl = document.getElementById('empEmail');
     var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if(!emailPattern.test(emailEl.value.trim())){ markError(emailEl); ok=false; }
+    var companyEmailEl = document.getElementById('companyEmail');
+    var personalEmailEl = document.getElementById('personalEmail');
+    var companyEmailVal = companyEmailEl.value.trim();
+    if(!(emailPattern.test(companyEmailVal) || companyEmailVal.toUpperCase() === 'NOT')){ markError(companyEmailEl); ok=false; }
+    if(!emailPattern.test(personalEmailEl.value.trim())){ markError(personalEmailEl); ok=false; }
     for(var d=1; d<=deviceCount; d++){
-      ['brand','model','ram','storage','imei1'].forEach(function(f){
+      ['brand','model','ram','storage'].forEach(function(f){
         var el=document.getElementById('d'+d+'_'+f); if(!el.value.trim()){ markError(el); ok=false; }
       });
+      if(!checkImeiField(document.getElementById('d'+d+'_imei1'), true, 'Enter IMEI 1 (dial *#06#).')) ok=false;
+      if(!checkImeiField(document.getElementById('d'+d+'_imei2'), false)) ok=false;
+      var frontFileEl = document.getElementById('d'+d+'_front');
+      var backFileEl = document.getElementById('d'+d+'_back');
+      if(!frontFileEl.files || !frontFileEl.files[0]){ markError(frontFileEl); ok=false; }
+      if(!backFileEl.files || !backFileEl.files[0]){ markError(backFileEl); ok=false; }
       var simCount=parseInt(document.getElementById('d'+d+'_simCount').value,10);
       for(var s=1;s<=simCount;s++){
         var simEl=document.getElementById('d'+d+'_sim'+s);
-        if(simEl && !simEl.value.trim()){ markError(simEl); ok=false; }
+        if(simEl && !checkPhoneField(simEl, true)) ok=false;
+      }
+      var memCardVal = getRadioValue('d'+d+'_memoryCard');
+      if(!memCardVal) ok=false;
+      if(memCardVal === 'Yes'){
+        var sizeEl = document.getElementById('d'+d+'_memoryCardSize');
+        if(!sizeEl.value.trim()){ markError(sizeEl); ok=false; }
       }
     }
     if(!getRadioValue('charger')) ok=false;
@@ -315,60 +927,56 @@
       imei1:document.getElementById('d'+idx+'_imei1').value.trim(),
       imei2:document.getElementById('d'+idx+'_imei2').value.trim(),
       simCount:simCount, simNumbers:sims,
+      memoryCard: getRadioValue('d'+idx+'_memoryCard'),
+      memoryCardSize: getRadioValue('d'+idx+'_memoryCard')==='Yes' ? document.getElementById('d'+idx+'_memoryCardSize').value.trim() : '',
       usage:document.getElementById('d'+idx+'_usage').value.trim(),
       frontPhoto:frontPhoto, backPhoto:backPhoto
     };
   }
 
-  function buildHandoverPDF(record){
-    var jsPDFCtor = window.jspdf.jsPDF;
-    var doc = new jsPDFCtor({ unit:'pt', format:'a4' });
-    var y = 50, left = 48, lineH = 16;
-    doc.setFont('helvetica','bold'); doc.setFontSize(15);
-    doc.text(window.DNCC_CONFIG.COMPANY_NAME, left, y); y += 20;
-    doc.setFontSize(11); doc.setFont('helvetica','normal');
-    doc.text(window.DNCC_CONFIG.DEPARTMENT + ' — Mobile Device Handover Receipt', left, y); y += 10;
-    doc.setDrawColor(180); doc.line(left, y, 547, y); y += 24;
-
-    function row(label, value){
-      doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.text(label, left, y);
-      doc.setFont('helvetica','normal'); doc.text(String(value||'—'), left+150, y);
-      y += lineH;
-      if(y > 780){ doc.addPage(); y = 50; }
-    }
-    function section(title){
-      y += 6; doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(30,60,90);
-      doc.text(title, left, y); doc.setTextColor(0,0,0); y += 16;
-    }
+  function buildHandoverDoc(record){
+    var ctx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, 'Mobile Device Handover Receipt');
+    var row = function(l,v){ window.DNCCPdf.row(ctx,l,v); };
+    var section = function(t){ window.DNCCPdf.section(ctx,t); };
 
     section('Employee');
     row('Name', record.employeeName); row('Employee ID', record.employeeId);
-    row('Email', record.employeeEmail);
+    if(record.companyEmail) row('Company email', record.companyEmail);
+    if(record.personalEmail) row('Personal email', record.personalEmail);
     row('Department', record.department); row('Location', record.location);
     row('Designation', record.designation); row('Date', new Date().toLocaleString());
 
     [record.device1, record.deviceCount===2?record.device2:null].forEach(function(d, i){
       if(!d) return;
-      section('Mobile phone ' + (i+1));
+      section('Mobile Phone ' + (i+1));
       row('Brand / Model', (d.brand||'')+' '+(d.model||''));
       row('RAM / Storage', (d.ram||'')+' / '+(d.storage||''));
       row('IMEI 1', d.imei1); row('IMEI 2', d.imei2);
       row('SIM number(s)', (d.simNumbers||[]).join(', '));
+      row('Memory/SD card', d.memoryCard === 'Yes' ? ('Yes — ' + d.memoryCardSize) : 'No');
       row('Usage', d.usage);
     });
 
-    section('Accessories & condition');
+    section('Accessories & Condition');
     row('Charger provided', record.charger);
     row('Data/USB cable provided', record.cable);
     row('Damage present', record.damage);
-    if(record.damage === 'Yes'){ row('Damage', record.damageWhat); row('Cause', record.damageHow); }
+    if(record.damage === 'Yes'){ window.DNCCPdf.damageBlock(ctx, record.damageWhat, record.damageHow); }
 
-    y += 20;
-    doc.setFont('helvetica','italic'); doc.setFontSize(9.5);
-    doc.text('This is a system-generated handover confirmation. Please retain this copy for your records.', left, y);
+    window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
 
+    return ctx.doc;
+  }
+
+  function buildHandoverPDF(record){
+    var doc = buildHandoverDoc(record);
     var fname = 'Handover_' + (record.employeeName||'Employee').replace(/[^a-z0-9]+/gi,'_') + '_' + new Date().toISOString().slice(0,10) + '.pdf';
     doc.save(fname);
+  }
+
+  function buildHandoverPDFBase64(record){
+    var doc = buildHandoverDoc(record);
+    return doc.output('datauristring').split(',')[1];
   }
 
   async function upsertDevice(d, employeeName, employeeId){
@@ -392,13 +1000,13 @@
     if(!validate(deviceCount)){ showToast('Please fill in the highlighted required fields before submitting.', 'err'); return; }
 
     var submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true; submitBtn.textContent = 'Saving…';
-
+    submitBtn.disabled = true; submitBtn.textContent = 'Preparing review…';
     try{
       var record = {
         employeeName: document.getElementById('empName').value.trim(),
         employeeId: document.getElementById('empId').value.trim(),
-        employeeEmail: document.getElementById('empEmail').value.trim(),
+        companyEmail: document.getElementById('companyEmail').value.trim(),
+        personalEmail: document.getElementById('personalEmail').value.trim(),
         department: document.getElementById('department').value.trim(),
         location: document.getElementById('location').value.trim(),
         designation: document.getElementById('designation').value.trim(),
@@ -410,24 +1018,130 @@
       };
       record.device1 = await collectDevice(1);
       if(deviceCount === 2) record.device2 = await collectDevice(2);
+      showReview(record);
+    }catch(err){
+      console.error(err);
+      showToast('Something went wrong preparing your details. Please try again.', 'err');
+    }finally{
+      submitBtn.disabled = false; submitBtn.textContent = t('submitBtn');
+    }
+  });
 
-      var { error } = await sb.from('submissions').insert([{
-        employee_name: record.employeeName, employee_id: record.employeeId, employee_email: record.employeeEmail, department: record.department,
+  // ---------- Review screen ----------
+  function reviewRow(label, value){
+    return '<div class="review-row"><span class="review-label">'+label+'</span><span class="review-value">'+(value||'—')+'</span></div>';
+  }
+
+  function buildReviewHTML(record){
+    var html = '<div class="review-section"><h4>'+t('legend1')+'</h4>';
+    html += reviewRow(t('empNameLabel'), record.employeeName);
+    html += reviewRow(t('empIdLabel'), record.employeeId);
+    html += reviewRow(t('locationLabel'), record.location);
+    html += reviewRow(t('designationLabel'), record.designation);
+    html += reviewRow(t('departmentLabel'), record.department);
+    html += reviewRow(t('contactLabel'), record.contact);
+    html += reviewRow(t('companyEmailLabel'), record.companyEmail);
+    html += reviewRow(t('personalEmailLabel'), record.personalEmail);
+    html += '</div>';
+
+    [record.device1, record.deviceCount===2?record.device2:null].forEach(function(d, i){
+      if(!d) return;
+      html += '<div class="review-section"><h4>'+t('deviceBlockTitle'+(i+1))+'</h4>';
+      html += reviewRow(t('brandLabel'), d.brand);
+      html += reviewRow(t('modelLabel'), d.model);
+      html += reviewRow(t('ramLabel'), d.ram);
+      html += reviewRow(t('storageLabel'), d.storage);
+      html += reviewRow(t('imei1Label'), d.imei1);
+      html += reviewRow(t('imei2Label'), d.imei2);
+      html += reviewRow(t('simCountLabel'), (d.simNumbers||[]).join(', '));
+      html += reviewRow(t('memCardLabel'), d.memoryCard === 'Yes' ? (d.memoryCard + ' — ' + d.memoryCardSize) : d.memoryCard);
+      html += reviewRow(t('usageLabel'), d.usage);
+      if(d.frontPhoto || d.backPhoto){
+        html += '<div class="review-photos">';
+        if(d.frontPhoto) html += '<img src="'+d.frontPhoto+'" alt="Front photo" />';
+        if(d.backPhoto) html += '<img src="'+d.backPhoto+'" alt="Back photo" />';
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+
+    html += '<div class="review-section"><h4>'+t('legend5')+' / '+t('legend6')+'</h4>';
+    html += reviewRow(t('chargerLabel'), record.charger);
+    html += reviewRow(t('cableLabel'), record.cable);
+    html += reviewRow(t('damageLabel'), record.damage);
+    if(record.damage === 'Yes'){
+      html += reviewRow(t('damageWhatLabel'), record.damageWhat);
+      html += reviewRow(t('damageHowLabel'), record.damageHow);
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function showReview(record){
+    document.getElementById('reviewContent').innerHTML = buildReviewHTML(record);
+    document.getElementById('reviewOverlay').classList.add('open');
+    document.getElementById('reviewConfirmBtn').onclick = function(){
+      document.getElementById('reviewOverlay').classList.remove('open');
+      finalizeSubmission(record);
+    };
+  }
+
+  document.getElementById('reviewBackBtn').addEventListener('click', function(){
+    document.getElementById('reviewOverlay').classList.remove('open');
+  });
+
+  async function finalizeSubmission(record){
+    var submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true; submitBtn.textContent = 'Checking for duplicates…';
+
+    try{
+      // Duplicate check — has this IMEI already been submitted before?
+      var imeisToCheck = [record.device1.imei1];
+      if(record.device2) imeisToCheck.push(record.device2.imei1);
+      for(var ci=0; ci<imeisToCheck.length; ci++){
+        var checkImei = imeisToCheck[ci];
+        if(!checkImei) continue;
+        var { data: dupes } = await sb.from('submissions')
+          .select('id, employee_name, created_at')
+          .or('device1->>imei1.eq.' + checkImei + ',device2->>imei1.eq.' + checkImei);
+        if(dupes && dupes.length > 0){
+          showToast('This device (IMEI ' + checkImei + ') already has a submission on file (by ' + (dupes[0].employee_name||'someone') + '). If this is a mistake, please use "Request a correction" below instead of submitting again.', 'err');
+          submitBtn.disabled = false; submitBtn.textContent = t('submitBtn');
+          return;
+        }
+      }
+      submitBtn.textContent = 'Saving…';
+
+      var { data: inserted, error } = await sb.from('submissions').insert([{
+        employee_name: record.employeeName, employee_id: record.employeeId,
+        company_email: record.companyEmail, personal_email: record.personalEmail,
+        department: record.department,
         location: record.location, designation: record.designation, contact: record.contact,
         device_count: record.deviceCount, charger: record.charger, cable: record.cable,
         damage: record.damage, damage_what: record.damageWhat, damage_how: record.damageHow,
         device1: record.device1, device2: record.device2 || null
-      }]);
+      }]).select();
       if(error) throw error;
+      var submissionId = inserted && inserted[0] ? inserted[0].id : null;
 
       await upsertDevice(record.device1, record.employeeName, record.employeeId);
       if(record.device2) await upsertDevice(record.device2, record.employeeName, record.employeeId);
 
       buildHandoverPDF(record);
-      showToast('Submitted successfully — your handover PDF is downloading now.', 'ok');
-      this.reset();
+      submitBtn.textContent = 'Emailing your copy…';
+      var emailed = await autoSendHandoverEmail(record, submissionId);
+      showToast(emailed
+        ? 'Submitted successfully — your handover PDF is downloading, and a copy has been emailed to you.'
+        : 'Submitted successfully — your handover PDF is downloading now. (The email copy could not be sent — IT has been notified via the portal.)', 'ok');
+      clearDraft();
+      document.getElementById('intakeForm').reset();
+      document.getElementById('empId').value = '';
       document.getElementById('device2Fieldset').style.display = 'none';
       document.getElementById('damageDetails').style.display = 'none';
+      ['1','2'].forEach(function(idx){
+        var wrap = document.getElementById('d'+idx+'_memoryCardSizeWrap');
+        if(wrap) wrap.style.display = 'none';
+      });
       document.querySelectorAll('.radiogroup label').forEach(function(l){ l.classList.remove('on'); });
       ['frontPrev','backPrev'].forEach(function(k){
         var i1=document.getElementById('d1_'+k), i2=document.getElementById('d2_'+k);
@@ -438,7 +1152,56 @@
       console.error(err);
       showToast('Something went wrong saving your response. Please try again.', 'err');
     }finally{
-      submitBtn.disabled=false; submitBtn.textContent='Submit details';
+      submitBtn.disabled=false; submitBtn.textContent=t('submitBtn');
+    }
+  }
+
+  // ---------- Correction request ----------
+  document.getElementById('correctionToggle').addEventListener('click', function(){
+    var form = document.getElementById('correctionForm');
+    var open = form.style.display !== 'none';
+    form.style.display = open ? 'none' : 'block';
+    this.textContent = open ? t('correctionToggleClosed') : t('correctionToggleOpen');
+  });
+
+  document.getElementById('correctionForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var name = document.getElementById('corrName').value.trim();
+    var email = document.getElementById('corrEmail').value.trim();
+    var empId = document.getElementById('corrEmpId').value.trim();
+    var details = document.getElementById('corrDetails').value.trim();
+    var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    var corrToast = document.getElementById('corrToast');
+    if(!name || !details || !emailPattern.test(email)){
+      corrToast.textContent = 'Please fill in your name, a valid email, and what needs correcting.';
+      corrToast.className = 'toast err';
+      return;
+    }
+    var btn = document.getElementById('corrSubmitBtn');
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try{
+      // Try to auto-link to their most recent submission by matching email
+      var submissionId = null;
+      var { data: matches } = await sb.from('submissions')
+        .select('id, created_at')
+        .or('company_email.eq.' + email + ',personal_email.eq.' + email)
+        .order('created_at', { ascending:false }).limit(1);
+      if(matches && matches[0]) submissionId = matches[0].id;
+
+      var { error } = await sb.from('change_requests').insert([{
+        submission_id: submissionId, employee_name: name, employee_id: empId,
+        employee_email: email, request_details: details, status: 'Pending'
+      }]);
+      if(error) throw error;
+      corrToast.textContent = 'Correction request sent. IT will review it and email you once it\'s updated.';
+      corrToast.className = 'toast ok';
+      this.reset();
+    }catch(err){
+      console.error(err);
+      corrToast.textContent = 'Could not send your request. Please try again.';
+      corrToast.className = 'toast err';
+    }finally{
+      btn.disabled = false; btn.textContent = 'Send correction request';
     }
   });
 })();
