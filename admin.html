@@ -533,7 +533,7 @@
     var retired = currentDevices.filter(function(d){ return d.status==='Retired'; }).length;
     var damaged = currentSubs.filter(function(s){ return s.damage==='Yes'; }).length;
     var emailedAuto = currentSubs.filter(function(s){ return !!s.email_sent_at && s.email_sent_via !== 'manual'; }).length;
-    var emailedManual = currentSubs.filter(function(s){ return !!s.email_sent_at && s.email_sent_via === 'manual'; }).length;
+    var emailedManual = currentActivityLog.filter(function(l){ return l.action === 'Manual email confirmed sent'; }).length;
     var pendingReqs = currentChangeReqs.filter(function(c){ return c.status==='Pending'; }).length;
     // [label, value, tab, invStatusFilterValue, subsDamageFilterValue]
     var cards = [
@@ -1052,7 +1052,8 @@
         if(confirm('Did you finish sending this in Zoho Mail?\n\nClick OK to mark it as sent in the portal (so it shows correctly in the Submissions list), or Cancel to leave it unmarked for now — you can always come back and send it later.')){
           try{
             await sb.from('submissions').update({ email_sent_at: new Date().toISOString(), email_sent_via: 'manual' }).eq('id', r.id);
-            await loadSubmissions(); renderStats();
+            await logActivity('Manual email confirmed sent', 'submission', r.id, templateKey + ' email to ' + dnccRecipient + ' for ' + (r.employee_name||''));
+            await loadSubmissions(); renderStats(); loadActivityLog();
           }catch(err){ console.error('Could not mark as sent:', err); }
         }
       }, 200);
@@ -1090,7 +1091,17 @@
     ];
     var body = plainIntro + '\n\n' + deviceLines.join('\n') + '\n' + plainClosing;
     var subject = fillTemplate(t.subject, vars).replace(/[—]/g, '-');
-    copyAndOpenZoho(employee.email, subject, body, fname);
+    copyAndOpenZoho(employee.email, subject, body, fname, function(){
+      setTimeout(async function(){
+        if(confirm('Did you finish sending this in Zoho Mail?\n\nClick OK to mark it as sent (recorded in the Activity Log), or Cancel to leave it unmarked for now.')){
+          try{
+            await sb.from('device_history').insert([{ imei1: device.imei1, action:'Manual Zoho email confirmed sent (' + actionKey + ')', employee_name: employee.name||'', notes: subject }]);
+            await logActivity('Manual email confirmed sent', 'device', device.imei1, actionKey + ' email to ' + employee.email + ' for ' + (employee.name||''));
+            renderStats(); loadActivityLog();
+          }catch(err){ console.error('Could not mark as sent:', err); }
+        }
+      }, 200);
+    });
   }
 
   function _fillHandoverDoc(ctx, r){
@@ -1168,13 +1179,14 @@
     return html;
   }
 
-  async function sendHandoverEmail(r){
+  async function sendHandoverEmail(r, templateKey){
+    templateKey = templateKey || 'handover';
     var recipients = [r.company_email, r.personal_email].filter(isRealEmail);
     if(recipients.length === 0){ alert('This submission has no real email addresses on file (company email may be set to "NOT").'); return; }
-    if(!confirm('Send the handover confirmation email to ' + recipients.join(' and ') + '?')) return;
+    if(!confirm('Send the ' + templateKey + ' confirmation email to ' + recipients.join(' and ') + '?')) return;
     try{
       var pdfBase64 = buildHandoverPDFBase64(r);
-      var t = currentTemplates.handover || DEFAULT_TEMPLATES.handover;
+      var t = currentTemplates[templateKey] || DEFAULT_TEMPLATES[templateKey] || DEFAULT_TEMPLATES.handover;
       var vars = {
         employee_name: r.employee_name||'', employee_id: r.employee_id||'',
         location: r.location||'', designation: r.designation||'',
@@ -1282,8 +1294,7 @@
     if(!list.length){ area.innerHTML = '<p class="empty-state">No devices match your search/filters.</p>'; return; }
     var rows = list.map(function(d){
       var actions = '';
-      if(d.status !== 'Retired') actions += '<button class="btn-small assign" data-action="assign" data-imei="'+esc(d.imei1)+'">'+(d.status==='Assigned'?'Reassign':'Assign')+'</button>';
-      if(d.status === 'Spare') actions += '<button class="btn-small assign" data-action="assigntosubmission" data-imei="'+esc(d.imei1)+'" title="Pick an existing employee submission and auto-fill this device into it">Assign to employee</button>';
+      if(d.status !== 'Retired') actions += '<button class="btn-small assign" data-action="assigntosubmission" data-imei="'+esc(d.imei1)+'" title="Pick an existing employee submission — auto-fills their details">'+(d.status==='Assigned'?'Reassign':'Assign')+'</button>';
       if(d.status !== 'Spare' && d.status !== 'Retired') actions += '<button class="btn-small spare" data-action="spare" data-imei="'+esc(d.imei1)+'">Spare</button>';
       if(d.status !== 'Retired') actions += '<button class="btn-small retire" data-action="retire" data-imei="'+esc(d.imei1)+'">Retire</button>';
       actions += '<button class="btn-small edit" data-action="edit" data-imei="'+esc(d.imei1)+'">Edit</button>';
@@ -1340,24 +1351,7 @@
     var d = currentDevices.find(function(x){ return x.imei1===imei1; });
     if(action === 'assigntosubmission'){ openAssignPicker(d); return; }
     try{
-      if(action === 'assign'){
-        var wasAssigned = d.status === 'Assigned';
-        var name = prompt('Employee name to assign this device to:', d ? (d.assigned_to||'') : '');
-        if(!name) return;
-        var id = prompt('Employee ID (optional):', d ? (d.assigned_employee_id||'') : '') || '';
-        var email = prompt('Employee email (needed to send a confirmation):', d ? (d.assigned_employee_email||'') : '') || '';
-        await sb.from('devices').update({ status:'Assigned', assigned_to:name, assigned_employee_id:id, assigned_employee_email:email, last_updated:new Date().toISOString() }).eq('imei1', imei1);
-        var actionKey = wasAssigned ? 'reassign' : 'handover';
-        var pdfTitle = wasAssigned ? 'Device Reassignment Confirmation' : 'Device Handover Receipt';
-        await sb.from('device_history').insert([{ imei1:imei1, action:(wasAssigned?'Reassigned':'Assigned')+' (admin)', employee_name:name, notes:'' }]);
-        if(email && email.toLowerCase().endsWith('@dncc.in')){
-          if(confirm('This is a @dncc.in address, so this uses the manual Zoho flow (downloads PDF + copies email text + opens Zoho Mail). Continue?')){
-            prepareManualActionEmail(actionKey, pdfTitle, { name:name, id:id, email:email }, d);
-          }
-        } else if(email && confirm('Email a ' + (wasAssigned?'reassignment':'handover') + ' confirmation to ' + name + ' now?')){
-          await sendActionEmail(actionKey, pdfTitle, { name:name, id:id, email:email }, d);
-        }
-      } else if(action === 'spare'){
+      if(action === 'spare'){
         if(!confirm('Mark this device as spare / unassigned?')) return;
         var prevEmployee = { name:d.assigned_to, id:d.assigned_employee_id, email:d.assigned_employee_email };
         await sb.from('devices').update({ status:'Spare', assigned_to:null, assigned_employee_id:null, assigned_employee_email:null, last_updated:new Date().toISOString() }).eq('imei1', imei1);
@@ -1389,15 +1383,37 @@
           { id:'brand', label:'Brand', value:d.brand }, { id:'model', label:'Model', value:d.model },
           { id:'ram', label:'RAM', value:d.ram }, { id:'storage', label:'Storage', value:d.storage },
           { id:'imei1', label:'IMEI 1', value:d.imei1 }, { id:'imei2', label:'IMEI 2', value:d.imei2 },
+          { id:'assigned_to', label:'Assigned employee name', value:d.assigned_to },
+          { id:'assigned_employee_id', label:'Assigned employee ID', value:d.assigned_employee_id },
           { id:'assigned_employee_email', label:'Assigned employee email', value:d.assigned_employee_email },
           { id:'notes', label:'Notes', value:d.notes, type:'textarea' }
         ], async function(values){
           try{
+            var detailsChanged = values.brand !== (d.brand||'') || values.model !== (d.model||'')
+              || values.ram !== (d.ram||'') || values.storage !== (d.storage||'')
+              || values.imei1 !== (d.imei1||'') || values.imei2 !== (d.imei2||'');
+
             await sb.from('devices').update({
               brand:values.brand, model:values.model, ram:values.ram, storage:values.storage,
-              imei2:values.imei2, assigned_employee_email:values.assigned_employee_email, notes:values.notes, last_updated:new Date().toISOString()
+              imei1:values.imei1, imei2:values.imei2,
+              assigned_to:values.assigned_to, assigned_employee_id:values.assigned_employee_id,
+              assigned_employee_email:values.assigned_employee_email, notes:values.notes, last_updated:new Date().toISOString()
             }).eq('imei1', imei1);
-            closeModal(); await loadInventory(); renderStats();
+            await logActivity('Edited device', 'device', values.imei1, 'Updated details for ' + (values.brand||'')+' '+(values.model||'') + (detailsChanged ? ' (device details changed)' : ''));
+
+            closeModal(); await loadInventory(); renderStats(); loadActivityLog();
+
+            if(detailsChanged && values.assigned_employee_email){
+              var updatedDevice = { brand:values.brand, model:values.model, ram:values.ram, storage:values.storage, imei1:values.imei1, imei2:values.imei2 };
+              var empInfo = { name:values.assigned_to, id:values.assigned_employee_id, email:values.assigned_employee_email };
+              if(values.assigned_employee_email.toLowerCase().endsWith('@dncc.in')){
+                if(confirm('Device details changed for ' + (values.assigned_to||'this employee') + '. This is a @dncc.in address, so this uses the manual Zoho flow. Send an update notification now?')){
+                  prepareManualActionEmail('update', 'Updated Device Details', empInfo, updatedDevice);
+                }
+              } else if(confirm('Device details changed for ' + (values.assigned_to||'this employee') + '. Send an update notification email to ' + values.assigned_employee_email + ' now?')){
+                await sendActionEmail('update', 'Updated Device Details', empInfo, updatedDevice);
+              }
+            }
           }catch(err){ console.error(err); alert('Could not save: ' + (err.message||err)); }
         });
         return;
@@ -1453,8 +1469,10 @@
     var sub = currentSubs.find(function(s){ return String(s.id) === String(submissionId); });
     var device = assignPickerDevice;
     if(!sub || !device) return;
+    var wasAssigned = device.status === 'Assigned';
+    var templateKey = wasAssigned ? 'reassign' : 'handover';
     var slot = sub.device_count === 2 ? 'device2' : (sub.device1 ? 'device2' : 'device1');
-    if(!confirm('Assign ' + (device.brand||'') + ' ' + (device.model||'') + ' to ' + sub.employee_name + ' as ' + (slot==='device1'?'Device 1':'Device 2') + '? This will update their submission record and send a handover email.')) return;
+    if(!confirm('Assign ' + (device.brand||'') + ' ' + (device.model||'') + ' to ' + sub.employee_name + ' as ' + (slot==='device1'?'Device 1':'Device 2') + '? This will update their submission record and send a ' + (wasAssigned?'reassignment':'handover') + ' email.')) return;
     try{
       var deviceData = {
         brand: device.brand, model: device.model, ram: device.ram, storage: device.storage,
@@ -1468,12 +1486,13 @@
       var { error } = await sb.from('submissions').update(updatePayload).eq('id', sub.id);
       if(error) throw error;
 
+      var prevAssignedTo = device.assigned_to;
       await sb.from('devices').update({
         status:'Assigned', assigned_to: sub.employee_name, assigned_employee_id: sub.employee_id,
         assigned_employee_email: sub.company_email || sub.personal_email || '', last_updated: new Date().toISOString()
       }).eq('imei1', device.imei1);
-      await sb.from('device_history').insert([{ imei1:device.imei1, action:'Assigned to employee (from submission picker)', employee_name: sub.employee_name, notes:'Auto-filled into ' + slot }]);
-      await logActivity('Assigned spare device to employee', 'submission', sub.id, (device.brand||'')+' '+(device.model||'')+' (IMEI '+device.imei1+') assigned to '+sub.employee_name+' as '+slot);
+      await sb.from('device_history').insert([{ imei1:device.imei1, action:(wasAssigned?'Reassigned':'Assigned')+' to employee (from submission picker)', employee_name: sub.employee_name, notes:'Auto-filled into ' + slot + (wasAssigned ? (' — previously with ' + prevAssignedTo) : '') }]);
+      await logActivity((wasAssigned?'Reassigned':'Assigned')+' device to employee', 'submission', sub.id, (device.brand||'')+' '+(device.model||'')+' (IMEI '+device.imei1+') assigned to '+sub.employee_name+' as '+slot);
 
       closeAssignPicker();
       await loadInventory(); await loadSubmissions(); renderStats(); loadActivityLog();
@@ -1483,11 +1502,11 @@
         var recipients = [updatedSub.company_email, updatedSub.personal_email].filter(isRealEmail);
         var dnccOnes = recipients.filter(function(e){ return e.toLowerCase().endsWith('@dncc.in'); });
         var otherOnes = recipients.filter(function(e){ return !e.toLowerCase().endsWith('@dncc.in'); });
-        if(otherOnes.length > 0 && confirm('Send the handover email now to ' + otherOnes.join(', ') + '?')){
-          await sendHandoverEmail(updatedSub);
+        if(otherOnes.length > 0 && confirm('Send the ' + (wasAssigned?'reassignment':'handover') + ' email now to ' + otherOnes.join(', ') + '?')){
+          await sendHandoverEmail(updatedSub, templateKey);
         }
         if(dnccOnes.length > 0 && confirm('Also send via the manual Zoho flow to ' + dnccOnes.join(', ') + '?')){
-          prepareManualEmail(updatedSub, 'handover');
+          prepareManualEmail(updatedSub, templateKey);
         }
       }
     }catch(err){ console.error(err); alert('Could not assign device: ' + (err.message||err)); }

@@ -117,10 +117,6 @@
     .review-actions button{width:100%;}
   }
 </style>
-<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
 </head>
 <body>
 <div class="wrap">
@@ -776,6 +772,25 @@
   }
   ['front','back'].forEach(function(w){ wirePhotoPreview(1,w); wirePhotoPreview(2,w); });
 
+  document.querySelectorAll('input[name="deviceCount"]').forEach(function(r){
+    r.addEventListener('change', function(){
+      document.getElementById('device2Fieldset').style.display = (this.value==='2') ? 'block' : 'none';
+    });
+  });
+  document.querySelectorAll('.radiogroup').forEach(function(group){
+    group.querySelectorAll('input[type=radio]').forEach(function(r){
+      r.addEventListener('change', function(){
+        group.querySelectorAll('label').forEach(function(l){ l.classList.remove('on'); });
+        r.parentElement.classList.add('on');
+      });
+    });
+  });
+  document.querySelectorAll('input[name="damage"]').forEach(function(r){
+    r.addEventListener('change', function(){
+      document.getElementById('damageDetails').style.display = (this.value==='Yes') ? 'block' : 'none';
+    });
+  });
+
   // Autosave on any change/input across the whole form (photos are not saved — too large for localStorage).
   document.getElementById('intakeForm').addEventListener('input', saveDraftDebounced);
   document.getElementById('intakeForm').addEventListener('change', saveDraftDebounced);
@@ -802,25 +817,6 @@
       reader.readAsDataURL(file);
     });
   }
-
-  document.querySelectorAll('input[name="deviceCount"]').forEach(function(r){
-    r.addEventListener('change', function(){
-      document.getElementById('device2Fieldset').style.display = (this.value==='2') ? 'block' : 'none';
-    });
-  });
-  document.querySelectorAll('.radiogroup').forEach(function(group){
-    group.querySelectorAll('input[type=radio]').forEach(function(r){
-      r.addEventListener('change', function(){
-        group.querySelectorAll('label').forEach(function(l){ l.classList.remove('on'); });
-        r.parentElement.classList.add('on');
-      });
-    });
-  });
-  document.querySelectorAll('input[name="damage"]').forEach(function(r){
-    r.addEventListener('change', function(){
-      document.getElementById('damageDetails').style.display = (this.value==='Yes') ? 'block' : 'none';
-    });
-  });
 
   function getRadioValue(name){ var el=document.querySelector('input[name="'+name+'"]:checked'); return el?el.value:''; }
   function clearErrors(){ document.querySelectorAll('.field.has-error').forEach(function(f){ f.classList.remove('has-error'); }); }
