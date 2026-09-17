@@ -104,6 +104,8 @@
   .assign-picker-item:hover{background:var(--accent-light);}
   .assign-picker-item .name{font-weight:700; color:var(--navy);}
   .assign-picker-item .meta{color:var(--text-soft); font-size:11.5px; margin-top:2px;}
+  .assign-picker-item.assign-picker-addnew{background:var(--accent-light);}
+  .assign-picker-item.assign-picker-addnew .name{color:var(--accent);}
 
   @media (max-width: 640px){
     .wrap{padding:20px 12px 60px;}
@@ -1444,26 +1446,54 @@
 
   function renderAssignPickerList(query){
     var q = (query||'').trim().toLowerCase();
+    var deviceImei = assignPickerDevice ? assignPickerDevice.imei1 : null;
     var list = currentSubs.filter(function(s){
+      // Exclude any submission that already has this exact device (prevents duplicate/self-reassign).
+      var d1imei = s.device1 && s.device1.imei1, d2imei = s.device2 && s.device2.imei1;
+      if(deviceImei && (d1imei === deviceImei || d2imei === deviceImei)) return false;
       if(!q) return true;
       return ((s.employee_name||'')+' '+(s.employee_id||'')).toLowerCase().indexOf(q) !== -1;
     }).slice(0, 50);
     var box = document.getElementById('assignPickerList');
-    if(!list.length){ box.innerHTML = '<p class="empty-state" style="padding:14px;">No matching submissions.</p>'; return; }
-    box.innerHTML = list.map(function(s){
-      var slotNote = s.device_count === 2 ? 'has 2 devices — will replace Device 2' : (s.device1 ? 'has 1 device — will add as Device 2' : 'no device yet — will fill Device 1');
-      return '<div class="assign-picker-item" data-id="'+s.id+'">'
-        + '<div class="name">'+esc(s.employee_name)+' ('+esc(s.employee_id)+')</div>'
-        + '<div class="meta">'+esc(s.location)+' • '+esc(s.designation)+' • '+slotNote+'</div>'
-        + '</div>';
-    }).join('');
-    box.querySelectorAll('.assign-picker-item').forEach(function(item){
+    var addNewHtml = '<div class="assign-picker-item assign-picker-addnew" id="assignPickerAddNew"><div class="name">+ Add new employee</div><div class="meta">Not in the list yet? Create a new submission and assign this device to it.</div></div>';
+    if(!list.length){
+      box.innerHTML = addNewHtml + '<p class="empty-state" style="padding:14px;">No matching submissions (or they already have this device).</p>';
+    } else {
+      box.innerHTML = addNewHtml + list.map(function(s){
+        var slotNote = s.device_count === 2 ? 'has 2 devices — will replace Device 2' : (s.device1 ? 'has 1 device — will add as Device 2' : 'no device yet — will fill Device 1');
+        return '<div class="assign-picker-item" data-id="'+s.id+'">'
+          + '<div class="name">'+esc(s.employee_name)+' ('+esc(s.employee_id)+')</div>'
+          + '<div class="meta">'+esc(s.location)+' • '+esc(s.designation)+' • '+slotNote+'</div>'
+          + '</div>';
+      }).join('');
+    }
+    box.querySelectorAll('.assign-picker-item[data-id]').forEach(function(item){
       item.addEventListener('click', function(){ confirmAssignToSubmission(item.dataset.id); });
     });
+    var addNewBtn = document.getElementById('assignPickerAddNew');
+    if(addNewBtn) addNewBtn.addEventListener('click', openAddNewEmployeeForAssign);
   }
   document.getElementById('assignPickerSearch').addEventListener('input', debounce(function(){
     renderAssignPickerList(this.value);
   }, 200));
+
+  function openAddNewEmployeeForAssign(){
+    var deviceForAssign = assignPickerDevice;
+    closeAssignPicker();
+    openModal('Add new employee (will assign this device automatically)', subEditFields({}), async function(values){
+      try{
+        var row = valuesToSubmissionRow(values, {}, {});
+        var { data: inserted, error } = await sb.from('submissions').insert([row]).select();
+        if(error) throw error;
+        closeModal(); await loadSubmissions(); renderStats();
+        var newId = inserted && inserted[0] ? inserted[0].id : null;
+        if(newId){
+          assignPickerDevice = deviceForAssign;
+          await confirmAssignToSubmission(newId);
+        }
+      }catch(err){ console.error(err); alert('Could not add submission: ' + (err.message||err)); }
+    });
+  }
 
   async function confirmAssignToSubmission(submissionId){
     var sub = currentSubs.find(function(s){ return String(s.id) === String(submissionId); });
