@@ -1477,12 +1477,33 @@
     renderAssignPickerList(this.value);
   }, 200));
 
+  function quickEmployeeFields(){
+    return [
+      { section:'Employee' },
+      { id:'employee_name', label:'Employee name', value:'' },
+      { id:'employee_id', label:'Employee ID', value:'' },
+      { id:'company_email', label:'Company email', value:'' },
+      { id:'personal_email', label:'Personal email', value:'' },
+      { id:'department', label:'Department', value:'' },
+      { id:'location', label:'Location', value:'' },
+      { id:'designation', label:'Designation', value:'' },
+      { id:'contact', label:'Alternate contact', value:'' }
+    ];
+  }
+
   function openAddNewEmployeeForAssign(){
     var deviceForAssign = assignPickerDevice;
     closeAssignPicker();
-    openModal('Add new employee (will assign this device automatically)', subEditFields({}), async function(values){
+    openModal('Add new employee (will assign this device automatically)', quickEmployeeFields(), async function(values){
       try{
-        var row = valuesToSubmissionRow(values, {}, {});
+        var row = {
+          employee_name: values.employee_name, employee_id: values.employee_id,
+          company_email: values.company_email, personal_email: values.personal_email,
+          department: values.department, location: values.location,
+          designation: values.designation, contact: values.contact,
+          device_count: 1, charger: '', cable: '', damage: 'No', damage_what: '', damage_how: '',
+          device1: null, device2: null
+        };
         var { data: inserted, error } = await sb.from('submissions').insert([row]).select();
         if(error) throw error;
         closeModal(); await loadSubmissions(); renderStats();
@@ -1491,7 +1512,7 @@
           assignPickerDevice = deviceForAssign;
           await confirmAssignToSubmission(newId);
         }
-      }catch(err){ console.error(err); alert('Could not add submission: ' + (err.message||err)); }
+      }catch(err){ console.error(err); alert('Could not add employee: ' + (err.message||err)); }
     });
   }
 
