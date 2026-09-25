@@ -108,6 +108,17 @@
     font-family:var(--sans); font-size:13.5px; font-weight:600; color:var(--accent); cursor:pointer;
   }
   #correctionForm{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
+  .selfservice-block{margin-top:20px;border-top:1px solid var(--line);padding-top:20px;}
+  .selfservice-toggle{width:100%;text-align:left;background:none;border:none;padding:0;margin-bottom:14px;font-family:var(--sans);font-size:13.5px;font-weight:600;color:var(--accent);cursor:pointer;}
+  #employeeIssueForm{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;}
+  .candidate-list,.issue-device-list{display:grid;gap:8px;margin:10px 0 14px;}
+  .candidate-card,.issue-device-card{display:block;border:1px solid var(--line);border-radius:8px;padding:11px 12px;background:#fafcfd;cursor:pointer;font-size:12.5px;}
+  .candidate-card:has(input:checked),.issue-device-card:has(input:checked){border-color:var(--accent);background:var(--accent-light);}
+  .candidate-card input,.issue-device-card input{margin-right:8px;}
+  .candidate-meta,.issue-device-meta{display:block;color:var(--text-soft);font-size:11.5px;margin:4px 0 0 24px;line-height:1.45;}
+  .inline-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+  .btn-quiet{background:#fff;color:var(--navy);border:1px solid var(--line-strong);border-radius:8px;padding:11px 16px;font-weight:700;font-size:13px;cursor:pointer;}
+  .btn-quiet:hover{background:#f3f6f7;}
 
 
   /* ---------- Device request workflow ---------- */
@@ -162,6 +173,7 @@
     <select id="langToggle" class="lang-toggle">
       <option value="en">English</option>
       <option value="gu">ગુજરાતી</option>
+      <option value="hi">हिन्दी</option>
       <option value="mr">मराठी</option>
       <option value="kok">कोंकणी</option>
     </select>
@@ -173,12 +185,12 @@
 
   <div class="request-launch">
     <div class="request-launch-head">
-      <div><h2>Need a company mobile?</h2><p>Send a request to IT before the device is issued. Existing employees are detected automatically from their email.</p></div>
-      <span class="hint">IT request desk</span>
+      <div><h2 data-i18n="requestLaunchTitle">Need a company mobile?</h2><p data-i18n="requestLaunchText">Send a request to IT before the device is issued. Existing employees are detected automatically from their email.</p></div>
+      <span class="hint" data-i18n="requestDesk">IT request desk</span>
     </div>
     <div class="request-actions">
-      <button type="button" class="request-card-btn" id="newDeviceRequestBtn"><strong>+ New Device Request</strong><span>Request an additional/new company phone for work.</span></button>
-      <button type="button" class="request-card-btn" id="replaceDeviceRequestBtn"><strong>↻ Replace Device Request</strong><span>Select your current phone and request a replacement.</span></button>
+      <button type="button" class="request-card-btn" id="newDeviceRequestBtn"><strong data-i18n="newDeviceRequest">+ New Device Request</strong><span data-i18n="newDeviceRequestHint">Request an additional/new company phone for work.</span></button>
+      <button type="button" class="request-card-btn" id="replaceDeviceRequestBtn"><strong data-i18n="replaceDeviceRequest">↻ Replace Device Request</strong><span data-i18n="replaceDeviceRequestHint">Select your current phone and request a replacement.</span></button>
     </div>
   </div>
 
@@ -286,7 +298,10 @@
     </fieldset>
 
     <div class="submit-bar">
-      <button type="submit" class="btn-primary" id="submitBtn" data-i18n="submitBtn">Submit details</button>
+      <div class="inline-actions">
+        <button type="submit" class="btn-primary" id="submitBtn" data-i18n="submitBtn">Submit details</button>
+        <button type="button" class="btn-quiet" id="clearMainFormBtn" data-i18n="clearFormBtn">Clear form</button>
+      </div>
       <span class="submit-note" data-i18n="submitNote">A handover PDF copy will download automatically after submission.</span>
     </div>
     <div class="toast" id="toast"></div>
@@ -303,9 +318,37 @@
       <div class="field"><label for="corrEmpId" data-i18n="corrEmpIdLabel">Employee ID (if known)</label><input type="text" id="corrEmpId" /></div>
       <div class="field" style="margin-bottom:0;"><label for="corrDetails" data-i18n="corrDetailsLabel">What needs to be corrected?</label><textarea id="corrDetails" required style="min-height:90px;"></textarea></div>
       <div class="submit-bar" style="margin-top:14px;">
-        <button type="submit" class="btn-primary" id="corrSubmitBtn">Send correction request</button>
+        <button type="submit" class="btn-primary" id="corrSubmitBtn" data-i18n="corrSubmitBtn">Send correction request</button>
       </div>
       <div class="toast" id="corrToast"></div>
+    </form>
+  </div>
+
+  <div class="selfservice-block">
+    <button type="button" class="selfservice-toggle" id="issueReportToggle" data-i18n="issueReportToggleClosed">Report new physical damage or a phone issue on my existing device →</button>
+    <form id="employeeIssueForm" style="display:none;" novalidate>
+      <p class="hint" style="margin-top:0;" data-i18n="issueReportHint">Find your employee record using your email, employee ID/code, or name. If more than one person has the same name, select your own record.</p>
+      <div class="row2">
+        <div class="field"><label for="issueLookupTerm" data-i18n="issueLookupLabel">Email, employee ID/code, or employee name</label><input type="text" id="issueLookupTerm" data-i18n-ph="issueLookupPlaceholder" placeholder="e.g. name@dncc.in, VAD-RAHUL, or Rahul Patel" /></div>
+        <div class="field" style="display:flex;align-items:flex-end;"><button type="button" class="btn-primary" id="issueLookupBtn" data-i18n="issueFindBtn">Find my record</button></div>
+      </div>
+      <div id="issueCandidateArea"></div>
+      <div id="issueDeviceArea"></div>
+      <div id="issueDetailsArea" style="display:none;">
+        <div class="field"><label data-i18n="issueTypeLabel">What do you want to report?</label>
+          <div class="radiogroup">
+            <label><input type="radio" name="employeeIssueType" value="Physical Damage" /> <span data-i18n="issueTypeDamage">Physical damage</span></label>
+            <label><input type="radio" name="employeeIssueType" value="Phone Problem" /> <span data-i18n="issueTypeProblem">Phone problem / issue</span></label>
+          </div>
+        </div>
+        <div class="field"><label for="reportedIssueDetails" data-i18n="reportedIssueDetailsLabel">Describe the damage / problem</label><textarea id="reportedIssueDetails" data-i18n-ph="reportedIssueDetailsPlaceholder" placeholder="Describe exactly what is damaged or what problem you are facing."></textarea></div>
+        <div class="field" id="reportedDamageCauseWrap" style="display:none;"><label for="reportedDamageCause" data-i18n="reportedDamageCauseLabel">How did the physical damage happen? (optional)</label><textarea id="reportedDamageCause" data-i18n-ph="reportedDamageCausePlaceholder" placeholder="e.g. phone slipped from hand"></textarea></div>
+        <div class="submit-bar" style="margin-top:10px;">
+          <div class="inline-actions"><button type="submit" class="btn-primary" id="issueReportSubmitBtn" data-i18n="issueReportSubmitBtn">Send issue to IT</button><button type="button" class="btn-quiet" id="clearIssueReportBtn" data-i18n="clearFormBtn">Clear form</button></div>
+          <span class="submit-note" data-i18n="issueReportSubmitNote">IT will receive the issue and you will get an email confirmation.</span>
+        </div>
+      </div>
+      <div class="toast" id="issueReportToast"></div>
     </form>
   </div>
 
@@ -315,31 +358,31 @@
 
 <div id="requestOverlay" aria-hidden="true">
   <div class="request-box">
-    <h2 id="requestTitle">Device Request</h2>
-    <p class="request-sub" id="requestSubtitle">Enter any company or personal email. We will check your existing employee/device record.</p>
+    <h2 id="requestTitle" data-i18n="deviceRequestTitle">Device Request</h2>
+    <p class="request-sub" id="requestSubtitle" data-i18n="requestSubtitle">Enter any company or personal email. We will check your existing employee/device record.</p>
 
     <div class="request-step active" id="requestStepLookup">
-      <div class="field"><label for="requestEmail">Your company or personal email</label><input type="email" id="requestEmail" placeholder="name@dncc.in or name@gmail.com" /></div>
+      <div class="field"><label for="requestEmail" data-i18n="requestEmailLabel">Your company or personal email</label><input type="email" id="requestEmail" placeholder="name@dncc.in or name@gmail.com" data-i18n-ph="requestEmailPlaceholder" /></div>
       <div id="requestLookupResult"></div>
-      <div class="request-footer"><button type="button" class="btn-secondary-review" id="requestCancelBtn">Cancel</button><button type="button" class="btn-primary" id="requestLookupBtn">Find my record</button></div>
+      <div class="request-footer"><button type="button" class="btn-secondary-review" id="requestCancelBtn" data-i18n="cancelBtn">Cancel</button><button type="button" class="btn-primary" id="requestLookupBtn" data-i18n="issueFindBtn">Find my record</button></div>
     </div>
 
     <div class="request-step" id="requestStepDetails">
       <div id="requestEmployeeSummary"></div>
       <div id="newEmployeeFields" style="display:none;">
-        <div class="row2"><div class="field"><label>Employee name</label><input type="text" id="requestEmpName" /></div><div class="field"><label>Location</label><select id="requestLocation"><option value="">Select location…</option><option>Vadodara</option><option>Surat</option><option>Anand</option><option>Ahmedabad</option><option>Rajkot</option><option>Bandra</option><option>Thane</option><option>Borivali</option><option>Panjim</option></select></div></div>
-        <div class="row2"><div class="field"><label>Designation</label><input type="text" id="requestDesignation" /></div><div class="field"><label>Department (optional)</label><input type="text" id="requestDepartment" /></div></div>
+        <div class="row2"><div class="field"><label data-i18n="empNameLabel">Employee name</label><input type="text" id="requestEmpName" /></div><div class="field"><label data-i18n="locationLabel">Location</label><select id="requestLocation"><option value="" data-i18n="locationDefaultOption">Select location…</option><option>Vadodara</option><option>Surat</option><option>Anand</option><option>Ahmedabad</option><option>Rajkot</option><option>Bandra</option><option>Thane</option><option>Borivali</option><option>Panjim</option></select></div></div>
+        <div class="row2"><div class="field"><label data-i18n="designationLabel">Designation</label><input type="text" id="requestDesignation" /></div><div class="field"><label data-i18n="requestDepartmentOptional">Department (optional)</label><input type="text" id="requestDepartment" /></div></div>
       </div>
       <div id="requestExistingDevices"></div>
       <div id="newRequestChoice" style="display:none;">
-        <label style="margin-top:12px;">You already have a device. What do you want?</label>
-        <div class="request-choice"><label><input type="radio" name="requestChoice" value="Additional" checked /> Request an additional/new device</label><label><input type="radio" name="requestChoice" value="Replace" /> Replace one of my current devices</label></div>
+        <label style="margin-top:12px;" data-i18n="requestExistingQuestion">You already have a device. What do you want?</label>
+        <div class="request-choice"><label><input type="radio" name="requestChoice" value="Additional" checked /> <span data-i18n="requestAdditionalChoice">Request an additional/new device</span></label><label><input type="radio" name="requestChoice" value="Replace" /> <span data-i18n="requestReplaceChoice">Replace one of my current devices</span></label></div>
       </div>
       <div id="replaceDeviceChooser" style="display:none;"></div>
-      <div class="field"><label for="requestReason">Why is the device required / why should it be replaced?</label><textarea id="requestReason" placeholder="Explain the business need, current issue, or reason for replacement."></textarea></div>
-      <div class="row2"><div class="field"><label for="requestUse">Main work use</label><input type="text" id="requestUse" placeholder="e.g. WhatsApp, calls, clinic coordination" /></div><div class="field"><label for="requestNeededBy">Needed by (optional)</label><input type="date" id="requestNeededBy" /></div></div>
+      <div class="field"><label for="requestReason" data-i18n="requestReasonLabel">Why is the device required / why should it be replaced?</label><textarea id="requestReason" placeholder="Explain the business need, current issue, or reason for replacement." data-i18n-ph="requestReasonPlaceholder"></textarea></div>
+      <div class="row2"><div class="field"><label for="requestUse" data-i18n="requestUseLabel">Main work use</label><input type="text" id="requestUse" placeholder="e.g. WhatsApp, calls, clinic coordination" data-i18n-ph="requestUsePlaceholder" /></div><div class="field"><label for="requestNeededBy" data-i18n="requestNeededByLabel">Needed by (optional)</label><input type="date" id="requestNeededBy" /></div></div>
       <div class="request-msg" id="requestMsg"></div>
-      <div class="request-footer"><button type="button" class="btn-secondary-review" id="requestBackBtn">← Back</button><button type="button" class="btn-primary" id="requestSubmitBtn">Send request to IT</button></div>
+      <div class="request-footer"><button type="button" class="btn-secondary-review" id="requestBackBtn" data-i18n="requestBackBtn">← Back</button><button type="button" class="btn-primary" id="requestSubmitBtn" data-i18n="requestSubmitBtn">Send request to IT</button></div>
     </div>
   </div>
 </div>
@@ -541,6 +584,42 @@
       reviewBackBtn:'← फॉर्माकडेन परत वचात', deviceBlockTitle1:'मोबायल फोन 1', deviceBlockTitle2:'मोबायल फोन 2'
     }
   };
+
+  // Additional self-service/request translations. Keeping these separate makes the
+  // original form translations easier to maintain while ensuring the selected
+  // language applies to every employee-facing workflow.
+  Object.assign(TRANSLATIONS.en, {
+    clearFormBtn:'Clear form', requestLaunchTitle:'Need a company mobile?', requestLaunchText:'Send a request to IT before the device is issued. Existing employees are detected automatically from their email.', requestDesk:'IT request desk',
+    newDeviceRequest:'+ New Device Request', newDeviceRequestHint:'Request an additional/new company phone for work.', replaceDeviceRequest:'↻ Replace Device Request', replaceDeviceRequestHint:'Select your current phone and request a replacement.',
+    deviceRequestTitle:'Device Request', requestSubtitle:'Enter any company or personal email. We will check your existing employee and currently assigned device records.', requestEmailLabel:'Your company or personal email', requestEmailPlaceholder:'name@dncc.in or name@gmail.com', cancelBtn:'Cancel',
+    requestDepartmentOptional:'Department (optional)', requestExistingQuestion:'You already have a device. What do you want?', requestAdditionalChoice:'Request an additional/new device', requestReplaceChoice:'Replace one of my current devices', requestReasonLabel:'Why is the device required / why should it be replaced?', requestReasonPlaceholder:'Explain the business need, current issue, or reason for replacement.', requestUseLabel:'Main work use', requestUsePlaceholder:'e.g. WhatsApp, calls, clinic coordination', requestNeededByLabel:'Needed by (optional)', requestBackBtn:'← Back', requestSubmitBtn:'Send request to IT',
+    employeeFound:'Employee found', newEmployeeRequest:'New employee request', noPreviousRecord:'No previous employee record was found for this email. Confirm the basic employee details below.', currentlyAssignedDevices:'currently assigned device(s) found.', currentPhones:'Currently assigned phone(s)', noActivePhone:'No active phone assigned', noActivePhoneText:'Your employee record exists, but the live inventory does not currently show a phone assigned to you.', noReplaceDevice:'No device available to replace', noReplaceDeviceText:'Please use a New Device Request instead, or contact IT.', selectReplacePhone:'Select the phone you want to replace', currentOwner:'Current owner', you:'You', noEmployeeId:'No employee ID', simFromAudit:'SIM details from last audit',
+    validEmailMsg:'Enter a valid email address.', checkingBtn:'Checking…', lookupFailed:'Could not check your record. Please try again.', newEmployeeConfirm:'No existing employee record was found for this email. Continue as a NEW employee request?', replaceNoDeviceAlert:'Your employee record was found, but no currently assigned device was found. Please send a New Device Request instead.', selectReplaceMsg:'Select the phone that should be replaced.', requestRequiredMsg:'Please complete employee name, location, designation and the reason for the request.', sendingBtn:'Sending…', requestSentPrefix:'Request', requestSentSuffix:'sent successfully. IT will review it and notify you by email.', requestFailedPrefix:'Could not send the request:',
+    issueReportToggleClosed:'Report new physical damage or a phone issue on my existing device →', issueReportToggleOpen:'Hide device issue form ↑', issueReportHint:'Find your employee record using your email, employee ID/code, or name. If more than one person has the same name, select your own record.', issueLookupLabel:'Email, employee ID/code, or employee name', issueLookupPlaceholder:'e.g. name@dncc.in, VAD-RAHUL, or Rahul Patel', issueFindBtn:'Find my record', issueTypeLabel:'What do you want to report?', issueTypeDamage:'Physical damage', issueTypeProblem:'Phone problem / issue', reportedIssueDetailsLabel:'Describe the damage / problem', reportedIssueDetailsPlaceholder:'Describe exactly what is damaged or what problem you are facing.', reportedDamageCauseLabel:'How did the physical damage happen? (optional)', reportedDamageCausePlaceholder:'e.g. phone slipped from hand', issueReportSubmitBtn:'Send issue to IT', issueReportSubmitNote:'IT will receive the issue and you will get an email confirmation.',
+    issueSearchMin:'Enter at least 2 characters.', issueNoMatch:'No employee record matched your search.', issueSelectEmployee:'Select your employee record', issueSelectDevice:'Select the device with the damage/problem', issueNoAssignedDevice:'No currently assigned device was found for this employee.', issueChooseEmployeeFirst:'Select your employee record first.', issueChooseDevice:'Select the affected device.', issueChooseType:'Select Physical damage or Phone problem.', issueDetailsRequired:'Describe the damage/problem.', issueSearching:'Searching…', issueSending:'Sending…', issueSent:'Your issue has been sent to IT. You will receive updates by email.', issueSendFailed:'Could not send the issue. Please try again.',
+    tempEditTitle:'Temporary edit access', tempEditText:'IT has allowed you to update this existing submission until {time}. Existing photos are kept unless you upload new ones.', assignedFormTitle:'Device assigned — handover form required', assignedFormText:'IT assigned {device} to you for Request #{request}. Please verify the prefilled details, add photos/condition information, and submit this form to complete the handover.', linkCannotUse:'Link cannot be used', linkInvalid:'This edit link is invalid or has already been used.', linkExpired:'This edit link has expired. Ask IT for a new one.', requestLinkInvalid:'This handover link is invalid.', requestLinkExpired:'This handover link has expired. Ask IT to issue a new link.', clearConfirm:'Clear this form?', restoreConfirm:'Discard your changes and restore the original details?'
+  });
+  Object.assign(TRANSLATIONS.gu, {
+    clearFormBtn:'ફોર્મ સાફ કરો', requestLaunchTitle:'કંપની મોબાઇલ જોઈએ છે?', requestLaunchText:'ડિવાઇસ આપતા પહેલા IT ને વિનંતી મોકલો. ઈમેલ પરથી હાલના કર્મચારીને આપમેળે ઓળખવામાં આવશે.', requestDesk:'IT વિનંતી ડેસ્ક', newDeviceRequest:'+ નવું ડિવાઇસ વિનંતી', newDeviceRequestHint:'કામ માટે વધારાનો/નવો કંપની ફોન માંગો.', replaceDeviceRequest:'↻ ડિવાઇસ બદલવાની વિનંતી', replaceDeviceRequestHint:'તમારો હાલનો ફોન પસંદ કરીને બદલવાની વિનંતી કરો.', deviceRequestTitle:'ડિવાઇસ વિનંતી', requestSubtitle:'કંપની અથવા વ્યક્તિગત ઈમેલ નાખો. અમે તમારો કર્મચારી રેકોર્ડ અને હાલના ડિવાઇસ તપાસીશું.', requestEmailLabel:'તમારો કંપની અથવા વ્યક્તિગત ઈમેલ', requestEmailPlaceholder:'name@dncc.in અથવા name@gmail.com', cancelBtn:'રદ કરો', requestDepartmentOptional:'વિભાગ (વૈકલ્પિક)', requestExistingQuestion:'તમારી પાસે પહેલેથી ડિવાઇસ છે. શું કરવું છે?', requestAdditionalChoice:'વધારાનો/નવો ડિવાઇસ જોઈએ', requestReplaceChoice:'હાલનો ડિવાઇસ બદલવો છે', requestReasonLabel:'નવો ડિવાઇસ કેમ જોઈએ છે / બદલવો કેમ છે?', requestReasonPlaceholder:'કામની જરૂરિયાત, હાલની સમસ્યા અથવા બદલવાનું કારણ લખો.', requestUseLabel:'મુખ્ય કામ માટે ઉપયોગ', requestUsePlaceholder:'દા. WhatsApp, કોલ, ક્લિનિક સંકલન', requestNeededByLabel:'ક્યારે સુધી જોઈએ (વૈકલ્પિક)', requestBackBtn:'← પાછા', requestSubmitBtn:'IT ને વિનંતી મોકલો', employeeFound:'કર્મચારી મળ્યો', newEmployeeRequest:'નવા કર્મચારીની વિનંતી', noPreviousRecord:'આ ઈમેલ માટે અગાઉનો કર્મચારી રેકોર્ડ મળ્યો નથી. નીચે મૂળભૂત વિગતો ખાતરી કરો.', currentlyAssignedDevices:'હાલ સોંપાયેલ ડિવાઇસ મળ્યા.', currentPhones:'હાલ સોંપાયેલ ફોન', noActivePhone:'હાલ કોઈ ફોન સોંપાયેલ નથી', noActivePhoneText:'કર્મચારી રેકોર્ડ છે, પરંતુ લાઇવ ઇન્વેન્ટરીમાં હાલમાં ફોન સોંપાયેલ દેખાતો નથી.', noReplaceDevice:'બદલવા માટે ડિવાઇસ નથી', noReplaceDeviceText:'નવું ડિવાઇસ વિનંતી કરો અથવા IT નો સંપર્ક કરો.', selectReplacePhone:'બદલવાનો ફોન પસંદ કરો', currentOwner:'હાલનો ધારક', you:'તમે', noEmployeeId:'કર્મચારી ID નથી', simFromAudit:'છેલ્લા ઑડિટની SIM વિગતો', validEmailMsg:'માન્ય ઈમેલ નાખો.', checkingBtn:'ચકાસી રહ્યા છીએ…', lookupFailed:'રેકોર્ડ ચકાસી શક્યા નથી. ફરી પ્રયત્ન કરો.', newEmployeeConfirm:'આ ઈમેલ માટે હાલનો કર્મચારી રેકોર્ડ મળ્યો નથી. નવા કર્મચારી તરીકે આગળ વધવું?', replaceNoDeviceAlert:'કર્મચારી રેકોર્ડ મળ્યો, પરંતુ કોઈ હાલ સોંપાયેલ ડિવાઇસ નથી. નવું ડિવાઇસ વિનંતી મોકલો.', selectReplaceMsg:'બદલવાનો ફોન પસંદ કરો.', requestRequiredMsg:'કર્મચારીનું નામ, લોકેશન, હોદ્દો અને વિનંતીનું કારણ ભરો.', sendingBtn:'મોકલી રહ્યા છીએ…', requestSentPrefix:'વિનંતી', requestSentSuffix:'સફળતાપૂર્વક મોકલાઈ. IT સમીક્ષા કરીને ઈમેલથી જાણ કરશે.', requestFailedPrefix:'વિનંતી મોકલી શકાઈ નહીં:',
+    issueReportToggleClosed:'મારા હાલના ડિવાઇસમાં નવું ભૌતિક નુકસાન અથવા ફોનની સમસ્યા રિપોર્ટ કરો →', issueReportToggleOpen:'ડિવાઇસ સમસ્યા ફોર્મ છુપાવો ↑', issueReportHint:'ઈમેલ, કર્મચારી ID/કોડ અથવા નામથી તમારો રેકોર્ડ શોધો. એક જ નામના એકથી વધુ લોકો હોય તો તમારો રેકોર્ડ પસંદ કરો.', issueLookupLabel:'ઈમેલ, કર્મચારી ID/કોડ અથવા કર્મચારીનું નામ', issueLookupPlaceholder:'દા. name@dncc.in, VAD-RAHUL અથવા Rahul Patel', issueFindBtn:'મારો રેકોર્ડ શોધો', issueTypeLabel:'શું રિપોર્ટ કરવું છે?', issueTypeDamage:'ભૌતિક નુકસાન', issueTypeProblem:'ફોનની સમસ્યા / ઇશ્યૂ', reportedIssueDetailsLabel:'નુકસાન / સમસ્યાનું વર્ણન કરો', reportedIssueDetailsPlaceholder:'ખરેખર શું નુકસાન થયું છે અથવા કઈ સમસ્યા આવે છે તે લખો.', reportedDamageCauseLabel:'ભૌતિક નુકસાન કેવી રીતે થયું? (વૈકલ્પિક)', reportedDamageCausePlaceholder:'દા. ફોન હાથમાંથી પડી ગયો', issueReportSubmitBtn:'સમસ્યા IT ને મોકલો', issueReportSubmitNote:'IT ને સમસ્યા મળશે અને તમને ઈમેલ પુષ્ટિ મળશે.', issueSearchMin:'ઓછામાં ઓછા 2 અક્ષર નાખો.', issueNoMatch:'તમારી શોધ મુજબ કોઈ કર્મચારી રેકોર્ડ મળ્યો નથી.', issueSelectEmployee:'તમારો કર્મચારી રેકોર્ડ પસંદ કરો', issueSelectDevice:'સમસ્યા/નુકસાન ધરાવતો ડિવાઇસ પસંદ કરો', issueNoAssignedDevice:'આ કર્મચારી માટે હાલમાં સોંપાયેલ ડિવાઇસ મળ્યો નથી.', issueChooseEmployeeFirst:'પહેલા તમારો કર્મચારી રેકોર્ડ પસંદ કરો.', issueChooseDevice:'અસરગ્રસ્ત ડિવાઇસ પસંદ કરો.', issueChooseType:'ભૌતિક નુકસાન અથવા ફોન સમસ્યા પસંદ કરો.', issueDetailsRequired:'નુકસાન/સમસ્યાની વિગતો લખો.', issueSearching:'શોધી રહ્યા છીએ…', issueSending:'મોકલી રહ્યા છીએ…', issueSent:'તમારી સમસ્યા IT ને મોકલાઈ છે. આગળની માહિતી ઈમેલથી મળશે.', issueSendFailed:'સમસ્યા મોકલી શકાઈ નહીં. ફરી પ્રયત્ન કરો.', tempEditTitle:'થોડા સમય માટે એડિટ ઍક્સેસ', tempEditText:'IT એ તમને {time} સુધી આ રેકોર્ડ અપડેટ કરવાની મંજૂરી આપી છે. નવો ફોટો અપલોડ ન કરો તો હાલનો ફોટો જ રહેશે.', assignedFormTitle:'ડિવાઇસ સોંપાયું — હેન્ડઓવર ફોર્મ જરૂરી', assignedFormText:'IT એ Request #{request} માટે તમને {device} સોંપ્યું છે. પ્રીફિલ વિગતો ચકાસો, ફોટા/કન્ડિશન ઉમેરો અને હેન્ડઓવર પૂર્ણ કરવા ફોર્મ સબમિટ કરો.', linkCannotUse:'લિંક ઉપયોગ કરી શકાતી નથી', linkInvalid:'આ એડિટ લિંક અમાન્ય છે અથવા પહેલેથી ઉપયોગ થઈ ગઈ છે.', linkExpired:'આ એડિટ લિંકની સમયમર્યાદા પૂરી થઈ ગઈ છે. IT પાસેથી નવી લિંક લો.', requestLinkInvalid:'આ હેન્ડઓવર લિંક અમાન્ય છે.', requestLinkExpired:'આ હેન્ડઓવર લિંકની સમયમર્યાદા પૂરી થઈ ગઈ છે. IT પાસેથી નવી લિંક લો.', clearConfirm:'આ ફોર્મ સાફ કરવું છે?', restoreConfirm:'તમારા ફેરફારો કાઢીને મૂળ વિગતો ફરી લાવવી છે?'
+  });
+  TRANSLATIONS.hi = {
+    intro:'<strong>शुरू करने से पहले:</strong> IMEI (<span style="font-family:\'IBM Plex Mono\',monospace">*#06#</span> डायल करें), SIM नंबर जाँचने और आगे/पीछे की साफ फोटो लेने के लिए अपना फोन पास रखें। इसमें लगभग 5 मिनट लगेंगे। सबमिट करने के बाद handover PDF अपने-आप डाउनलोड होगा और नीचे दिए ईमेल पर कॉपी भेजी जाएगी.',
+    legend1:'कर्मचारी विवरण',empNameLabel:'कर्मचारी का नाम',empNamePlaceholder:'पहला नाम उपनाम, जैसे Smit Patel',empNameError:'कर्मचारी का पहला नाम और उपनाम दर्ज करें.',empIdLabel:'कर्मचारी ID / कोड',empIdPlaceholder:'अपने-आप बनेगा',copyBtn:'कॉपी',copiedBtn:'कॉपी हो गया!',empIdHint:'लोकेशन + नाम से अपने-आप बनता है. इसे बदला नहीं जा सकता.',locationLabel:'लोकेशन',locationDefaultOption:'लोकेशन चुनें…',locationError:'लोकेशन चुनें.',designationLabel:'पद / Designation',designationError:'Designation दर्ज करें.',departmentLabel:'विभाग',departmentPlaceholder:'जैसे Front Desk, Nursing',contactLabel:'वैकल्पिक संपर्क नंबर',companyEmailLabel:'कंपनी ईमेल',companyEmailPlaceholder:'name@dncc.in — नहीं हो तो NOT लिखें',companyEmailError:'मान्य कंपनी ईमेल दर्ज करें, या कंपनी ईमेल नहीं है तो NOT लिखें.',personalEmailLabel:'व्यक्तिगत ईमेल',personalEmailPlaceholder:'name@gmail.com',personalEmailError:'मान्य व्यक्तिगत ईमेल दर्ज करें.',emailsHint:'Handover confirmation और PDF कॉपी दोनों ईमेल पतों पर भेजी जाएगी.',legend2:'आप काम के लिए कितने मोबाइल फोन उपयोग करते हैं?',deviceCount1:'1 मोबाइल',deviceCount2:'2 मोबाइल',legend3:'मोबाइल फोन विवरण',legend4:'दूसरे मोबाइल फोन का विवरण',legend5:'एक्सेसरीज़',chargerLabel:'क्या आपके पास चार्जर है?',cableLabel:'क्या आपके पास डेटा/USB केबल है?',yes:'हाँ',no:'नहीं',legend6:'भौतिक नुकसान',damageLabel:'क्या फोन में कोई भौतिक नुकसान है?',damageWhatLabel:'क्या नुकसान है?',damageWhatPlaceholder:'जैसे स्क्रीन के ऊपर बाएँ कोने में क्रैक',damageHowLabel:'यह नुकसान कैसे हुआ?',damageHowPlaceholder:'जैसे कैब से उतरते समय फोन गिर गया',legend7:'फोन समस्या / इश्यू',phoneProblemLabel:'क्या फोन में कोई समस्या आ रही है?',phoneProblemDetailsLabel:'कृपया फोन की समस्या बताएं',phoneProblemDetailsPlaceholder:'जैसे बैटरी जल्दी खत्म होती है, चार्जिंग समस्या, स्पीकर काम नहीं करता, फोन हैंग होता है',phoneProblemDetailsError:'कृपया फोन की समस्या लिखें.',submitBtn:'विवरण सबमिट करें',submitNote:'सबमिट होने के बाद handover PDF अपने-आप डाउनलोड होगा.',correctionToggleClosed:'गलती हुई? पहले सबमिट किए विवरण में सुधार का अनुरोध करें →',correctionToggleOpen:'सुधार फॉर्म छिपाएँ ↑',correctionHint:'क्या गलत है और सही क्या होना चाहिए, लिखें. IT समीक्षा करके रिकॉर्ड अपडेट करेगा और आपको ईमेल मिलेगा.',corrNameLabel:'आपका नाम',corrEmailLabel:'आपका ईमेल (कंपनी या व्यक्तिगत)',corrEmpIdLabel:'कर्मचारी ID (यदि पता हो)',corrDetailsLabel:'क्या सुधारना है?',corrSubmitBtn:'सुधार अनुरोध भेजें',brandLabel:'ब्रांड / नाम',brandError:'ब्रांड दर्ज करें.',modelLabel:'मॉडल',modelError:'मॉडल दर्ज करें.',ramLabel:'RAM आकार',ramPlaceholder:'जैसे 6 GB',ramError:'RAM आकार दर्ज करें.',storageLabel:'स्टोरेज आकार',storagePlaceholder:'जैसे 128 GB',storageError:'स्टोरेज आकार दर्ज करें.',photosLabel:'फोन की फोटो',photosHint:'सामने की फोटो लेते समय फोन की स्क्रीन ON रखें ताकि डिवाइस और स्क्रीन की स्थिति साफ दिखे.',frontPhotoLabel:'सामने की फोटो (स्क्रीन ON)',backPhotoLabel:'पीछे की फोटो',imei1Label:'IMEI नंबर 1',imei1Error:'IMEI 1 दर्ज करें (*#06# डायल करें).',imei2Label:'IMEI नंबर 2',imei2Placeholder:'एक SIM हो तो खाली छोड़ें',simCountLabel:'इस फोन में कितनी SIM हैं?',memCardLabel:'क्या इस फोन में मेमरी / SD कार्ड है?',memCardSizeLabel:'मेमरी कार्ड आकार',memCardSizePlaceholder:'जैसे 64 GB',usageLabel:'मोबाइल का उपयोग — यह फोन किस काम के लिए उपयोग होता है?',footLink:'IT एडमिन लॉगिन →',reviewTitle:'अपने विवरण की जाँच करें',reviewEditBtn:'बदलें',reviewConfirmBtn:'पुष्टि करके सबमिट करें',reviewBackBtn:'← फॉर्म पर वापस जाएँ',deviceBlockTitle1:'मोबाइल फोन 1',deviceBlockTitle2:'मोबाइल फोन 2',
+    clearFormBtn:'फॉर्म साफ करें',requestLaunchTitle:'कंपनी मोबाइल चाहिए?',requestLaunchText:'डिवाइस जारी होने से पहले IT को अनुरोध भेजें. ईमेल से मौजूदा कर्मचारी रिकॉर्ड अपने-आप पहचाना जाएगा.',requestDesk:'IT अनुरोध डेस्क',newDeviceRequest:'+ नया डिवाइस अनुरोध',newDeviceRequestHint:'काम के लिए अतिरिक्त/नया कंपनी फोन माँगें.',replaceDeviceRequest:'↻ डिवाइस बदलने का अनुरोध',replaceDeviceRequestHint:'अपना मौजूदा फोन चुनकर replacement माँगें.',deviceRequestTitle:'डिवाइस अनुरोध',requestSubtitle:'कंपनी या व्यक्तिगत ईमेल दर्ज करें. हम आपका कर्मचारी रिकॉर्ड और वर्तमान assigned devices जाँचेंगे.',requestEmailLabel:'आपका कंपनी या व्यक्तिगत ईमेल',requestEmailPlaceholder:'name@dncc.in या name@gmail.com',cancelBtn:'रद्द करें',requestDepartmentOptional:'विभाग (वैकल्पिक)',requestExistingQuestion:'आपके पास पहले से डिवाइस है. आप क्या चाहते हैं?',requestAdditionalChoice:'अतिरिक्त/नया डिवाइस चाहिए',requestReplaceChoice:'मौजूदा डिवाइस बदलना है',requestReasonLabel:'डिवाइस क्यों चाहिए / क्यों बदलना है?',requestReasonPlaceholder:'काम की जरूरत, मौजूदा समस्या या replacement का कारण लिखें.',requestUseLabel:'मुख्य काम का उपयोग',requestUsePlaceholder:'जैसे WhatsApp, कॉल, क्लिनिक समन्वय',requestNeededByLabel:'कब तक चाहिए (वैकल्पिक)',requestBackBtn:'← वापस',requestSubmitBtn:'IT को अनुरोध भेजें',employeeFound:'कर्मचारी मिला',newEmployeeRequest:'नए कर्मचारी का अनुरोध',noPreviousRecord:'इस ईमेल के लिए पुराना कर्मचारी रिकॉर्ड नहीं मिला. नीचे मूल विवरण की पुष्टि करें.',currentlyAssignedDevices:'वर्तमान assigned device(s) मिले.',currentPhones:'वर्तमान assigned फोन',noActivePhone:'कोई सक्रिय फोन assigned नहीं',noActivePhoneText:'कर्मचारी रिकॉर्ड मिला, लेकिन live inventory में अभी कोई फोन assigned नहीं है.',noReplaceDevice:'बदलने के लिए डिवाइस नहीं',noReplaceDeviceText:'नया डिवाइस अनुरोध करें या IT से संपर्क करें.',selectReplacePhone:'बदलने वाला फोन चुनें',currentOwner:'वर्तमान उपयोगकर्ता',you:'आप',noEmployeeId:'कर्मचारी ID नहीं',simFromAudit:'पिछले audit की SIM जानकारी',validEmailMsg:'मान्य ईमेल दर्ज करें.',checkingBtn:'जाँच रहे हैं…',lookupFailed:'रिकॉर्ड जाँच नहीं सके. फिर कोशिश करें.',newEmployeeConfirm:'इस ईमेल के लिए कर्मचारी रिकॉर्ड नहीं मिला. नए कर्मचारी के रूप में जारी रखें?',replaceNoDeviceAlert:'कर्मचारी रिकॉर्ड मिला, लेकिन कोई वर्तमान assigned डिवाइस नहीं मिला. नया डिवाइस अनुरोध भेजें.',selectReplaceMsg:'बदलने वाला फोन चुनें.',requestRequiredMsg:'कर्मचारी नाम, लोकेशन, designation और अनुरोध का कारण भरें.',sendingBtn:'भेज रहे हैं…',requestSentPrefix:'अनुरोध',requestSentSuffix:'सफलतापूर्वक भेजा गया. IT समीक्षा करके ईमेल से बताएगा.',requestFailedPrefix:'अनुरोध भेज नहीं सके:',
+    issueReportToggleClosed:'मेरे मौजूदा डिवाइस में नया भौतिक नुकसान या फोन समस्या रिपोर्ट करें →',issueReportToggleOpen:'डिवाइस समस्या फॉर्म छिपाएँ ↑',issueReportHint:'ईमेल, कर्मचारी ID/कोड या नाम से अपना रिकॉर्ड खोजें. एक ही नाम के कई कर्मचारी हों तो अपना रिकॉर्ड चुनें.',issueLookupLabel:'ईमेल, कर्मचारी ID/कोड या कर्मचारी नाम',issueLookupPlaceholder:'जैसे name@dncc.in, VAD-RAHUL या Rahul Patel',issueFindBtn:'मेरा रिकॉर्ड खोजें',issueTypeLabel:'आप क्या रिपोर्ट करना चाहते हैं?',issueTypeDamage:'भौतिक नुकसान',issueTypeProblem:'फोन समस्या / इश्यू',reportedIssueDetailsLabel:'नुकसान / समस्या का विवरण दें',reportedIssueDetailsPlaceholder:'क्या नुकसान हुआ है या कौन-सी समस्या आ रही है, साफ लिखें.',reportedDamageCauseLabel:'भौतिक नुकसान कैसे हुआ? (वैकल्पिक)',reportedDamageCausePlaceholder:'जैसे फोन हाथ से गिर गया',issueReportSubmitBtn:'समस्या IT को भेजें',issueReportSubmitNote:'IT को समस्या मिलेगी और आपको ईमेल confirmation मिलेगा.',issueSearchMin:'कम से कम 2 अक्षर दर्ज करें.',issueNoMatch:'आपकी खोज से कोई कर्मचारी रिकॉर्ड नहीं मिला.',issueSelectEmployee:'अपना कर्मचारी रिकॉर्ड चुनें',issueSelectDevice:'जिस डिवाइस में समस्या/नुकसान है उसे चुनें',issueNoAssignedDevice:'इस कर्मचारी के लिए कोई वर्तमान assigned डिवाइस नहीं मिला.',issueChooseEmployeeFirst:'पहले अपना कर्मचारी रिकॉर्ड चुनें.',issueChooseDevice:'प्रभावित डिवाइस चुनें.',issueChooseType:'भौतिक नुकसान या फोन समस्या चुनें.',issueDetailsRequired:'नुकसान/समस्या का विवरण दें.',issueSearching:'खोज रहे हैं…',issueSending:'भेज रहे हैं…',issueSent:'आपकी समस्या IT को भेज दी गई है. आगे की जानकारी ईमेल से मिलेगी.',issueSendFailed:'समस्या भेज नहीं सके. फिर कोशिश करें.',tempEditTitle:'अस्थायी edit access',tempEditText:'IT ने आपको {time} तक यह रिकॉर्ड अपडेट करने की अनुमति दी है. नई फोटो upload नहीं करेंगे तो मौजूदा फोटो ही रहेगी.',assignedFormTitle:'डिवाइस assigned — handover form जरूरी',assignedFormText:'IT ने Request #{request} के लिए आपको {device} assigned किया है. पहले से भरे विवरण जाँचें, फोटो/condition जोड़ें और handover पूरा करने के लिए form submit करें.',linkCannotUse:'लिंक उपयोग नहीं हो सकती',linkInvalid:'यह edit link अमान्य है या पहले उपयोग हो चुकी है.',linkExpired:'यह edit link expire हो गई है. IT से नई link लें.',requestLinkInvalid:'यह handover link अमान्य है.',requestLinkExpired:'यह handover link expire हो गई है. IT से नई link लें.',clearConfirm:'यह फॉर्म साफ करना है?',restoreConfirm:'अपने बदलाव हटाकर मूल विवरण वापस लाने हैं?'
+  };
+  Object.assign(TRANSLATIONS.mr, {
+    clearFormBtn:'फॉर्म साफ करा',requestLaunchTitle:'कंपनी मोबाईल हवा आहे?',requestLaunchText:'डिव्हाइस देण्यापूर्वी IT ला विनंती पाठवा. ईमेलवरून विद्यमान कर्मचारी आपोआप ओळखला जाईल.',requestDesk:'IT विनंती डेस्क',newDeviceRequest:'+ नवीन डिव्हाइस विनंती',newDeviceRequestHint:'कामासाठी अतिरिक्त/नवीन कंपनी फोन मागा.',replaceDeviceRequest:'↻ डिव्हाइस बदलण्याची विनंती',replaceDeviceRequestHint:'तुमचा सध्याचा फोन निवडून replacement मागा.',deviceRequestTitle:'डिव्हाइस विनंती',requestSubtitle:'कंपनी किंवा वैयक्तिक ईमेल भरा. आम्ही तुमचा कर्मचारी रेकॉर्ड आणि सध्याचे assigned devices तपासू.',requestEmailLabel:'तुमचा कंपनी किंवा वैयक्तिक ईमेल',requestEmailPlaceholder:'name@dncc.in किंवा name@gmail.com',cancelBtn:'रद्द करा',requestDepartmentOptional:'विभाग (ऐच्छिक)',requestExistingQuestion:'तुमच्याकडे आधीच डिव्हाइस आहे. काय हवे आहे?',requestAdditionalChoice:'अतिरिक्त/नवीन डिव्हाइस',requestReplaceChoice:'सध्याचे डिव्हाइस बदला',requestReasonLabel:'डिव्हाइस का हवे / का बदलायचे?',requestReasonPlaceholder:'कामाची गरज, सध्याची समस्या किंवा replacement चे कारण लिहा.',requestUseLabel:'मुख्य कामाचा वापर',requestUsePlaceholder:'उदा. WhatsApp, कॉल, क्लिनिक समन्वय',requestNeededByLabel:'कधीपर्यंत हवे (ऐच्छिक)',requestBackBtn:'← मागे',requestSubmitBtn:'IT ला विनंती पाठवा',employeeFound:'कर्मचारी सापडला',newEmployeeRequest:'नवीन कर्मचारी विनंती',noPreviousRecord:'या ईमेलसाठी आधीचा कर्मचारी रेकॉर्ड सापडला नाही. खाली मूलभूत माहिती खात्री करा.',currentlyAssignedDevices:'सध्या assigned device(s) सापडले.',currentPhones:'सध्या assigned फोन',noActivePhone:'सक्रिय फोन assigned नाही',noActivePhoneText:'कर्मचारी रेकॉर्ड आहे, पण live inventory मध्ये सध्या फोन assigned दिसत नाही.',noReplaceDevice:'बदलण्यासाठी डिव्हाइस नाही',noReplaceDeviceText:'नवीन डिव्हाइस विनंती करा किंवा IT शी संपर्क करा.',selectReplacePhone:'बदलायचा फोन निवडा',currentOwner:'सध्याचा वापरकर्ता',you:'तुम्ही',noEmployeeId:'कर्मचारी ID नाही',simFromAudit:'मागील audit मधील SIM माहिती',validEmailMsg:'वैध ईमेल भरा.',checkingBtn:'तपासत आहोत…',lookupFailed:'रेकॉर्ड तपासता आला नाही. पुन्हा प्रयत्न करा.',newEmployeeConfirm:'या ईमेलसाठी कर्मचारी रेकॉर्ड सापडला नाही. नवीन कर्मचारी म्हणून पुढे जायचे?',replaceNoDeviceAlert:'कर्मचारी रेकॉर्ड सापडला, पण सध्या assigned डिव्हाइस नाही. नवीन डिव्हाइस विनंती पाठवा.',selectReplaceMsg:'बदलायचा फोन निवडा.',requestRequiredMsg:'कर्मचारी नाव, लोकेशन, पद आणि विनंतीचे कारण भरा.',sendingBtn:'पाठवत आहोत…',requestSentPrefix:'विनंती',requestSentSuffix:'यशस्वीरित्या पाठवली. IT तपासून ईमेलने कळवेल.',requestFailedPrefix:'विनंती पाठवता आली नाही:',issueReportToggleClosed:'माझ्या सध्याच्या डिव्हाइसवरील नवीन भौतिक नुकसान किंवा फोन समस्या नोंदवा →',issueReportToggleOpen:'डिव्हाइस समस्या फॉर्म लपवा ↑',issueReportHint:'ईमेल, कर्मचारी ID/कोड किंवा नावाने तुमचा रेकॉर्ड शोधा. एकाच नावाचे अनेक कर्मचारी असतील तर तुमचा रेकॉर्ड निवडा.',issueLookupLabel:'ईमेल, कर्मचारी ID/कोड किंवा कर्मचारी नाव',issueLookupPlaceholder:'उदा. name@dncc.in, VAD-RAHUL किंवा Rahul Patel',issueFindBtn:'माझा रेकॉर्ड शोधा',issueTypeLabel:'काय नोंदवायचे आहे?',issueTypeDamage:'भौतिक नुकसान',issueTypeProblem:'फोन समस्या / इश्यू',reportedIssueDetailsLabel:'नुकसान / समस्या वर्णन करा',reportedIssueDetailsPlaceholder:'काय नुकसान झाले किंवा कोणती समस्या येते ते स्पष्ट लिहा.',reportedDamageCauseLabel:'भौतिक नुकसान कसे झाले? (ऐच्छिक)',reportedDamageCausePlaceholder:'उदा. फोन हातातून पडला',issueReportSubmitBtn:'समस्या IT ला पाठवा',issueReportSubmitNote:'IT ला समस्या मिळेल आणि तुम्हाला ईमेल पुष्टी मिळेल.',issueSearchMin:'किमान 2 अक्षरे भरा.',issueNoMatch:'तुमच्या शोधाशी जुळणारा कर्मचारी रेकॉर्ड नाही.',issueSelectEmployee:'तुमचा कर्मचारी रेकॉर्ड निवडा',issueSelectDevice:'समस्या/नुकसान असलेले डिव्हाइस निवडा',issueNoAssignedDevice:'या कर्मचाऱ्यासाठी सध्या assigned डिव्हाइस सापडले नाही.',issueChooseEmployeeFirst:'आधी तुमचा कर्मचारी रेकॉर्ड निवडा.',issueChooseDevice:'प्रभावित डिव्हाइस निवडा.',issueChooseType:'भौतिक नुकसान किंवा फोन समस्या निवडा.',issueDetailsRequired:'नुकसान/समस्येचे तपशील लिहा.',issueSearching:'शोधत आहोत…',issueSending:'पाठवत आहोत…',issueSent:'तुमची समस्या IT ला पाठवली आहे. पुढील माहिती ईमेलने मिळेल.',issueSendFailed:'समस्या पाठवता आली नाही. पुन्हा प्रयत्न करा.',tempEditTitle:'तात्पुरता edit access',tempEditText:'IT ने तुम्हाला {time} पर्यंत हा रेकॉर्ड अपडेट करण्याची परवानगी दिली आहे. नवीन फोटो upload केला नाही तर सध्याचा फोटोच राहील.',assignedFormTitle:'डिव्हाइस assigned — handover form आवश्यक',assignedFormText:'IT ने Request #{request} साठी तुम्हाला {device} assigned केले आहे. आधी भरलेले तपशील तपासा, फोटो/condition जोडा आणि handover पूर्ण करण्यासाठी form submit करा.',linkCannotUse:'लिंक वापरता येत नाही',linkInvalid:'ही edit link अमान्य आहे किंवा आधीच वापरली आहे.',linkExpired:'ही edit link expire झाली आहे. IT कडून नवीन link घ्या.',requestLinkInvalid:'ही handover link अमान्य आहे.',requestLinkExpired:'ही handover link expire झाली आहे. IT कडून नवीन link घ्या.',clearConfirm:'हा फॉर्म साफ करायचा?',restoreConfirm:'तुमचे बदल काढून मूळ तपशील परत आणायचे?'
+  });
+  Object.assign(TRANSLATIONS.kok, {
+    clearFormBtn:'फॉर्म साफ करात',requestLaunchTitle:'कंपनी मोबायल जाय?',requestLaunchText:'डिव्हाइस दिवचे पयलीं IT क विनंती धाडात. ई-मेलावरून विद्यमान कर्मचारी आपशीच वळखतलो.',requestDesk:'IT विनंती डेस्क',newDeviceRequest:'+ नवें डिव्हाइस विनंती',newDeviceRequestHint:'कामाखातीर अतिरिक्त/नवो कंपनी फोन मागात.',replaceDeviceRequest:'↻ डिव्हाइस बदल विनंती',replaceDeviceRequestHint:'तुमचो सद्य फोन निवडून बदल मागात.',deviceRequestTitle:'डिव्हाइस विनंती',requestSubtitle:'कंपनी वा व्यक्तीगत ई-मेल भरात. आमी कर्मचारी रेकॉर्ड आनी सद्य assigned devices तपासू.',requestEmailLabel:'तुमचो कंपनी वा व्यक्तीगत ई-मेल',requestEmailPlaceholder:'name@dncc.in वा name@gmail.com',cancelBtn:'रद्द करात',requestDepartmentOptional:'विभाग (पर्यायी)',requestExistingQuestion:'तुमच्याकडेन पयलींच डिव्हाइस आसा. कितें जाय?',requestAdditionalChoice:'अतिरिक्त/नवो डिव्हाइस',requestReplaceChoice:'सद्य डिव्हाइस बदलात',requestReasonLabel:'डिव्हाइस कित्याक जाय / कित्याक बदलपाचें?',requestReasonPlaceholder:'कामाची गरज, सद्य समस्या वा बदलाचें कारण बरयात.',requestUseLabel:'मुख्य कामाचो वापर',requestUsePlaceholder:'दा. WhatsApp, कॉल, क्लिनिक समन्वय',requestNeededByLabel:'केन्ना मेरेन जाय (पर्यायी)',requestBackBtn:'← फाटीं',requestSubmitBtn:'IT क विनंती धाडात',employeeFound:'कर्मचारी मेळलो',newEmployeeRequest:'नवो कर्मचारी विनंती',noPreviousRecord:'ह्या ई-मेलाखातीर पयलो कर्मचारी रेकॉर्ड मेळलो ना. सकयल मूळ म्हायती खात्री करात.',currentlyAssignedDevices:'सद्य assigned device(s) मेळले.',currentPhones:'सद्य assigned फोन',noActivePhone:'सक्रिय फोन assigned ना',noActivePhoneText:'कर्मचारी रेकॉर्ड आसा, पूण live inventory त सद्य फोन assigned दिसना.',noReplaceDevice:'बदलपाक डिव्हाइस ना',noReplaceDeviceText:'नवो डिव्हाइस विनंती करात वा IT क संपर्क करात.',selectReplacePhone:'बदलपाचो फोन निवडात',currentOwner:'सद्य वापरपी',you:'तुमी',noEmployeeId:'कर्मचारी ID ना',simFromAudit:'फाटल्या audit ची SIM म्हायती',validEmailMsg:'बरोबर ई-मेल भरात.',checkingBtn:'तपासता…',lookupFailed:'रेकॉर्ड तपासूंक जमना. परत यत्न करात.',newEmployeeConfirm:'ह्या ई-मेलाखातीर कर्मचारी रेकॉर्ड ना. नवो कर्मचारी म्हणून फुडें वचपाचें?',replaceNoDeviceAlert:'कर्मचारी रेकॉर्ड मेळलो, पूण सद्य assigned डिव्हाइस ना. नवो डिव्हाइस विनंती धाडात.',selectReplaceMsg:'बदलपाचो फोन निवडात.',requestRequiredMsg:'कर्मचारी नांव, जागो, हुद्दो आनी विनंतीचें कारण भरात.',sendingBtn:'धाडता…',requestSentPrefix:'विनंती',requestSentSuffix:'यशस्वीपणान धाडली. IT तपासून ई-मेलान कळयतली.',requestFailedPrefix:'विनंती धाडूंक जमना:',issueReportToggleClosed:'म्हज्या सद्य डिव्हाइसाचें नवें शारीरीक नुकसान वा फोन समस्या नोंद करात →',issueReportToggleOpen:'डिव्हाइस समस्या फॉर्म लिपयात ↑',issueReportHint:'ई-मेल, कर्मचारी ID/कोड वा नांवान तुमचो रेकॉर्ड सोदात. एकाच नांवाचे जास्त कर्मचारी आसल्यार तुमचो रेकॉर्ड निवडात.',issueLookupLabel:'ई-मेल, कर्मचारी ID/कोड वा कर्मचारी नांव',issueLookupPlaceholder:'दा. name@dncc.in, VAD-RAHUL वा Rahul Patel',issueFindBtn:'म्हजो रेकॉर्ड सोदात',issueTypeLabel:'कितें नोंद करपाचें?',issueTypeDamage:'शारीरीक नुकसान',issueTypeProblem:'फोन समस्या / इश्यू',reportedIssueDetailsLabel:'नुकसान / समस्या सांगात',reportedIssueDetailsPlaceholder:'कितें नुकसान जालें वा किदी समस्या येता तें स्पश्ट बरयात.',reportedDamageCauseLabel:'शारीरीक नुकसान कशें जालें? (पर्यायी)',reportedDamageCausePlaceholder:'दा. फोन हातांतल्यान पडलो',issueReportSubmitBtn:'समस्या IT क धाडात',issueReportSubmitNote:'IT क समस्या मेळटली आनी तुमकां ई-मेल खात्री मेळटली.',issueSearchMin:'किमान 2 अक्षरां भरात.',issueNoMatch:'तुमच्या सोदाक जुळपी कर्मचारी रेकॉर्ड ना.',issueSelectEmployee:'तुमचो कर्मचारी रेकॉर्ड निवडात',issueSelectDevice:'समस्या/नुकसान आसलेलें डिव्हाइस निवडात',issueNoAssignedDevice:'ह्या कर्मचाऱ्याक सद्य assigned डिव्हाइस मेळना.',issueChooseEmployeeFirst:'पयलीं तुमचो कर्मचारी रेकॉर्ड निवडात.',issueChooseDevice:'समस्या आसलेलें डिव्हाइस निवडात.',issueChooseType:'शारीरीक नुकसान वा फोन समस्या निवडात.',issueDetailsRequired:'नुकसान/समस्येची म्हायती बरयात.',issueSearching:'सोदता…',issueSending:'धाडता…',issueSent:'तुमची समस्या IT क धाडली. फुडली म्हायती ई-मेलान मेळटली.',issueSendFailed:'समस्या धाडूंक जमना. परत यत्न करात.',tempEditTitle:'तात्पुरतो edit access',tempEditText:'IT न तुमकां {time} मेरेन हो रेकॉर्ड अपडेट करपाची परवानगी दिल्या. नवो फोटो upload करूंक ना जाल्यार सद्य फोटो उरतलो.',assignedFormTitle:'डिव्हाइस assigned — handover form गरजेचो',assignedFormText:'IT न Request #{request} खातीर तुमकां {device} assigned केलां. भरिल्ली म्हायती तपासात, फोटो/condition जोडात आनी handover पुराय करपाक form submit करात.',linkCannotUse:'लिंक वापरूंक येना',linkInvalid:'ही edit link चुकीची आसा वा पयलींच वापरल्ली आसा.',linkExpired:'ही edit link expire जाल्या. IT कडल्यान नवी link घेवात.',requestLinkInvalid:'ही handover link चुकीची आसा.',requestLinkExpired:'ही handover link expire जाल्या. IT कडल्यान नवी link घेवात.',clearConfirm:'हो फॉर्म साफ करपाचो?',restoreConfirm:'तुमचे बदल काडून मूळ म्हायती परत हाडपाची?'
+  });
+  Object.assign(TRANSLATIONS.en,{formSubtitle:'IT Department — IT Mobile Audit Form',draftRestoreConfirm:'You have an unfinished form saved from before. Restore it and continue where you left off?',draftRestored:'Your unfinished form has been restored.',imeiDuplicateLive:'This IMEI already has a submission on file (by {name}). Use a valid IT request/temporary edit link if this device is being reassigned.',fillRequired:'Please fill in the highlighted required fields before submitting.',preparingReview:'Preparing review…',prepareError:'Something went wrong preparing your details. Please try again.',checkingDuplicates:'Checking for duplicates…',duplicateFinal:'This device (IMEI {imei}) already has a submission on file (by {name}). Please use an IT-issued request/edit link for a reassigned device.',saving:'Saving…',emailingCopy:'Emailing your copy…',submitSuccessEmail:'Submitted successfully — your handover PDF is downloading, and a copy has been emailed to you.',submitSuccessNoEmail:'Submitted successfully — your handover PDF is downloading now. The email copy could not be sent; IT can resend it from the portal.',saveError:'Something went wrong saving your response. Please try again.',corrValidation:'Please fill in your name, a valid email, and what needs correcting.',corrSuccess:'Correction request sent. IT will review it and email you once it is updated.',corrError:'Could not send your request. Please try again.'});
+  Object.assign(TRANSLATIONS.gu,{formSubtitle:'IT વિભાગ — IT મોબાઇલ ઑડિટ ફોર્મ',draftRestoreConfirm:'પહેલાનું અધૂરું ફોર્મ સેવ થયેલું છે. તેને ફરી લાવીને આગળ ચાલુ રાખવું છે?',draftRestored:'તમારું અધૂરું ફોર્મ ફરી લાવવામાં આવ્યું છે.',imeiDuplicateLive:'આ IMEI માટે પહેલેથી સબમિશન છે ({name}). ડિવાઇસ ફરી સોંપાતું હોય તો માન્ય IT request/temporary edit link વાપરો.',fillRequired:'સબમિટ કરતા પહેલાં હાઇલાઇટ કરેલી જરૂરી વિગતો ભરો.',preparingReview:'રીવ્યુ તૈયાર થઈ રહ્યું છે…',prepareError:'વિગતો તૈયાર કરતી વખતે સમસ્યા આવી. ફરી પ્રયત્ન કરો.',checkingDuplicates:'ડુપ્લિકેટ ચકાસી રહ્યા છીએ…',duplicateFinal:'આ ડિવાઇસ (IMEI {imei}) માટે પહેલેથી સબમિશન છે ({name}). ફરી સોંપાયેલ ડિવાઇસ માટે IT-issued request/edit link વાપરો.',saving:'સેવ થઈ રહ્યું છે…',emailingCopy:'તમારી કોપી ઈમેલ થઈ રહી છે…',submitSuccessEmail:'સબમિશન સફળ થયું — handover PDF ડાઉનલોડ થઈ રહ્યું છે અને ઈમેલ પર કોપી મોકલાઈ છે.',submitSuccessNoEmail:'સબમિશન સફળ થયું અને PDF ડાઉનલોડ થઈ રહ્યું છે. ઈમેલ કોપી મોકલી શકાઈ નથી; IT portal માંથી ફરી મોકલી શકે છે.',saveError:'તમારો જવાબ સેવ કરતી વખતે સમસ્યા આવી. ફરી પ્રયત્ન કરો.',corrValidation:'તમારું નામ, માન્ય ઈમેલ અને શું સુધારવું છે તે ભરો.',corrSuccess:'સુધારાની વિનંતી મોકલાઈ. IT સમીક્ષા કરીને અપડેટ બાદ ઈમેલ કરશે.',corrError:'વિનંતી મોકલી શકાઈ નહીં. ફરી પ્રયત્ન કરો.'});
+  Object.assign(TRANSLATIONS.hi,{formSubtitle:'IT विभाग — IT मोबाइल ऑडिट फॉर्म',draftRestoreConfirm:'पहले का अधूरा फॉर्म सेव है. उसे वापस लाकर वहीं से जारी रखें?',draftRestored:'आपका अधूरा फॉर्म वापस लोड हो गया है.',imeiDuplicateLive:'इस IMEI के लिए पहले से submission है ({name}). डिवाइस reassignment के लिए मान्य IT request/temporary edit link उपयोग करें.',fillRequired:'सबमिट करने से पहले highlighted जरूरी fields भरें.',preparingReview:'Review तैयार हो रहा है…',prepareError:'विवरण तैयार करते समय समस्या आई. फिर कोशिश करें.',checkingDuplicates:'Duplicate जाँच रहे हैं…',duplicateFinal:'इस डिवाइस (IMEI {imei}) के लिए पहले से submission है ({name}). Reassigned device के लिए IT-issued request/edit link उपयोग करें.',saving:'सेव हो रहा है…',emailingCopy:'आपकी कॉपी ईमेल हो रही है…',submitSuccessEmail:'Submission सफल है — handover PDF डाउनलोड हो रहा है और ईमेल कॉपी भेज दी गई है.',submitSuccessNoEmail:'Submission सफल है और PDF डाउनलोड हो रहा है. ईमेल कॉपी नहीं भेजी जा सकी; IT portal से दोबारा भेज सकता है.',saveError:'आपका response सेव करते समय समस्या आई. फिर कोशिश करें.',corrValidation:'अपना नाम, मान्य ईमेल और क्या सुधारना है, भरें.',corrSuccess:'Correction request भेज दी गई है. IT review करके update होने पर ईमेल करेगा.',corrError:'Request नहीं भेज सके. फिर कोशिश करें.'});
+  Object.assign(TRANSLATIONS.mr,{formSubtitle:'IT विभाग — IT मोबाईल ऑडिट फॉर्म',draftRestoreConfirm:'आधीचे अपूर्ण फॉर्म सेव आहे. ते परत आणून पुढे सुरू ठेवायचे?',draftRestored:'तुमचे अपूर्ण फॉर्म परत आणले आहे.',imeiDuplicateLive:'या IMEI साठी आधीच submission आहे ({name}). डिव्हाइस पुन्हा assign होत असल्यास वैध IT request/temporary edit link वापरा.',fillRequired:'सबमिट करण्यापूर्वी highlight केलेली आवश्यक माहिती भरा.',preparingReview:'Review तयार होत आहे…',prepareError:'तपशील तयार करताना समस्या आली. पुन्हा प्रयत्न करा.',checkingDuplicates:'Duplicate तपासत आहोत…',duplicateFinal:'या डिव्हाइस (IMEI {imei}) साठी आधीच submission आहे ({name}). Reassigned device साठी IT-issued request/edit link वापरा.',saving:'सेव करत आहोत…',emailingCopy:'तुमची कॉपी ईमेल करत आहोत…',submitSuccessEmail:'Submission यशस्वी — handover PDF डाउनलोड होत आहे आणि ईमेल कॉपी पाठवली आहे.',submitSuccessNoEmail:'Submission यशस्वी आणि PDF डाउनलोड होत आहे. ईमेल कॉपी पाठवता आली नाही; IT portal मधून पुन्हा पाठवू शकते.',saveError:'तुमचा response सेव करताना समस्या आली. पुन्हा प्रयत्न करा.',corrValidation:'तुमचे नाव, वैध ईमेल आणि काय सुधारायचे ते भरा.',corrSuccess:'Correction request पाठवली आहे. IT review करून update झाल्यावर ईमेल करेल.',corrError:'Request पाठवता आली नाही. पुन्हा प्रयत्न करा.'});
+  Object.assign(TRANSLATIONS.kok,{formSubtitle:'IT विभाग — IT मोबायल ऑडिट फॉर्म',draftRestoreConfirm:'पयलें अपुरें फॉर्म सेव आसा. तें परत हाडून फुडें चालू दवरपाचें?',draftRestored:'तुमचें अपुरें फॉर्म परत हाडलां.',imeiDuplicateLive:'ह्या IMEI खातीर पयलींच submission आसा ({name}). डिव्हाइस परत assign जाता जाल्यार योग्य IT request/temporary edit link वापरात.',fillRequired:'सबमिट करचे पयलीं दाखयल्ली गरजेची म्हायती भरात.',preparingReview:'Review तयार जाता…',prepareError:'म्हायती तयार करतना समस्या जाली. परत यत्न करात.',checkingDuplicates:'Duplicate तपासता…',duplicateFinal:'ह्या डिव्हाइस (IMEI {imei}) खातीर पयलींच submission आसा ({name}). Reassigned device खातीर IT-issued request/edit link वापरात.',saving:'सेव जाता…',emailingCopy:'तुमची प्रत ई-मेलान धाडता…',submitSuccessEmail:'Submission यशस्वी — handover PDF डाउनलोड जाता आनी ई-मेल प्रत धाडल्या.',submitSuccessNoEmail:'Submission यशस्वी आनी PDF डाउनलोड जाता. ई-मेल प्रत धाडूंक जमना; IT portal वरून परत धाडूंक शकता.',saveError:'तुमचो response सेव करतना समस्या जाली. परत यत्न करात.',corrValidation:'तुमचें नांव, योग्य ई-मेल आनी कितें बदलपाचें तें भरात.',corrSuccess:'Correction request धाडल्या. IT तपासून update जाल्यार ई-मेल करतली.',corrError:'Request धाडूंक जमना. परत यत्न करात.'});
   var currentLang = (function(){ try{ return localStorage.getItem('dncc_lang') || 'en'; }catch(e){ return 'en'; } })();
 
   function t(key){ return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || TRANSLATIONS.en[key] || key; }
@@ -559,10 +638,17 @@
       el.placeholder = t(key);
     });
     document.getElementById('langToggle').value = currentLang;
+    document.getElementById('companySub').textContent = t('formSubtitle');
     var corrForm = document.getElementById('correctionForm');
     var corrOpen = corrForm && corrForm.style.display !== 'none';
     document.getElementById('correctionToggle').textContent = corrOpen ? t('correctionToggleOpen') : t('correctionToggleClosed');
+    var issueForm = document.getElementById('employeeIssueForm');
+    var issueOpen = issueForm && issueForm.style.display !== 'none';
+    var issueToggle = document.getElementById('issueReportToggle');
+    if(issueToggle) issueToggle.textContent = issueOpen ? t('issueReportToggleOpen') : t('issueReportToggleClosed');
     document.querySelector('.foot-link a').textContent = t('footLink');
+    if(typeof requestState !== 'undefined' && requestState && document.getElementById('requestStepDetails').classList.contains('active')) renderRequestDetails();
+    if(typeof issueReportState !== 'undefined' && issueReportState) rerenderIssueReportState();
   }
 
   document.getElementById('langToggle').addEventListener('change', function(){
@@ -637,7 +723,7 @@
     if(!raw) return;
     var draft;
     try{ draft = JSON.parse(raw); }catch(e){ return; }
-    if(!draft || !confirm('You have an unfinished form saved from before. Restore it and continue where you left off?')) { if(draft) clearDraft(); return; }
+    if(!draft || !confirm(t('draftRestoreConfirm'))) { if(draft) clearDraft(); return; }
 
     Object.keys(draft.fields||{}).forEach(function(id){
       var el = document.getElementById(id);
@@ -669,7 +755,7 @@
       });
     });
     updateAutoEmpId();
-    showToast('Your unfinished form has been restored.', 'ok');
+    showToast(t('draftRestored'), 'ok');
   }
 
   // Autosave on any change/input across the whole form (photos are not saved — too large for localStorage).
@@ -831,7 +917,7 @@
           var allowedRequestImei = REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot && REQUEST_CONTEXT.fulfillment_device_snapshot.imei1 === v;
           var onlyOwnEdit = EDIT_CONTEXT && dupes.every(function(x){ return String(x.id) === String(EDIT_CONTEXT.submission.id); });
           if(!allowedRequestImei && !onlyOwnEdit){
-            warnEl.textContent = 'This IMEI already has a submission on file (by ' + (dupes[0].employee_name||'someone') + '). Use a valid IT request/temporary edit link if this device is being reassigned.';
+            warnEl.textContent = t('imeiDuplicateLive').replace('{name}',dupes[0].employee_name||'someone');
             warnEl.classList.add('show');
           }
         }
@@ -1133,10 +1219,10 @@
   document.getElementById('intakeForm').addEventListener('submit', async function(e){
     e.preventDefault();
     var deviceCount = parseInt(document.querySelector('input[name="deviceCount"]:checked').value, 10);
-    if(!validate(deviceCount)){ showToast('Please fill in the highlighted required fields before submitting.', 'err'); return; }
+    if(!validate(deviceCount)){ showToast(t('fillRequired'), 'err'); return; }
 
     var submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true; submitBtn.textContent = 'Preparing review…';
+    submitBtn.disabled = true; submitBtn.textContent = t('preparingReview');
     try{
       var record = {
         employeeName: document.getElementById('empName').value.trim(),
@@ -1159,7 +1245,7 @@
       showReview(record);
     }catch(err){
       console.error(err);
-      showToast('Something went wrong preparing your details. Please try again.', 'err');
+      showToast(t('prepareError'), 'err');
     }finally{
       submitBtn.disabled = false; submitBtn.textContent = t('submitBtn');
     }
@@ -1230,11 +1316,45 @@
     document.getElementById('reviewOverlay').classList.remove('open');
   });
 
+  function editDisplayValue(v,isPhoto){
+    if(isPhoto) return v ? 'Photo on file' : 'No photo';
+    if(Array.isArray(v)) return v.join(', ')||'—';
+    if(v===undefined||v===null||v==='') return '—';
+    return String(v);
+  }
+  function buildEditChanges(before,after){
+    var changes=[];
+    function add(label,a,b,isPhoto){var av=editDisplayValue(a,isPhoto),bv=editDisplayValue(b,isPhoto);if(isPhoto){if(String(a||'')!==String(b||''))changes.push({field:label,before:a?'Previous photo':'No photo',after:b?'New/replaced photo':'No photo'});}else if(av!==bv)changes.push({field:label,before:av,after:bv});}
+    [['Employee name','employee_name'],['Employee ID','employee_id'],['Location','location'],['Designation','designation'],['Department','department'],['Contact','contact'],['Company email','company_email'],['Personal email','personal_email'],['Device count','device_count'],['Charger','charger'],['USB/Data cable','cable'],['Physical damage','damage'],['Damage details','damage_what'],['Damage cause','damage_how'],['Phone problem','phone_problem'],['Phone problem details','phone_problem_details']].forEach(function(x){add(x[0],before[x[1]],after[x[1]]);});
+    [1,2].forEach(function(n){var a=before['device'+n]||{},b=after['device'+n]||{};[['Brand','brand'],['Model','model'],['RAM','ram'],['Storage','storage'],['IMEI 1','imei1'],['IMEI 2','imei2'],['SIM number(s)','simNumbers'],['Memory card','memoryCard'],['Memory card size','memoryCardSize'],['Usage','usage']].forEach(function(x){add('Device '+n+' — '+x[0],a[x[1]],b[x[1]]);});add('Device '+n+' — Front photo',a.frontPhoto,b.frontPhoto,true);add('Device '+n+' — Back photo',a.backPhoto,b.backPhoto,true);});
+    return changes;
+  }
+  function changesHtml(changes){if(!changes.length)return '<p>No field value changed; the employee submitted the edit session without modifications.</p>';return '<table cellpadding="7" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:13px"><thead><tr><th align="left" style="border:1px solid #ddd">Field</th><th align="left" style="border:1px solid #ddd">Before</th><th align="left" style="border:1px solid #ddd">After</th></tr></thead><tbody>'+changes.map(function(c){return '<tr><td style="border:1px solid #ddd"><b>'+h(c.field)+'</b></td><td style="border:1px solid #ddd">'+h(c.before)+'</td><td style="border:1px solid #ddd">'+h(c.after)+'</td></tr>';}).join('')+'</tbody></table>';}
+  async function saveAndNotifyEmployeeEdit(submissionId,before,after,access){
+    var changes=buildEditChanges(before,after),email=[after.company_email,after.personal_email].filter(validEmail)[0]||'';
+    function compactSnapshot(src){var c=JSON.parse(JSON.stringify(src||{}));['device1','device2'].forEach(function(k){if(c[k]){c[k].frontPhoto=c[k].frontPhoto?'[photo on file]':'';c[k].backPhoto=c[k].backPhoto?'[photo on file]':'';}});return c;}
+    var audit={submission_id:submissionId,access_token_id:access&&access.id||null,employee_name:after.employee_name,employee_id:after.employee_id,employee_email:email,changed_fields:changes,before_snapshot:compactSnapshot(before),after_snapshot:compactSnapshot(after)};
+    var ins=await sb.from('employee_edit_audits').insert([audit]).select();if(ins.error)console.warn('Edit audit could not be saved',ins.error);var auditRow=ins.data&&ins.data[0];
+    try{await sb.from('activity_log').insert([{admin_username:'Employee self-service',action:'Employee temporary edit submitted',target_type:'submission',target_id:submissionId,details:(after.employee_name||'Employee')+' changed '+changes.length+' field(s): '+changes.map(function(c){return c.field;}).join(', ')}]);}catch(e){console.warn(e);}
+    try{
+      var sr=await sb.from('settings').select('*').eq('id',1).single(),settings=sr.data||{},itEmail=settings.it_request_email||settings.smtp2go_sender_email||settings.smtp_from_email||'';
+      var adminLink=location.origin+location.pathname.replace(/index\.html.*$/,'admin.html');
+      var html='<p><b>'+h(after.employee_name||'Employee')+'</b> ('+h(after.employee_id||'')+') used a temporary edit link and submitted updated mobile audit details.</p><p><b>Employee email:</b> '+h(email||'—')+'<br/><b>Changed fields:</b> '+changes.length+'<br/><b>Submitted:</b> '+h(new Date().toLocaleString())+'</p>'+changesHtml(changes)+'<p><a href="'+adminLink+'">Open IT Admin</a></p>';
+      var sent=await sendRequestEmail(itEmail,'Employee updated mobile audit — '+(after.employee_name||after.employee_id||'Employee'),html);
+      if(sent&&auditRow&&auditRow.id)await sb.from('employee_edit_audits').update({admin_notification_sent_at:new Date().toISOString()}).eq('id',auditRow.id);
+    }catch(err){console.error('Could not notify IT about employee edit',err);}
+  }
+
   async function finalizeSubmission(record){
     var submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true; submitBtn.textContent = 'Checking for duplicates…';
+    submitBtn.disabled = true; submitBtn.textContent = t('checkingDuplicates');
 
     try{
+      if(EDIT_CONTEXT && EDIT_CONTEXT.access){
+        if(new Date(EDIT_CONTEXT.access.expires_at)<=new Date()){showToast(t('linkExpired'),'err');submitBtn.disabled=false;submitBtn.textContent=t('submitBtn');return;}
+        var liveAccess=await sb.from('form_access_tokens').select('active,expires_at').eq('id',EDIT_CONTEXT.access.id).single();
+        if(liveAccess.error || !liveAccess.data || !liveAccess.data.active || new Date(liveAccess.data.expires_at)<=new Date()){showToast(t('linkExpired'),'err');submitBtn.disabled=false;submitBtn.textContent=t('submitBtn');return;}
+      }
       // Duplicate check — has this IMEI already been submitted before?
       var imeisToCheck = [record.device1.imei1];
       if(record.device2) imeisToCheck.push(record.device2.imei1);
@@ -1248,13 +1368,13 @@
           var requestAuthorized = REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot && REQUEST_CONTEXT.fulfillment_device_snapshot.imei1 === checkImei;
           var editAuthorized = EDIT_CONTEXT && dupes.every(function(x){ return String(x.id) === String(EDIT_CONTEXT.submission.id); });
           if(!requestAuthorized && !editAuthorized){
-            showToast('This device (IMEI ' + checkImei + ') already has a submission on file (by ' + (dupes[0].employee_name||'someone') + '). Please use an IT-issued request/edit link for a reassigned device.', 'err');
+            showToast(t('duplicateFinal').replace('{imei}',checkImei).replace('{name}',dupes[0].employee_name||'someone'), 'err');
             submitBtn.disabled = false; submitBtn.textContent = t('submitBtn');
             return;
           }
         }
       }
-      submitBtn.textContent = 'Saving…';
+      submitBtn.textContent = t('saving');
 
       var submissionPayload = {
         employee_name: record.employeeName, employee_id: record.employeeId,
@@ -1276,6 +1396,9 @@
       }
       if(error) throw error;
       var submissionId = inserted && inserted[0] ? inserted[0].id : (EDIT_CONTEXT && EDIT_CONTEXT.submission ? EDIT_CONTEXT.submission.id : null);
+      if(EDIT_CONTEXT && EDIT_CONTEXT.submission && submissionId){
+        await saveAndNotifyEmployeeEdit(submissionId, EDIT_CONTEXT.submission, submissionPayload, EDIT_CONTEXT.access);
+      }
 
       var inventoryEmail = [record.companyEmail, record.personalEmail].filter(isRealEmail)[0] || '';
       await upsertDevice(record.device1, record.employeeName, record.employeeId, inventoryEmail);
@@ -1289,11 +1412,11 @@
       }
 
       buildHandoverPDF(record);
-      submitBtn.textContent = 'Emailing your copy…';
+      submitBtn.textContent = t('emailingCopy');
       var emailed = await autoSendHandoverEmail(record, submissionId);
       showToast(emailed
-        ? 'Submitted successfully — your handover PDF is downloading, and a copy has been emailed to you.'
-        : 'Submitted successfully — your handover PDF is downloading now. (The email copy could not be sent — IT has been notified via the portal.)', 'ok');
+        ? t('submitSuccessEmail')
+        : t('submitSuccessNoEmail'), 'ok');
       clearDraft();
       document.getElementById('intakeForm').reset();
       document.getElementById('empId').value = '';
@@ -1312,11 +1435,34 @@
       wireSimNumbers(1); wireSimNumbers(2);
     }catch(err){
       console.error(err);
-      showToast('Something went wrong saving your response. Please try again.', 'err');
+      showToast(t('saveError'), 'err');
     }finally{
       submitBtn.disabled=false; submitBtn.textContent=t('submitBtn');
     }
   }
+
+  function resetIntakeVisuals(){
+    document.getElementById('device2Fieldset').style.display='none';
+    document.getElementById('damageDetails').style.display='none';
+    document.getElementById('phoneProblemDetails').style.display='none';
+    ['1','2'].forEach(function(idx){
+      var wrap=document.getElementById('d'+idx+'_memoryCardSizeWrap'); if(wrap) wrap.style.display='none';
+      ['frontPrev','backPrev'].forEach(function(k){var el=document.getElementById('d'+idx+'_'+k);if(el){el.removeAttribute('src');el.style.display='none';}});
+    });
+    document.querySelectorAll('.radiogroup label').forEach(function(l){l.classList.remove('on');});
+    wireSimNumbers(1); wireSimNumbers(2);
+  }
+  document.getElementById('clearMainFormBtn').addEventListener('click',function(){
+    var special=!!(EDIT_CONTEXT||REQUEST_CONTEXT);
+    if(!confirm(special?t('restoreConfirm'):t('clearConfirm'))) return;
+    document.getElementById('intakeForm').reset(); resetIntakeVisuals();
+    if(EDIT_CONTEXT&&EDIT_CONTEXT.submission){prefillEmployeeForm(EDIT_CONTEXT.submission);}
+    else if(REQUEST_CONTEXT){
+      var d=REQUEST_CONTEXT.fulfillment_device_snapshot||{};
+      prefillEmployeeForm({employee_name:REQUEST_CONTEXT.employee_name,employee_id:REQUEST_CONTEXT.employee_id,location:REQUEST_CONTEXT.location,designation:REQUEST_CONTEXT.designation,department:REQUEST_CONTEXT.department,company_email:REQUEST_CONTEXT.company_email||((REQUEST_CONTEXT.requester_email||'').endsWith('@dncc.in')?REQUEST_CONTEXT.requester_email:'NOT'),personal_email:REQUEST_CONTEXT.personal_email||(!(REQUEST_CONTEXT.requester_email||'').endsWith('@dncc.in')?REQUEST_CONTEXT.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:REQUEST_CONTEXT.fulfillment_sim_numbers||[]})});
+    }else{document.getElementById('empId').value='';clearDraft();updateAutoEmpId();}
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
 
   // ---------- Correction request ----------
   document.getElementById('correctionToggle').addEventListener('click', function(){
@@ -1335,12 +1481,12 @@
     var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     var corrToast = document.getElementById('corrToast');
     if(!name || !details || !emailPattern.test(email)){
-      corrToast.textContent = 'Please fill in your name, a valid email, and what needs correcting.';
+      corrToast.textContent = t('corrValidation');
       corrToast.className = 'toast err';
       return;
     }
     var btn = document.getElementById('corrSubmitBtn');
-    btn.disabled = true; btn.textContent = 'Sending…';
+    btn.disabled = true; btn.textContent = t('sendingBtn');
     try{
       // Try to auto-link to their most recent submission by matching email
       var submissionId = null;
@@ -1355,17 +1501,90 @@
         employee_email: email, request_details: details, status: 'Pending'
       }]);
       if(error) throw error;
-      corrToast.textContent = 'Correction request sent. IT will review it and email you once it\'s updated.';
+      corrToast.textContent = t('corrSuccess');
       corrToast.className = 'toast ok';
       this.reset();
     }catch(err){
       console.error(err);
-      corrToast.textContent = 'Could not send your request. Please try again.';
+      corrToast.textContent = t('corrError');
       corrToast.className = 'toast err';
     }finally{
-      btn.disabled = false; btn.textContent = 'Send correction request';
+      btn.disabled = false; btn.textContent = t('corrSubmitBtn');
     }
 
+  });
+
+  // ---------- Employee-reported post-handover issue workflow ----------
+  var issueReportState={matches:[],employee:null,devices:[]};
+  function h(v){return String(v===undefined||v===null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function preferredIssueEmail(s){if(s&&validEmail(s.company_email))return s.company_email.trim();if(s&&validEmail(s.personal_email))return s.personal_email.trim();return '';}
+  function submissionDeviceArray(s){return [s&&s.device1,s&&s.device2].filter(function(d){return d&&(d.imei1||d.brand||d.model);});}
+  function issueEmployeeKey(s){return String(s.employee_id||preferredIssueEmail(s)||((s.employee_name||'')+'|'+(s.location||''))).toLowerCase();}
+  function setIssueToast(text,type){var el=document.getElementById('issueReportToast');el.textContent=text||'';el.className='toast '+(type||'');}
+  function resetIssueReport(){
+    issueReportState={matches:[],employee:null,devices:[]};
+    document.getElementById('employeeIssueForm').reset();
+    document.getElementById('issueCandidateArea').innerHTML='';document.getElementById('issueDeviceArea').innerHTML='';document.getElementById('issueDetailsArea').style.display='none';document.getElementById('reportedDamageCauseWrap').style.display='none';setIssueToast('','');
+  }
+  document.getElementById('issueReportToggle').addEventListener('click',function(){var f=document.getElementById('employeeIssueForm'),open=f.style.display!=='none';f.style.display=open?'none':'block';this.textContent=open?t('issueReportToggleClosed'):t('issueReportToggleOpen');if(!open)document.getElementById('issueLookupTerm').focus();});
+  document.getElementById('clearIssueReportBtn').addEventListener('click',resetIssueReport);
+  document.querySelectorAll('input[name="employeeIssueType"]').forEach(function(el){el.addEventListener('change',function(){document.getElementById('reportedDamageCauseWrap').style.display=this.value==='Physical Damage'?'block':'none';});});
+
+  async function findIssueEmployees(term){
+    var res=await sb.from('submissions').select('id,created_at,employee_name,employee_id,company_email,personal_email,location,designation,department,device_count,device1,device2').order('created_at',{ascending:false}).limit(500);if(res.error)throw res.error;
+    var q=term.trim().toLowerCase(),seen=new Set(),out=[];
+    (res.data||[]).forEach(function(s){
+      var vals=[s.employee_name,s.employee_id,s.company_email,s.personal_email].map(function(v){return String(v||'').toLowerCase();});
+      var match=vals.some(function(v){return v&&v.indexOf(q)>=0;}); if(!match)return;
+      var key=issueEmployeeKey(s);if(seen.has(key))return;seen.add(key);out.push(s);
+    });
+    return out.slice(0,20);
+  }
+  function renderIssueCandidates(){
+    var area=document.getElementById('issueCandidateArea');
+    if(!issueReportState.matches.length){area.innerHTML='<div class="lookup-result warn"><p>'+h(t('issueNoMatch'))+'</p></div>';return;}
+    area.innerHTML='<label>'+h(t('issueSelectEmployee'))+'</label><div class="candidate-list">'+issueReportState.matches.map(function(e,i){return '<label class="candidate-card"><input type="radio" name="issueEmployeeChoice" value="'+h(e.id)+'" '+(issueReportState.employee&&String(issueReportState.employee.id)===String(e.id)?'checked':'')+'/><b>'+h(e.employee_name||'Employee')+'</b><span class="candidate-meta">'+h((e.employee_id||t('noEmployeeId'))+' · '+(e.location||'')+' · '+(preferredIssueEmail(e)||'—'))+'</span></label>';}).join('')+'</div>';
+    area.querySelectorAll('input[name="issueEmployeeChoice"]').forEach(function(r){r.addEventListener('change',function(){selectIssueEmployee(this.value);});});
+  }
+  async function selectIssueEmployee(id){
+    var emp=issueReportState.matches.find(function(x){return String(x.id)===String(id);});if(!emp)return;issueReportState.employee=emp;document.getElementById('issueDetailsArea').style.display='none';setIssueToast('','');
+    try{
+      var res=await sb.from('devices').select('*').eq('status','Assigned').order('last_updated',{ascending:false});if(res.error)throw res.error;
+      var emails=[emp.company_email,emp.personal_email].filter(validEmail).map(function(v){return v.toLowerCase();});
+      var devs=(res.data||[]).filter(function(d){return (emp.employee_id&&d.assigned_employee_id===emp.employee_id)||(d.assigned_employee_email&&emails.indexOf(String(d.assigned_employee_email).toLowerCase())>=0)||((d.assigned_to||'').trim().toLowerCase()===(emp.employee_name||'').trim().toLowerCase());});
+      var hist=submissionDeviceArray(emp);devs=devs.map(function(d){var hd=hist.find(function(x){return x.imei1===d.imei1;})||{};return Object.assign({},hd,d,{sim_numbers:(d.sim_numbers&&d.sim_numbers.length)?d.sim_numbers:(hd.simNumbers||[])});});
+      if(!devs.length){devs=hist.map(function(d){return Object.assign({},d,{_historical:true,sim_numbers:d.simNumbers||[]});});}
+      issueReportState.devices=devs;renderIssueDevices();
+    }catch(err){console.error(err);issueReportState.devices=[];renderIssueDevices();}
+  }
+  function renderIssueDevices(){
+    var area=document.getElementById('issueDeviceArea'),devs=issueReportState.devices||[];
+    if(!issueReportState.employee){area.innerHTML='';return;}
+    if(!devs.length){area.innerHTML='<div class="lookup-result warn"><p>'+h(t('issueNoAssignedDevice'))+'</p></div>';document.getElementById('issueDetailsArea').style.display='none';return;}
+    area.innerHTML='<label>'+h(t('issueSelectDevice'))+'</label><div class="issue-device-list">'+devs.map(function(d,i){var sims=d.sim_numbers||d.simNumbers||[];return '<label class="issue-device-card"><input type="radio" name="issueDeviceChoice" value="'+h(d.imei1||'')+'" '+(i===0?'checked':'')+'/><b>'+h(((d.brand||'')+' '+(d.model||'')).trim()||'Mobile device')+'</b><span class="issue-device-meta">IMEI '+h(d.imei1||'—')+(sims.length?' · SIM '+h(sims.join(', ')):'')+(d._historical?' · '+h(t('simFromAudit')):'')+'</span></label>';}).join('')+'</div>';
+    document.getElementById('issueDetailsArea').style.display='block';
+  }
+  function rerenderIssueReportState(){if(issueReportState.matches&&issueReportState.matches.length)renderIssueCandidates();if(issueReportState.employee)renderIssueDevices();}
+  document.getElementById('issueLookupBtn').addEventListener('click',async function(){
+    var term=document.getElementById('issueLookupTerm').value.trim();if(term.length<2){setIssueToast(t('issueSearchMin'),'err');return;}var b=this;b.disabled=true;b.textContent=t('issueSearching');setIssueToast('','');
+    try{issueReportState.matches=await findIssueEmployees(term);issueReportState.employee=null;issueReportState.devices=[];renderIssueCandidates();document.getElementById('issueDeviceArea').innerHTML='';document.getElementById('issueDetailsArea').style.display='none';if(issueReportState.matches.length===1){var only=issueReportState.matches[0];issueReportState.employee=only;renderIssueCandidates();await selectIssueEmployee(only.id);}}
+    catch(err){console.error(err);setIssueToast(t('lookupFailed'),'err');}finally{b.disabled=false;b.textContent=t('issueFindBtn');}
+  });
+  document.getElementById('employeeIssueForm').addEventListener('submit',async function(e){
+    e.preventDefault();var emp=issueReportState.employee;if(!emp){setIssueToast(t('issueChooseEmployeeFirst'),'err');return;}var imei=(document.querySelector('input[name="issueDeviceChoice"]:checked')||{}).value||'';if(!imei){setIssueToast(t('issueChooseDevice'),'err');return;}var type=(document.querySelector('input[name="employeeIssueType"]:checked')||{}).value||'';if(!type){setIssueToast(t('issueChooseType'),'err');return;}var details=document.getElementById('reportedIssueDetails').value.trim();if(!details){setIssueToast(t('issueDetailsRequired'),'err');return;}var cause=type==='Physical Damage'?document.getElementById('reportedDamageCause').value.trim():'';var device=(issueReportState.devices||[]).find(function(d){return d.imei1===imei;})||{};var email=preferredIssueEmail(emp);var btn=document.getElementById('issueReportSubmitBtn');btn.disabled=true;btn.textContent=t('issueSending');setIssueToast('','');
+    try{
+      var deviceSnapshot={brand:device.brand||'',model:device.model||'',ram:device.ram||'',storage:device.storage||'',imei1:device.imei1||imei,imei2:device.imei2||'',sim_numbers:device.sim_numbers||device.simNumbers||[],condition:device.condition||'',status:device.status||'Assigned'};
+      var payload={submission_id:emp.id,employee_name:emp.employee_name,employee_id:emp.employee_id,employee_email:email,location:emp.location,device_imei1:imei,device_snapshot:deviceSnapshot,issue_type:type,issue_details:details,damage_cause:cause||null,status:'Open',language:currentLang,updated_at:new Date().toISOString()};
+      var ins=await sb.from('employee_issue_reports').insert([payload]).select();if(ins.error)throw ins.error;var report=ins.data&&ins.data[0];
+      var ackHtml='<p>'+h(emp.employee_name||'Employee')+',</p><p>Your <b>'+h(type)+'</b> report for <b>'+h(((device.brand||'')+' '+(device.model||'')).trim())+'</b> (IMEI '+h(imei)+') has been received by '+h(window.DNCC_CONFIG.COMPANY_NAME)+' IT Department.</p><p><b>Reported details:</b><br/>'+h(details)+(cause?'<br/><b>Damage cause:</b> '+h(cause):'')+'</p><p>IT will review the issue and email you after it is resolved.</p>';
+      var ack=await sendRequestEmail(email,'Device issue received — '+window.DNCC_CONFIG.COMPANY_NAME,ackHtml);
+      var setRes=await sb.from('settings').select('*').eq('id',1).single(),settings=setRes.data||{},itEmail=settings.it_request_email||settings.smtp2go_sender_email||settings.smtp_from_email||'',adminLink=location.origin+location.pathname.replace(/index\.html.*$/,'admin.html');
+      var itHtml='<p>A new employee device issue was reported.</p><p><b>Employee:</b> '+h(emp.employee_name||'')+' ('+h(emp.employee_id||'')+')<br/><b>Email:</b> '+h(email)+'<br/><b>Location:</b> '+h(emp.location||'')+'<br/><b>Device:</b> '+h(((device.brand||'')+' '+(device.model||'')).trim())+'<br/><b>IMEI:</b> '+h(imei)+'<br/><b>Issue type:</b> '+h(type)+'<br/><b>Details:</b> '+h(details)+(cause?'<br/><b>Damage cause:</b> '+h(cause):'')+'</p><p><a href="'+adminLink+'">Open IT Admin → Issues & Damage</a></p>';
+      var itSent=await sendRequestEmail(itEmail,'New '+type+' reported — '+(emp.employee_name||'Employee'),itHtml);
+      if(report&&report.id)await sb.from('employee_issue_reports').update({employee_ack_sent_at:ack?new Date().toISOString():null,it_notification_sent_at:itSent?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq('id',report.id);
+      try{await sb.from('activity_log').insert([{admin_username:'Employee self-service',action:'Reported '+type,target_type:'employee_issue_report',target_id:report&&report.id||'',details:(emp.employee_name||'')+' · '+imei+' · '+details}]);}catch(logErr){console.warn(logErr);}
+      setIssueToast(t('issueSent'),'ok');setTimeout(function(){resetIssueReport();},2200);
+    }catch(err){console.error(err);setIssueToast(t('issueSendFailed'),'err');}finally{btn.disabled=false;btn.textContent=t('issueReportSubmitBtn');}
   });
 
   // ---------- New / Replace Device Request workflow ----------
@@ -1379,8 +1598,8 @@
   function setRequestMsg(text, type){ var el=document.getElementById('requestMsg'); el.textContent=text||''; el.className='request-msg '+(type||''); }
   function openRequest(type){
     requestState={type:type,employee:null,devices:[],isNew:false};
-    document.getElementById('requestTitle').textContent = type==='Replace' ? 'Replace Device Request' : 'New Device Request';
-    document.getElementById('requestSubtitle').textContent = 'Enter any company or personal email. We will check your existing employee and currently assigned device records.';
+    document.getElementById('requestTitle').textContent = type==='Replace' ? t('replaceDeviceRequest').replace('↻ ','') : t('newDeviceRequest').replace('+ ','');
+    document.getElementById('requestSubtitle').textContent = t('requestSubtitle');
     document.getElementById('requestEmail').value=''; document.getElementById('requestLookupResult').innerHTML='';
     ['requestEmpName','requestDesignation','requestDepartment','requestReason','requestUse','requestNeededBy'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('requestLocation').value=''; var addChoice=document.querySelector('input[name="requestChoice"][value="Additional"]'); if(addChoice)addChoice.checked=true;
@@ -1422,11 +1641,10 @@
     document.getElementById('newEmployeeFields').style.display=requestState.isNew?'block':'none';
     document.getElementById('newRequestChoice').style.display=(!requestState.isNew && requestState.type==='New' && devices.length)?'block':'none';
     if(requestState.isNew){
-      sum.innerHTML='<div class="lookup-result warn"><h3>New employee request</h3><p>No previous employee record was found for <b>'+requestState.email.replace(/</g,'&lt;')+'</b>. Confirm the basic employee details below.</p></div>';
-      list.innerHTML='';
-    } else {
-      sum.innerHTML='<div class="lookup-result"><h3>Employee found</h3><p><b>'+((e||{}).employee_name||'Employee')+'</b> · '+((e||{}).employee_id||'No employee ID')+' · '+((e||{}).location||'')+'</p><p>'+devices.length+' currently assigned device(s) found.</p></div>';
-      list.innerHTML=devices.length?'<label>Currently assigned phone(s)</label><div class="request-device-list">'+devices.map(function(d){return '<div class="request-device"><strong>'+requestDeviceLabel(d)+'</strong><div class="mini">'+(d.ram||'—')+' RAM · '+(d.storage||'—')+' storage · '+((d.sim_numbers||[]).join(', ')||'SIM details from last audit')+'</div></div>';}).join('')+'</div>':'<div class="lookup-result warn"><h3>No active phone assigned</h3><p>Your employee record exists, but the live inventory does not currently show a phone assigned to you.</p></div>';
+      sum.innerHTML='<div class="lookup-result warn"><h3>'+h(t('newEmployeeRequest'))+'</h3><p>'+h(t('noPreviousRecord'))+' <b>'+h(requestState.email)+'</b></p></div>'; list.innerHTML='';
+    }else{
+      sum.innerHTML='<div class="lookup-result"><h3>'+h(t('employeeFound'))+'</h3><p><b>'+h((e||{}).employee_name||'Employee')+'</b> · '+h((e||{}).employee_id||t('noEmployeeId'))+' · '+h((e||{}).location||'')+'</p><p>'+devices.length+' '+h(t('currentlyAssignedDevices'))+'</p></div>';
+      list.innerHTML=devices.length?'<label>'+h(t('currentPhones'))+'</label><div class="request-device-list">'+devices.map(function(d){return '<div class="request-device"><strong>'+h(requestDeviceLabel(d))+'</strong><div class="mini">'+h(d.ram||'—')+' RAM · '+h(d.storage||'—')+' storage · '+h((d.sim_numbers||[]).join(', ')||t('simFromAudit'))+'</div></div>';}).join('')+'</div>':'<div class="lookup-result warn"><h3>'+h(t('noActivePhone'))+'</h3><p>'+h(t('noActivePhoneText'))+'</p></div>';
     }
     renderReplaceChooser();
   }
@@ -1436,23 +1654,23 @@
     var box=document.getElementById('replaceDeviceChooser');
     if(!replaceMode){box.style.display='none';box.innerHTML='';return;}
     box.style.display='block';
-    if(!requestState.devices.length){ box.innerHTML='<div class="lookup-result warn"><h3>No device available to replace</h3><p>Please use a New Device Request instead, or contact IT.</p></div>'; return; }
-    box.innerHTML='<label>Select the phone you want to replace</label><div class="request-device-list">'+requestState.devices.map(function(d,i){return '<div class="request-device"><label><input type="radio" name="replaceImei" value="'+(d.imei1||'')+'" '+(i===0?'checked':'')+'/><span><strong>'+requestDeviceLabel(d)+'</strong><span class="mini">Current owner: '+(d.assigned_to||'You')+'</span></span></label></div>';}).join('')+'</div>';
+    if(!requestState.devices.length){ box.innerHTML='<div class="lookup-result warn"><h3>'+h(t('noReplaceDevice'))+'</h3><p>'+h(t('noReplaceDeviceText'))+'</p></div>'; return; }
+    box.innerHTML='<label>'+h(t('selectReplacePhone'))+'</label><div class="request-device-list">'+requestState.devices.map(function(d,i){return '<div class="request-device"><label><input type="radio" name="replaceImei" value="'+h(d.imei1||'')+'" '+(i===0?'checked':'')+'/><span><strong>'+h(requestDeviceLabel(d))+'</strong><span class="mini">'+h(t('currentOwner'))+': '+h(d.assigned_to||t('you'))+'</span></span></label></div>';}).join('')+'</div>';
   }
   document.querySelectorAll('input[name="requestChoice"]').forEach(function(r){r.addEventListener('change',renderReplaceChooser);});
 
   document.getElementById('requestLookupBtn').addEventListener('click',async function(){
-    var email=document.getElementById('requestEmail').value.trim().toLowerCase(); if(!validEmail(email)){document.getElementById('requestLookupResult').innerHTML='<div class="request-msg err" style="display:block">Enter a valid email address.</div>';return;}
-    var btn=this;btn.disabled=true;btn.textContent='Checking…';
+    var email=document.getElementById('requestEmail').value.trim().toLowerCase(); if(!validEmail(email)){document.getElementById('requestLookupResult').innerHTML='<div class="request-msg err" style="display:block">'+h(t('validEmailMsg'))+'</div>';return;}
+    var btn=this;btn.disabled=true;btn.textContent=t('checkingBtn');
     try{
       var found=await lookupRequestEmployee(email); requestState.email=email; requestState.employee=found.employee; requestState.devices=found.devices; requestState.isNew=!found.employee;
-      if(requestState.isNew){ if(!confirm('No existing employee record was found for this email. Continue as a NEW employee request?')){return;} }
+      if(requestState.isNew){ if(!confirm(t('newEmployeeConfirm'))){return;} }
       if(requestState.type==='Replace' && !requestState.isNew && !requestState.devices.length){
-        alert('Your employee record was found, but no currently assigned device was found. Please send a New Device Request instead.'); return;
+        alert(t('replaceNoDeviceAlert')); return;
       }
       document.getElementById('requestStepLookup').classList.remove('active');document.getElementById('requestStepDetails').classList.add('active');renderRequestDetails();
-    }catch(err){console.error(err);document.getElementById('requestLookupResult').innerHTML='<div class="request-msg err" style="display:block">Could not check your record. Please try again.</div>';}
-    finally{btn.disabled=false;btn.textContent='Find my record';}
+    }catch(err){console.error(err);document.getElementById('requestLookupResult').innerHTML='<div class="request-msg err" style="display:block">'+h(t('lookupFailed'))+'</div>';}
+    finally{btn.disabled=false;btn.textContent=t('issueFindBtn');}
   });
 
   async function sendRequestEmail(to,subject,html){
@@ -1466,15 +1684,15 @@
     var requestChoice=requestState.type==='New' ? ((document.querySelector('input[name="requestChoice"]:checked')||{}).value||'Additional') : 'Replace';
     var effectiveType=requestChoice==='Replace'?'Replace':requestState.type;
     var replaceImei=effectiveType==='Replace'?((document.querySelector('input[name="replaceImei"]:checked')||{}).value||''):'';
-    if(effectiveType==='Replace'&&!replaceImei){setRequestMsg('Select the phone that should be replaced.','err');return;}
+    if(effectiveType==='Replace'&&!replaceImei){setRequestMsg(t('selectReplaceMsg'),'err');return;}
     var name=requestState.isNew?document.getElementById('requestEmpName').value.trim():(e.employee_name||'');
     var employeeLocation=requestState.isNew?document.getElementById('requestLocation').value:(e.location||'');
     var designation=requestState.isNew?document.getElementById('requestDesignation').value.trim():(e.designation||'');
     var department=requestState.isNew?document.getElementById('requestDepartment').value.trim():(e.department||'');
     var reason=document.getElementById('requestReason').value.trim(), intended=document.getElementById('requestUse').value.trim(), needed=document.getElementById('requestNeededBy').value||null;
-    if(!name||!employeeLocation||!designation||!reason){setRequestMsg('Please complete employee name, location, designation and the reason for the request.','err');return;}
+    if(!name||!employeeLocation||!designation||!reason){setRequestMsg(t('requestRequiredMsg'),'err');return;}
     var replaceDevice=(requestState.devices||[]).find(function(d){return d.imei1===replaceImei;})||null;
-    btn.disabled=true;btn.textContent='Sending…';
+    btn.disabled=true;btn.textContent=t('sendingBtn');
     try{
       var payload={request_type:effectiveType,employee_kind:requestState.isNew?'New':'Existing',requester_email:requestState.email,company_email:e.company_email||((requestState.email||'').endsWith('@dncc.in')?requestState.email:null),personal_email:e.personal_email||(!(requestState.email||'').endsWith('@dncc.in')?requestState.email:null),employee_name:name,employee_id:e.employee_id||null,location:employeeLocation,designation:designation,department:department,matched_submission_id:e.id||null,current_devices:requestState.devices||[],request_choice:requestChoice,replace_imei1:replaceImei||null,replace_device:replaceDevice,request_reason:reason,intended_use:intended,needed_by:needed,status:'Pending Review',updated_at:new Date().toISOString()};
       var ins=await sb.from('device_requests').insert([payload]).select(); if(ins.error) throw ins.error; var req=ins.data&&ins.data[0];
@@ -1484,10 +1702,10 @@
       var adminLink=location.origin+location.pathname.replace(/index\.html.*$/,'admin.html');
       var itSent=await sendRequestEmail(itEmail,'New '+effectiveType+' Device Request #'+reqNo+' — '+name,'<p>A new <b>'+effectiveType+' Device Request</b> was submitted.</p><p><b>Employee:</b> '+name+'<br/><b>Email:</b> '+requestState.email+'<br/><b>Location:</b> '+employeeLocation+'<br/><b>Reason:</b> '+reason+(replaceDevice?'<br/><b>Replace:</b> '+requestDeviceLabel(replaceDevice):'')+'</p><p><a href="'+adminLink+'">Open IT Admin Panel</a></p>');
       await sb.from('device_requests').update({employee_notified_at:ack?new Date().toISOString():null,it_notified_at:itSent?new Date().toISOString():null}).eq('id',req.id);
-      setRequestMsg('Request #'+reqNo+' sent successfully. IT will review it and notify you by email.','ok');
+      setRequestMsg(t('requestSentPrefix')+' #'+reqNo+' '+t('requestSentSuffix'),'ok');
       setTimeout(closeRequest,1800);
-    }catch(err){console.error(err);setRequestMsg('Could not send the request: '+(err.message||err),'err');}
-    finally{btn.disabled=false;btn.textContent='Send request to IT';}
+    }catch(err){console.error(err);setRequestMsg(t('requestFailedPrefix')+' '+(err.message||err),'err');}
+    finally{btn.disabled=false;btn.textContent=t('requestSubmitBtn');}
   });
 
   function setRadioValue(name,value){ var el=document.querySelector('input[name="'+name+'"][value="'+value+'"]'); if(el){el.checked=true;el.dispatchEvent(new Event('change',{bubbles:true}));} }
@@ -1500,14 +1718,14 @@
     var qs=new URLSearchParams(location.search), editToken=qs.get('edit_token'), requestId=qs.get('request_id'), requestToken=qs.get('token'), banner=document.getElementById('specialAccessBanner');
     try{
       if(editToken){
-        var ar=await sb.from('form_access_tokens').select('*').eq('token',editToken).eq('active',true).single(); if(ar.error||!ar.data) throw new Error('This edit link is invalid or has already been used.'); if(new Date(ar.data.expires_at)<=new Date()) throw new Error('This edit link has expired. Ask IT for a new one.');
-        var sr=await sb.from('submissions').select('*').eq('id',ar.data.submission_id).single();if(sr.error||!sr.data)throw new Error('The linked submission was not found.');EDIT_CONTEXT={access:ar.data,submission:sr.data};prefillEmployeeForm(sr.data);banner.innerHTML='<strong>Temporary edit access</strong>IT has allowed you to update this existing submission until '+new Date(ar.data.expires_at).toLocaleString()+'. Existing photos are kept unless you upload new ones.';banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});return;
+        var ar=await sb.from('form_access_tokens').select('*').eq('token',editToken).eq('active',true).single(); if(ar.error||!ar.data) throw new Error(t('linkInvalid')); if(new Date(ar.data.expires_at)<=new Date()) throw new Error(t('linkExpired'));
+        var sr=await sb.from('submissions').select('*').eq('id',ar.data.submission_id).single();if(sr.error||!sr.data)throw new Error(t('linkInvalid'));EDIT_CONTEXT={access:ar.data,submission:sr.data};prefillEmployeeForm(sr.data);banner.innerHTML='<strong>'+h(t('tempEditTitle'))+'</strong>'+h(t('tempEditText').replace('{time}',new Date(ar.data.expires_at).toLocaleString()));banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});return;
       }
       if(requestId&&requestToken){
-        var rr=await sb.from('device_requests').select('*').eq('id',requestId).eq('form_token',requestToken).single();if(rr.error||!rr.data)throw new Error('This handover link is invalid.');if(!rr.data.form_token_expires_at||new Date(rr.data.form_token_expires_at)<=new Date())throw new Error('This handover link has expired. Ask IT to issue a new link.');REQUEST_CONTEXT=rr.data;
-        var d=rr.data.fulfillment_device_snapshot||{}; var formSub={employee_name:rr.data.employee_name,employee_id:rr.data.employee_id,location:rr.data.location,designation:rr.data.designation,department:rr.data.department,company_email:rr.data.company_email||((rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:'NOT'),personal_email:rr.data.personal_email||(!(rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:rr.data.fulfillment_sim_numbers||[]})};prefillEmployeeForm(formSub);banner.innerHTML='<strong>Device assigned — handover form required</strong>IT assigned '+((d.brand||'')+' '+(d.model||'')).trim()+' to you for Request #'+(rr.data.request_no||'')+'. Please verify the prefilled details, add photos/condition information, and submit this form to complete the handover.';banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});
+        var rr=await sb.from('device_requests').select('*').eq('id',requestId).eq('form_token',requestToken).single();if(rr.error||!rr.data)throw new Error(t('requestLinkInvalid'));if(!rr.data.form_token_expires_at||new Date(rr.data.form_token_expires_at)<=new Date())throw new Error(t('requestLinkExpired'));REQUEST_CONTEXT=rr.data;
+        var d=rr.data.fulfillment_device_snapshot||{}; var formSub={employee_name:rr.data.employee_name,employee_id:rr.data.employee_id,location:rr.data.location,designation:rr.data.designation,department:rr.data.department,company_email:rr.data.company_email||((rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:'NOT'),personal_email:rr.data.personal_email||(!(rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:rr.data.fulfillment_sim_numbers||[]})};prefillEmployeeForm(formSub);var assignedText=t('assignedFormText').replace('{device}',((d.brand||'')+' '+(d.model||'')).trim()).replace('{request}',rr.data.request_no||'');banner.innerHTML='<strong>'+h(t('assignedFormTitle'))+'</strong>'+h(assignedText);banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});
       }
-    }catch(err){banner.innerHTML='<strong>Link cannot be used</strong>'+(err.message||err);banner.classList.add('show');}
+    }catch(err){banner.innerHTML='<strong>'+h(t('linkCannotUse'))+'</strong>'+h(err.message||err);banner.classList.add('show');}
   }
   loadSpecialAccessContext();
 })();

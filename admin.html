@@ -618,7 +618,7 @@
       }
       if(btn.dataset.tab === 'activitylog'){ loadActivityLog(); }
       if(btn.dataset.tab === 'devicerequests'){ loadDeviceRequests(); }
-      if(btn.dataset.tab === 'issues'){ Promise.all([loadSubmissions(), loadIssueResolutions()]).then(function(){ renderIssues(); renderStats(); }); }
+      if(btn.dataset.tab === 'issues'){ Promise.all([loadSubmissions(), loadIssueResolutions(), loadEmployeeIssueReports()]).then(function(){ renderIssues(); renderStats(); }); }
       if(btn.dataset.tab === 'reports'){ populateReportLocationFilter(); renderReports(); }
     });
   });
@@ -657,7 +657,7 @@
     document.getElementById('lightboxImg').src = '';
   });
 
-  var currentSubs = [], currentDevices = [], currentDeviceRequests = [], currentIssueResolutions = [];
+  var currentSubs = [], currentDevices = [], currentDeviceRequests = [], currentIssueResolutions = [], currentEmployeeIssueReports = [];
 
   // Filter/sort/selection state
   var subsFilter = { search:'', location:'', damage:'' };
@@ -713,7 +713,7 @@
   document.getElementById('refreshLogBtn').addEventListener('click', loadActivityLog);
 
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadActivityLog()]); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadActivityLog()]); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -743,7 +743,7 @@
     var assigned = currentDevices.filter(function(d){ return d.status==='Assigned'; }).length;
     var spare = currentDevices.filter(function(d){ return d.status==='Spare'; }).length;
     var retired = currentDevices.filter(function(d){ return d.status==='Retired'; }).length;
-    var damaged = currentSubs.filter(function(s){ return s.damage==='Yes'; }).length;
+    var damaged = buildIssueTickets().filter(function(i){ return i.issue_type==='Physical Damage'; }).length;
     var emailed = currentSubs.filter(function(s){ return !!s.email_sent_at; }).length;
     var pendingReqs = currentChangeReqs.filter(function(c){ return c.status==='Pending'; }).length;
     var unresolvedIssues = buildIssueTickets().filter(function(i){ return i.status!=='Resolved'; }).length;
@@ -1008,6 +1008,7 @@
         +   '<button class="btn-small email" data-action="email" data-id="'+r.id+'">Email</button>'
         +   '<button class="btn-small edit" data-action="edit" data-id="'+r.id+'">Edit</button>'
         +   '<button class="btn-small edit-link-btn" data-action="allowedit" data-id="'+r.id+'" title="Send a time-limited employee edit link">Allow edit</button>'
+        +   '<button class="btn-small edit" data-action="edithistory" data-id="'+r.id+'" title="View employee self-edit history">Edit log</button>'
         +   '<button class="btn-small assign" data-action="print" data-id="'+r.id+'" title="Open a printable PDF">Print</button>'
         +   '<button class="btn-small delete" data-action="delete" data-id="'+r.id+'">Delete</button>'
         + '</td>'
@@ -1240,12 +1241,12 @@
       var defaultEmail=[r.company_email,r.personal_email].filter(isRealEmail)[0]||'';
       openModal('Allow employee to edit — '+(r.employee_name||''),[
         {id:'email',label:'Send edit link to',value:defaultEmail,type:'email'},
-        {id:'duration',label:'Link valid for',value:'2',type:'select',options:[{value:'0.5',label:'30 minutes'},{value:'2',label:'2 hours'},{value:'24',label:'24 hours'}]},
+        {id:'duration',label:'Link valid for',value:'10',type:'select',options:[{value:'5',label:'5 minutes'},{value:'10',label:'10 minutes'},{value:'15',label:'15 minutes'},{value:'30',label:'30 minutes'},{value:'60',label:'1 hour'},{value:'120',label:'2 hours'},{value:'1440',label:'24 hours'}]},
         {id:'note',label:'Reason / note to employee',value:'IT has enabled temporary access so you can correct your submitted mobile details.',type:'textarea'}
       ],async function(values){
         if(!isRealEmail(values.email)){alert('Enter a valid employee email.');return;}
         try{
-          var token=crypto.randomUUID(), hours=parseFloat(values.duration)||2, expires=new Date(Date.now()+hours*3600000).toISOString();
+          var token=crypto.randomUUID(), minutes=parseInt(values.duration,10)||10, expires=new Date(Date.now()+minutes*60000).toISOString();
           var ins=await sb.from('form_access_tokens').insert([{token:token,submission_id:r.id,expires_at:expires,active:true,created_by:loggedInAdminUsername||'admin'}]).select();if(ins.error)throw ins.error;
           var link=location.origin+location.pathname.replace(/admin\.html.*$/,'index.html')+'?edit_token='+encodeURIComponent(token);
           var html='<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>'+esc(values.note||'IT has enabled temporary edit access.')+'</p><p><b>This link expires:</b> '+new Date(expires).toLocaleString()+'</p><p><a href="'+link+'">Open and edit my mobile audit form</a></p><p>After you submit, the link becomes invalid automatically.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';
@@ -1254,6 +1255,18 @@
           await logActivity('Issued temporary employee edit link','submission',r.id,'Valid until '+expires+'; sent to '+values.email);closeModal();alert((sent?'Edit link emailed.':'Link created, but email could not be sent.')+'\n\nThe link was also copied to your clipboard:\n'+link);
         }catch(err){console.error(err);alert('Could not create edit access: '+(err.message||err));}
       });
+    } else if(action === 'edithistory'){
+      try{
+        var hist=await sb.from('employee_edit_audits').select('*').eq('submission_id',r.id).order('created_at',{ascending:false});
+        if(hist.error) throw hist.error;
+        var rows=hist.data||[];
+        if(!rows.length){alert('No employee self-edit submissions recorded for this employee yet.');return;}
+        var text=rows.map(function(a,idx){
+          var changes=Array.isArray(a.changed_fields)?a.changed_fields:[];
+          return '#'+(idx+1)+' · '+new Date(a.created_at).toLocaleString()+' · '+(a.employee_email||'')+'\n'+(changes.length?changes.map(function(c){return '• '+c.field+': '+c.before+' → '+c.after;}).join('\n'):'• Submitted without field changes');
+        }).join('\n\n');
+        openModal('Employee edit history — '+(r.employee_name||''),[{id:'history',label:'Temporary self-edit submissions',value:text,type:'textarea'}],function(){closeModal();});
+      }catch(err){console.error(err);alert('Could not load employee edit history. Run the latest database migration first.');}
     } else if(action === 'delete'){
       if(!confirm('Delete this submission permanently? This cannot be undone.')) return;
       try{
@@ -1303,6 +1316,7 @@
       var problemResolution = recordResolution(r, 'Phone Problem');
       if(problemResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Phone Problem', problemResolution.resolution_notes, problemResolution.resolved_by, problemResolution.resolved_at); }
     }
+    appendEmployeeReportedIssuesToPdf(ctx, r);
     window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
   }
 
@@ -1339,6 +1353,7 @@
       var problemResolution = recordResolution(r, 'Phone Problem');
       if(problemResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Phone Problem', problemResolution.resolution_notes, problemResolution.resolved_by, problemResolution.resolved_at); }
     }
+    appendEmployeeReportedIssuesToPdf(ctx, r);
     window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
     return window.DNCCPdf.toBase64(ctx);
   }
@@ -1370,6 +1385,11 @@
       html += '<p style="margin:0;"><b>Reported phone problem:</b> ' + (r.phone_problem_details||'—') + '</p></div>';
       var pr=recordResolution(r,'Phone Problem');
       if(pr) html += '<div style="margin:10px 0;padding:12px 14px;background:#eaf7ef;border-left:3px solid #237e52;"><p style="margin:0;"><b>Phone problem status: RESOLVED</b><br/><b>Resolution:</b> '+esc(pr.resolution_notes||'Resolved by IT')+'<br/><b>Resolved by:</b> '+esc(pr.resolved_by||'IT Admin')+(pr.resolved_at?'<br/><b>Resolved at:</b> '+esc(new Date(pr.resolved_at).toLocaleString()):'')+'</p></div>';
+    }
+    var laterReports=r._employeeIssueReports||[];
+    if(laterReports.length){
+      html += '<div style="margin:16px 0 6px;font-weight:bold;color:#132635">Issues reported after handover</div>';
+      laterReports.forEach(function(rep){var d=rep.device_snapshot||{};html+='<div style="margin:10px 0;padding:12px 14px;background:#f5f6f7;border-left:3px solid '+(rep.status==='Resolved'?'#237e52':'#b5691f')+'"><p style="margin:0"><b>'+esc(rep.issue_type)+'</b> · '+esc(((d.brand||'')+' '+(d.model||'')).trim())+' · IMEI '+esc(rep.device_imei1||'—')+'<br/><b>Reported:</b> '+esc(rep.issue_details||'')+(rep.damage_cause?'<br/><b>Cause:</b> '+esc(rep.damage_cause):'')+'<br/><b>Status:</b> '+esc(rep.status||'Open')+(rep.status==='Resolved'?'<br/><b>Resolution:</b> '+esc(rep.resolution_notes||'')+'<br/><b>Resolved by:</b> '+esc(rep.resolved_by||'IT Admin')+(rep.resolved_at?'<br/><b>Resolved at:</b> '+esc(new Date(rep.resolved_at).toLocaleString()):''):'')+'</p></div>';});
     }
     return html;
   }
@@ -1564,7 +1584,7 @@
         'Contact':m.contact,'Company email':m.companyEmail,'Personal email':m.personalEmail,
         'Device 1':[(d1.brand||''),(d1.model||'')].join(' ').trim(),'Device 1 IMEI':d1.imei1||'','Device 1 SIMs':normalizeSims(d1).join(', '),
         'Device 2':[(d2.brand||''),(d2.model||'')].join(' ').trim(),'Device 2 IMEI':d2.imei1||'','Device 2 SIMs':normalizeSims(d2).join(', '),
-        'Phone count':ds.length,'Submitted':reportDateValue(s.created_at),'__date':s.created_at||'','__location':m.location
+        'Phone count':ds.length,'Submitted':reportDateValue(s.created_at),'Source':'Handover','__date':s.created_at||'','__location':m.location
       };
     });
   }
@@ -1583,9 +1603,14 @@
           'Damage status':s.damage==='Yes'?(dr&&dr.status?dr.status:'Open'):'—','Damage resolution':dr&&dr.resolution_notes||'','Damage resolved by':dr&&dr.resolved_by||'','Damage resolved at':reportDateValue(dr&&dr.resolved_at),
           'Phone problem':s.phone_problem||'No','Problem details':s.phone_problem_details||'',
           'Problem status':s.phone_problem==='Yes'?(pr&&pr.status?pr.status:'Open'):'—','Problem resolution':pr&&pr.resolution_notes||'','Problem resolved by':pr&&pr.resolved_by||'','Problem resolved at':reportDateValue(pr&&pr.resolved_at),
-          'Submitted':reportDateValue(s.created_at),'__date':s.created_at||'','__location':m.location
+          'Submitted':reportDateValue(s.created_at),'Source':'Handover','__date':s.created_at||'','__location':m.location
         });
       });
+    });
+    currentEmployeeIssueReports.forEach(function(rep){
+      var s=subs.find(function(x){return String(x.id)===String(rep.submission_id);});if(!s)return;var m=baseReportMeta(s),d=rep.device_snapshot||{};
+      rows.push({'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Contact':m.contact,'Employee email':rep.employee_email||m.email,
+        'Device':[(d.brand||''),(d.model||'')].join(' ').trim(),'IMEI 1':rep.device_imei1||d.imei1||'','Physical damage':rep.issue_type==='Physical Damage'?'Yes':'No','Damage details':rep.issue_type==='Physical Damage'?(rep.issue_details||''):'','Damage cause':rep.issue_type==='Physical Damage'?(rep.damage_cause||''):'','Damage status':rep.issue_type==='Physical Damage'?(rep.status||'Open'):'—','Damage resolution':rep.issue_type==='Physical Damage'?(rep.resolution_notes||''):'','Damage resolved by':rep.issue_type==='Physical Damage'?(rep.resolved_by||''):'','Damage resolved at':rep.issue_type==='Physical Damage'?reportDateValue(rep.resolved_at):'','Phone problem':rep.issue_type==='Phone Problem'?'Yes':'No','Problem details':rep.issue_type==='Phone Problem'?(rep.issue_details||''):'','Problem status':rep.issue_type==='Phone Problem'?(rep.status||'Open'):'—','Problem resolution':rep.issue_type==='Phone Problem'?(rep.resolution_notes||''):'','Problem resolved by':rep.issue_type==='Phone Problem'?(rep.resolved_by||''):'','Problem resolved at':rep.issue_type==='Phone Problem'?reportDateValue(rep.resolved_at):'','Submitted':reportDateValue(rep.created_at),'Source':'Employee Report','__date':rep.created_at||'','__location':m.location});
     });
     return rows;
   }
@@ -1620,6 +1645,7 @@
       if(s.damage==='Yes') a.damaged++; if(s.phone_problem==='Yes') a.problems++; if(s.email_sent_at) a.emails++;
       if(!a.latest || new Date(s.created_at)>new Date(a.latest)) a.latest=s.created_at;
     });
+    currentEmployeeIssueReports.forEach(function(rep){var loc=rep.location||((currentSubs.find(function(s){return String(s.id)===String(rep.submission_id);})||{}).location)||'Unspecified';if(!map[loc])map[loc]={employees:new Set(),submissions:0,devices:0,sims:0,damaged:0,problems:0,emails:0,latest:''};var a=map[loc];if(rep.issue_type==='Physical Damage')a.damaged++;if(rep.issue_type==='Phone Problem')a.problems++;if(!a.latest||new Date(rep.created_at)>new Date(a.latest))a.latest=rep.created_at;});
     return Object.keys(map).sort().map(function(loc){ var a=map[loc]; return {
       'Location':loc,'Employees':a.employees.size,'Submissions':a.submissions,'Mobile devices':a.devices,'SIM numbers recorded':a.sims,
       'Damage reports':a.damaged,'Phone problems':a.problems,'Handover emails sent':a.emails,'Latest submission':reportDateValue(a.latest),
@@ -2291,11 +2317,12 @@
   function issueResolutionFor(submissionId, issueType){
     return currentIssueResolutions.find(function(x){ return String(x.submission_id)===String(submissionId) && x.issue_type===issueType; }) || null;
   }
+  function employeeIssueReportsFor(submissionId){return currentEmployeeIssueReports.filter(function(x){return String(x.submission_id)===String(submissionId);});}
   function issueDeviceSummary(sub){
-    var ds=submissionDevices(sub);
-    if(!ds.length) return 'No device details';
-    return ds.map(function(item){ var d=item.data||{}; return ((d.brand||'')+' '+(d.model||'')).trim()+' · IMEI '+(d.imei1||'—'); }).join(' | ');
+    var ds=submissionDevices(sub); if(!ds.length) return 'No device details';
+    return ds.map(function(item){var d=item.data||{};return ((d.brand||'')+' '+(d.model||'')).trim()+' · IMEI '+(d.imei1||'—');}).join(' | ');
   }
+  function reportedDeviceSummary(report){var d=report&&report.device_snapshot||{};return (((d.brand||'')+' '+(d.model||'')).trim()||'Mobile device')+' · IMEI '+(report.device_imei1||d.imei1||'—');}
   function issueOriginalSummary(sub,type){
     if(type==='Physical Damage') return [sub.damage_what?('Damage: '+sub.damage_what):'',sub.damage_how?('Cause: '+sub.damage_how):''].filter(Boolean).join('\n') || 'Physical damage reported';
     return sub.phone_problem_details || 'Phone problem reported';
@@ -2303,143 +2330,73 @@
   function buildIssueTickets(){
     var out=[];
     currentSubs.forEach(function(sub){
-      var types=[];
-      if(sub.damage==='Yes') types.push('Physical Damage');
-      if(sub.phone_problem==='Yes') types.push('Phone Problem');
-      types.forEach(function(type){
-        var res=issueResolutionFor(sub.id,type);
-        out.push({
-          key:String(sub.id)+'|'+type, submission:sub, submission_id:sub.id, issue_type:type,
-          summary:issueOriginalSummary(sub,type), device_summary:issueDeviceSummary(sub),
-          status:res&&res.status?res.status:'Open', resolution:res
-        });
-      });
+      var types=[];if(sub.damage==='Yes')types.push('Physical Damage');if(sub.phone_problem==='Yes')types.push('Phone Problem');
+      types.forEach(function(type){var res=issueResolutionFor(sub.id,type);out.push({key:'handover|'+String(sub.id)+'|'+type,source:'Handover',submission:sub,submission_id:sub.id,issue_type:type,summary:issueOriginalSummary(sub,type),device_summary:issueDeviceSummary(sub),reported_at:sub.created_at,status:res&&res.status?res.status:'Open',resolution:res});});
     });
-    return out.sort(function(a,b){
-      if(a.status!==b.status) return a.status==='Open'?-1:1;
-      return new Date(b.submission.created_at||0)-new Date(a.submission.created_at||0);
+    currentEmployeeIssueReports.forEach(function(report){
+      var sub=currentSubs.find(function(x){return String(x.id)===String(report.submission_id);});if(!sub)return;
+      var summary=report.issue_details||'Issue reported';if(report.issue_type==='Physical Damage'&&report.damage_cause)summary+='\nCause: '+report.damage_cause;
+      out.push({key:'employee|'+String(report.id),source:'Employee Report',submission:sub,submission_id:sub.id,report_id:report.id,report:report,issue_type:report.issue_type,summary:summary,device_summary:reportedDeviceSummary(report),reported_at:report.created_at,status:report.status||'Open',resolution:report});
     });
+    return out.sort(function(a,b){if(a.status!==b.status)return a.status==='Open'?-1:1;return new Date(b.reported_at||0)-new Date(a.reported_at||0);});
   }
   function filteredIssueTickets(){
     var q=(issueFilter.search||'').trim().toLowerCase();
     return buildIssueTickets().filter(function(i){
-      if(issueFilter.type && i.issue_type!==issueFilter.type) return false;
-      if(issueFilter.status && i.status!==issueFilter.status) return false;
-      if(q){
-        var s=i.submission,r=i.resolution||{};
-        var hay=[s.employee_name,s.employee_id,s.location,preferredSubmissionEmail(s),i.issue_type,i.summary,i.device_summary,r.resolution_notes,r.resolved_by].join(' ').toLowerCase();
-        if(hay.indexOf(q)<0) return false;
-      }
-      return true;
+      if(issueFilter.type&&i.issue_type!==issueFilter.type)return false;if(issueFilter.status&&i.status!==issueFilter.status)return false;
+      if(q){var s=i.submission,r=i.resolution||{};var hay=[s.employee_name,s.employee_id,s.location,preferredSubmissionEmail(s),i.source,i.issue_type,i.summary,i.device_summary,r.resolution_notes,r.resolved_by].join(' ').toLowerCase();if(hay.indexOf(q)<0)return false;}return true;
     });
   }
   async function loadIssueResolutions(){
     var area=document.getElementById('issuesArea');
-    try{
-      var res=await sb.from('issue_resolutions').select('*').order('updated_at',{ascending:false});
-      if(res.error) throw res.error;
-      currentIssueResolutions=res.data||[];
-      renderIssues();
-      if(currentSubs.length){ renderSubmissions(); renderReports(); }
-      var open=buildIssueTickets().filter(function(x){return x.status!=='Resolved';}).length;
-      var badge=document.getElementById('issueBadge'); if(badge) badge.textContent=open?String(open):'';
-    }catch(err){
-      console.error(err);
-      currentIssueResolutions=[];
-      if(area) area.innerHTML='<p class="empty-state">Could not load issue resolution data. Run the latest issue-resolution SQL migration first.</p>';
-    }
+    try{var res=await sb.from('issue_resolutions').select('*').order('updated_at',{ascending:false});if(res.error)throw res.error;currentIssueResolutions=res.data||[];renderIssues();if(currentSubs.length){renderSubmissions();renderReports();}}
+    catch(err){console.error(err);currentIssueResolutions=[];if(area)area.innerHTML='<p class="empty-state">Could not load issue resolution data. Run the latest issue-resolution SQL migration first.</p>';}
+  }
+  async function loadEmployeeIssueReports(){
+    try{var res=await sb.from('employee_issue_reports').select('*').order('created_at',{ascending:false});if(res.error)throw res.error;currentEmployeeIssueReports=res.data||[];renderIssues();if(currentSubs.length)renderReports();}
+    catch(err){console.error('Could not load employee issue reports',err);currentEmployeeIssueReports=[];}
+    var open=buildIssueTickets().filter(function(x){return x.status!=='Resolved';}).length,badge=document.getElementById('issueBadge');if(badge)badge.textContent=open?String(open):'';
   }
   function renderIssues(){
-    var area=document.getElementById('issuesArea'); if(!area) return;
-    var list=filteredIssueTickets();
-    if(!list.length){ area.innerHTML='<p class="empty-state">No issues match the current filters.</p>'; return; }
-    var pages=Math.max(1,Math.ceil(list.length/PAGE_SIZE)); issuePage=Math.min(Math.max(1,issuePage),pages);
-    var start=(issuePage-1)*PAGE_SIZE,page=list.slice(start,start+PAGE_SIZE);
+    var area=document.getElementById('issuesArea');if(!area)return;var list=filteredIssueTickets();
+    if(!list.length){area.innerHTML='<p class="empty-state">No issues match the current filters.</p>';return;}
+    var pages=Math.max(1,Math.ceil(list.length/PAGE_SIZE));issuePage=Math.min(Math.max(1,issuePage),pages);var start=(issuePage-1)*PAGE_SIZE,page=list.slice(start,start+PAGE_SIZE);
     var rows=page.map(function(i){
       var s=i.submission,r=i.resolution||{},email=preferredSubmissionEmail(s)||'—';
-      var resolutionHtml=i.status==='Resolved'
-        ? '<div class="issue-resolved-box"><b>Resolved</b><br/>'+esc(r.resolution_notes||'')+'<div class="issue-meta">By '+esc(r.resolved_by||'IT Admin')+(r.resolved_at?' · '+esc(new Date(r.resolved_at).toLocaleString()):'')+(r.resolution_email_sent_at?' · email sent':'')+'</div></div>'
-        : '<div class="issue-open-box">Waiting for IT resolution</div>';
-      var actions=i.status==='Resolved'
-        ? '<button class="btn-small edit" data-issue-action="view" data-sid="'+esc(s.id)+'" data-type="'+esc(i.issue_type)+'">Details</button>'
-        : '<button class="btn-small assign" data-issue-action="resolve" data-sid="'+esc(s.id)+'" data-type="'+esc(i.issue_type)+'">Resolve issue</button>';
-      return '<tr>'
-        +'<td>'+esc(new Date(s.created_at).toLocaleString())+'</td>'
-        +'<td>'+esc(s.employee_name)+'<div class="issue-meta">'+esc(s.employee_id||'')+' · '+esc(s.location||'')+'</div><div class="issue-meta">'+esc(email)+'</div></td>'
-        +'<td>'+esc(i.device_summary)+'</td>'
-        +'<td><span class="issue-kind">'+esc(i.issue_type)+'</span></td>'
-        +'<td class="issue-summary-cell">'+esc(i.summary).replace(/\n/g,'<br/>')+'</td>'
-        +'<td><span class="issue-status '+(i.status==='Resolved'?'resolved':'open')+'">'+esc(i.status)+'</span></td>'
-        +'<td class="issue-resolution-cell">'+resolutionHtml+'</td>'
-        +'<td style="white-space:nowrap">'+actions+'</td>'
-        +'</tr>';
+      var resolutionHtml=i.status==='Resolved'?'<div class="issue-resolved-box"><b>Resolved</b><br/>'+esc(r.resolution_notes||'')+'<div class="issue-meta">By '+esc(r.resolved_by||'IT Admin')+(r.resolved_at?' · '+esc(new Date(r.resolved_at).toLocaleString()):'')+(r.resolution_email_sent_at?' · email sent':'')+'</div></div>':'<div class="issue-open-box">Waiting for IT resolution</div>';
+      var actions=i.status==='Resolved'?'<button class="btn-small edit" data-issue-action="view" data-ticket="'+esc(i.key)+'">Details</button>':'<button class="btn-small assign" data-issue-action="resolve" data-ticket="'+esc(i.key)+'">Resolve issue</button>';
+      return '<tr><td>'+esc(new Date(i.reported_at||s.created_at).toLocaleString())+'<div class="issue-meta">'+esc(i.source)+'</div></td><td>'+esc(s.employee_name)+'<div class="issue-meta">'+esc(s.employee_id||'')+' · '+esc(s.location||'')+'</div><div class="issue-meta">'+esc(email)+'</div></td><td>'+esc(i.device_summary)+'</td><td><span class="issue-kind">'+esc(i.issue_type)+'</span></td><td class="issue-summary-cell">'+esc(i.summary).replace(/\n/g,'<br/>')+'</td><td><span class="issue-status '+(i.status==='Resolved'?'resolved':'open')+'">'+esc(i.status)+'</span></td><td class="issue-resolution-cell">'+resolutionHtml+'</td><td style="white-space:nowrap">'+actions+'</td></tr>';
     }).join('');
-    area.innerHTML=paginationHTML('issues',issuePage,pages,start+1,start+page.length,list.length)
-      +'<div class="table-scroll-shell"><div class="table-top-scroll"><div class="table-top-scroll-inner"></div></div><div class="table-wrap"><table class="issue-table"><thead><tr><th>Reported</th><th>Employee</th><th>Device(s)</th><th>Issue type</th><th>Reported details</th><th>Status</th><th>Resolution</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-    bindPagination(area,'issues',function(pg){issuePage=pg;renderIssues();area.scrollIntoView({behavior:'smooth',block:'start'});});
-    wireTableScrollSync(area);
-    area.querySelectorAll('button[data-issue-action]').forEach(function(btn){btn.addEventListener('click',function(){handleIssueAction(btn.dataset.issueAction,btn.dataset.sid,btn.dataset.type);});});
+    area.innerHTML=paginationHTML('issues',issuePage,pages,start+1,start+page.length,list.length)+'<div class="table-scroll-shell"><div class="table-top-scroll"><div class="table-top-scroll-inner"></div></div><div class="table-wrap"><table class="issue-table"><thead><tr><th>Reported / source</th><th>Employee</th><th>Device</th><th>Issue type</th><th>Reported details</th><th>Status</th><th>Resolution</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    bindPagination(area,'issues',function(pg){issuePage=pg;renderIssues();area.scrollIntoView({behavior:'smooth',block:'start'});});wireTableScrollSync(area);area.querySelectorAll('button[data-issue-action]').forEach(function(btn){btn.addEventListener('click',function(){handleIssueAction(btn.dataset.issueAction,btn.dataset.ticket);});});
   }
-  function recordWithIssueResolutions(sub){
-    var clone=Object.assign({},sub);
-    clone._issueResolutions=currentIssueResolutions.filter(function(x){return String(x.submission_id)===String(sub.id);});
-    return clone;
-  }
-  function recordResolution(record,type){
-    var arr=record&&record._issueResolutions||[];
-    return arr.find(function(x){return x.issue_type===type && x.status==='Resolved';})||null;
+  function recordWithIssueResolutions(sub){var clone=Object.assign({},sub);clone._issueResolutions=currentIssueResolutions.filter(function(x){return String(x.submission_id)===String(sub.id);});clone._employeeIssueReports=employeeIssueReportsFor(sub.id);return clone;}
+  function recordResolution(record,type){var arr=record&&record._issueResolutions||[];return arr.find(function(x){return x.issue_type===type&&x.status==='Resolved';})||null;}
+  function appendEmployeeReportedIssuesToPdf(ctx,r){
+    var reports=r&&r._employeeIssueReports||[];if(!reports.length)return;window.DNCCPdf.section(ctx,'Issues Reported After Handover');
+    reports.slice().sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at);}).forEach(function(rep,idx){var d=rep.device_snapshot||{};window.DNCCPdf.row(ctx,'Report '+(idx+1)+' / date',new Date(rep.created_at).toLocaleString());window.DNCCPdf.row(ctx,'Device',((d.brand||'')+' '+(d.model||'')).trim()+' · IMEI '+(rep.device_imei1||d.imei1||'—'));window.DNCCPdf.row(ctx,'Issue type',rep.issue_type);if(rep.issue_type==='Physical Damage')window.DNCCPdf.damageBlock(ctx,rep.issue_details,rep.damage_cause||'Not specified');else window.DNCCPdf.problemBlock(ctx,rep.issue_details);window.DNCCPdf.row(ctx,'Status',rep.status||'Open');if(rep.status==='Resolved')window.DNCCPdf.resolutionBlock(ctx,rep.issue_type,rep.resolution_notes,rep.resolved_by,rep.resolved_at);});
   }
   async function sendIssueResolvedEmail(sub,ticket,resolution){
-    var recipients=[sub.company_email,sub.personal_email].filter(isRealEmail);
-    if(!recipients.length) return false;
-    var pdfRecord=recordWithIssueResolutions(sub);
-    var pdfBase64=buildHandoverPDFBase64(pdfRecord);
-    var resolvedAt=resolution.resolved_at?new Date(resolution.resolved_at).toLocaleString():new Date().toLocaleString();
-    var html='<p>Dear '+esc(sub.employee_name||'Employee')+',</p>'
-      +'<p>Your reported <b>'+esc(ticket.issue_type)+'</b> has been resolved by '+window.DNCC_CONFIG.COMPANY_NAME+' IT Department.</p>'
-      +'<p><b>Reported issue:</b><br/>'+esc(ticket.summary).replace(/\n/g,'<br/>')+'</p>'
-      +'<p><b>Resolution / work performed:</b><br/>'+esc(resolution.resolution_notes||'Resolved by IT')+'</p>'
-      +'<p><b>Resolved by:</b> '+esc(resolution.resolved_by||'IT Admin')+'<br/><b>Resolved at:</b> '+esc(resolvedAt)+'</p>'
-      +'<p>An updated device handover PDF showing the resolved status is attached for your records.</p>'
-      +'<p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';
-    try{
-      var response=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:recipients,employeeName:sub.employee_name,subject:ticket.issue_type+' resolved — '+window.DNCC_CONFIG.COMPANY_NAME,html:html,pdfBase64:pdfBase64,pdfFilename:'Resolved_'+ticket.issue_type.replace(/[^a-z0-9]+/gi,'_')+'_'+(sub.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_')+'.pdf'})});
-      var json=await response.json(); return !!(response.ok&&json.ok);
-    }catch(err){console.error('Resolution email failed',err);return false;}
+    var recipients=[sub.company_email,sub.personal_email,ticket.report&&ticket.report.employee_email].filter(isRealEmail).filter(function(v,i,a){return a.indexOf(v)===i;});if(!recipients.length)return false;
+    var pdfRecord=recordWithIssueResolutions(sub),pdfBase64=buildHandoverPDFBase64(pdfRecord),resolvedAt=resolution.resolved_at?new Date(resolution.resolved_at).toLocaleString():new Date().toLocaleString();
+    var html='<p>Dear '+esc(sub.employee_name||'Employee')+',</p><p>Your reported <b>'+esc(ticket.issue_type)+'</b> has been resolved by '+window.DNCC_CONFIG.COMPANY_NAME+' IT Department.</p><p><b>Device:</b> '+esc(ticket.device_summary)+'</p><p><b>Reported issue:</b><br/>'+esc(ticket.summary).replace(/\n/g,'<br/>')+'</p><p><b>Resolution / work performed:</b><br/>'+esc(resolution.resolution_notes||'Resolved by IT')+'</p><p><b>Resolved by:</b> '+esc(resolution.resolved_by||'IT Admin')+'<br/><b>Resolved at:</b> '+esc(resolvedAt)+'</p><p>An updated device handover PDF showing the resolution history is attached for your records.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';
+    try{var response=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:recipients,employeeName:sub.employee_name,subject:ticket.issue_type+' resolved — '+window.DNCC_CONFIG.COMPANY_NAME,html:html,pdfBase64:pdfBase64,pdfFilename:'Resolved_'+ticket.issue_type.replace(/[^a-z0-9]+/gi,'_')+'_'+(sub.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_')+'.pdf'})});var json=await response.json();return !!(response.ok&&json.ok);}catch(err){console.error('Resolution email failed',err);return false;}
   }
-  async function handleIssueAction(action,submissionId,issueType){
-    var sub=currentSubs.find(function(x){return String(x.id)===String(submissionId);}); if(!sub) return;
-    var ticket=buildIssueTickets().find(function(x){return String(x.submission_id)===String(submissionId)&&x.issue_type===issueType;}); if(!ticket) return;
-    var existing=ticket.resolution||{};
-    if(action==='view'){
-      openModal(issueType+' — '+(sub.employee_name||''),[
-        {id:'reported',label:'Reported issue',value:ticket.summary,type:'textarea'},
-        {id:'status',label:'Status',value:ticket.status},
-        {id:'resolution',label:'Resolution / work performed',value:existing.resolution_notes||'',type:'textarea'},
-        {id:'by',label:'Resolved by',value:existing.resolved_by||''},
-        {id:'at',label:'Resolved at',value:existing.resolved_at?new Date(existing.resolved_at).toLocaleString():''}
-      ],function(){closeModal();});
-      return;
-    }
+  async function handleIssueAction(action,ticketKey){
+    var ticket=buildIssueTickets().find(function(x){return x.key===ticketKey;});if(!ticket)return;var sub=ticket.submission,existing=ticket.resolution||{},issueType=ticket.issue_type;
+    if(action==='view'){openModal(issueType+' — '+(sub.employee_name||''),[{id:'source',label:'Source',value:ticket.source},{id:'device',label:'Device',value:ticket.device_summary},{id:'reported',label:'Reported issue',value:ticket.summary,type:'textarea'},{id:'status',label:'Status',value:ticket.status},{id:'resolution',label:'Resolution / work performed',value:existing.resolution_notes||'',type:'textarea'},{id:'by',label:'Resolved by',value:existing.resolved_by||''},{id:'at',label:'Resolved at',value:existing.resolved_at?new Date(existing.resolved_at).toLocaleString():''}],function(){closeModal();});return;}
     if(action==='resolve'){
-      openModal('Resolve '+issueType+' — '+(sub.employee_name||''),[
-        {id:'reported',label:'Reported issue',value:ticket.summary,type:'textarea'},
-        {id:'resolution',label:'What did IT do to resolve it? *',value:existing.resolution_notes||'',type:'textarea'},
-        {id:'resolved_by',label:'Resolved by (IT person) *',value:loggedInAdminUsername||existing.resolved_by||'IT Admin'}
-      ],async function(v){
-        if(!v.resolution.trim()){alert('Please enter what was done to resolve the issue.');return;}
-        if(!v.resolved_by.trim()){alert('Please enter the IT person name.');return;}
-        try{
-          var now=new Date().toISOString();
-          var up=await sb.from('issue_resolutions').upsert([{submission_id:sub.id,issue_type:issueType,original_issue_summary:ticket.summary,status:'Resolved',resolution_notes:v.resolution.trim(),resolved_by:v.resolved_by.trim(),resolved_at:now,updated_at:now}],{onConflict:'submission_id,issue_type'}).select();
-          if(up.error) throw up.error;
-          var resolution=up.data&&up.data[0]?up.data[0]:{submission_id:sub.id,issue_type:issueType,status:'Resolved',resolution_notes:v.resolution.trim(),resolved_by:v.resolved_by.trim(),resolved_at:now};
-          await loadIssueResolutions();
+      openModal('Resolve '+issueType+' — '+(sub.employee_name||''),[{id:'source',label:'Source',value:ticket.source},{id:'device',label:'Affected device',value:ticket.device_summary},{id:'reported',label:'Reported issue',value:ticket.summary,type:'textarea'},{id:'resolution',label:'What did IT do to resolve it? *',value:existing.resolution_notes||'',type:'textarea'},{id:'resolved_by',label:'Resolved by (IT person) *',value:loggedInAdminUsername||existing.resolved_by||'IT Admin'}],async function(v){
+        if(!v.resolution.trim()){alert('Please enter what was done to resolve the issue.');return;}if(!v.resolved_by.trim()){alert('Please enter the IT person name.');return;}
+        try{var now=new Date().toISOString(),resolution;
+          if(ticket.source==='Employee Report'){
+            var up=await sb.from('employee_issue_reports').update({status:'Resolved',resolution_notes:v.resolution.trim(),resolved_by:v.resolved_by.trim(),resolved_at:now,updated_at:now}).eq('id',ticket.report_id).select();if(up.error)throw up.error;resolution=up.data&&up.data[0]?up.data[0]:Object.assign({},ticket.report,{status:'Resolved',resolution_notes:v.resolution.trim(),resolved_by:v.resolved_by.trim(),resolved_at:now});await loadEmployeeIssueReports();
+          }else{
+            var up2=await sb.from('issue_resolutions').upsert([{submission_id:sub.id,issue_type:issueType,original_issue_summary:ticket.summary,status:'Resolved',resolution_notes:v.resolution.trim(),resolved_by:v.resolved_by.trim(),resolved_at:now,updated_at:now}],{onConflict:'submission_id,issue_type'}).select();if(up2.error)throw up2.error;resolution=up2.data&&up2.data[0]?up2.data[0]:{submission_id:sub.id,issue_type:issueType,status:'Resolved',resolution_notes:v.resolution.trim(),resolved_by:v.resolved_by.trim(),resolved_at:now};await loadIssueResolutions();
+          }
           var sent=await sendIssueResolvedEmail(sub,ticket,resolution);
-          if(sent){await sb.from('issue_resolutions').update({resolution_email_sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('submission_id',sub.id).eq('issue_type',issueType);}
-          await logActivity('Resolved '+issueType,'submission',sub.id,v.resolution.trim()+' · by '+v.resolved_by.trim());
-          closeModal(); await loadIssueResolutions(); renderStats(); renderReports(); loadActivityLog();
-          alert(sent?'Issue marked resolved, employee emailed, and updated PDF attached.':'Issue marked resolved. Employee email could not be sent; the resolution is still saved.');
+          if(sent){if(ticket.source==='Employee Report')await sb.from('employee_issue_reports').update({resolution_email_sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',ticket.report_id);else await sb.from('issue_resolutions').update({resolution_email_sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('submission_id',sub.id).eq('issue_type',issueType);}
+          await logActivity('Resolved '+issueType,ticket.source==='Employee Report'?'employee_issue_report':'submission',ticket.source==='Employee Report'?ticket.report_id:sub.id,v.resolution.trim()+' · by '+v.resolved_by.trim());closeModal();await Promise.all([loadIssueResolutions(),loadEmployeeIssueReports()]);renderStats();renderReports();loadActivityLog();alert(sent?'Issue marked resolved, employee emailed, and updated PDF attached.':'Issue marked resolved. Employee email could not be sent; the resolution is still saved.');
         }catch(err){console.error(err);alert('Could not resolve issue: '+(err.message||err));}
       });
     }
@@ -2448,7 +2405,7 @@
   document.getElementById('issueTypeFilter').addEventListener('change',function(){issueFilter.type=this.value;issuePage=1;renderIssues();});
   document.getElementById('issueStatusFilter').addEventListener('change',function(){issueFilter.status=this.value;issuePage=1;renderIssues();});
   document.getElementById('clearIssueFilters').addEventListener('click',function(){issueFilter={search:'',type:'',status:'Open'};document.getElementById('issueSearch').value='';document.getElementById('issueTypeFilter').value='';document.getElementById('issueStatusFilter').value='Open';issuePage=1;renderIssues();});
-  document.getElementById('refreshIssuesBtn').addEventListener('click',async function(){await Promise.all([loadSubmissions(),loadIssueResolutions()]);renderIssues();renderStats();});
+  document.getElementById('refreshIssuesBtn').addEventListener('click',async function(){await Promise.all([loadSubmissions(),loadIssueResolutions(),loadEmployeeIssueReports()]);renderIssues();renderStats();});
 
   // ---------- Device Requests ----------
   function requestStatusClass(status){if(status==='Pending Review')return'pending';if(status==='Approved - Preparing Device')return'approved';if(status==='Awaiting Availability')return'waiting';if(status==='Rejected')return'rejected';if(status==='Device Assigned - Form Pending')return'assigned';if(status==='Completed')return'completed';return'pending';}
