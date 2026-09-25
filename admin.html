@@ -150,6 +150,12 @@
   .stock-grid-wide{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}.stock-grid-wide .field{margin:0}.stock-grid-wide select,.stock-grid-wide input{width:100%;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;font-size:13px;font-family:var(--sans);background:#fff}.stock-notes{margin-top:10px}
   @media(max-width:760px){.device-source-grid{grid-template-columns:1fr}.sim-box .grid{grid-template-columns:1fr}}
 
+  /* ---------- Issues & Damage Resolution ---------- */
+  #issueBadge{display:inline-block;min-width:16px;padding:1px 5px;border-radius:10px;background:var(--danger);color:#fff;font-size:10.5px;font-weight:700;vertical-align:middle;margin-left:2px}#issueBadge:empty{display:none}
+  .issue-status{display:inline-block;padding:3px 8px;border-radius:14px;font-size:10.5px;font-weight:700;white-space:nowrap}.issue-status.open{background:#fff3df;color:#a05a10}.issue-status.resolved{background:var(--ok-light);color:var(--ok)}
+  .issue-kind{font-weight:700;color:var(--navy)}.issue-summary-cell{min-width:300px;max-width:430px;white-space:normal;line-height:1.45}.issue-resolution-cell{min-width:280px;max-width:420px;white-space:normal;line-height:1.45}.issue-table{min-width:1550px}
+  .issue-meta{font-size:11px;color:var(--text-soft);margin-top:3px;line-height:1.35}.issue-resolved-box{margin-top:5px;padding:7px 8px;border-radius:7px;background:var(--ok-light);color:#245f44;font-size:11px}.issue-open-box{margin-top:5px;padding:7px 8px;border-radius:7px;background:#fff8ea;color:#8b5512;font-size:11px}
+
   /* ---------- Reports ---------- */
   .report-intro{margin:-4px 0 16px; color:var(--text-soft); font-size:12.5px;}
   .report-presets{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-bottom:16px;}
@@ -225,6 +231,7 @@
       <button class="tab-btn active" data-tab="submissions">Submissions</button>
       <button class="tab-btn" data-tab="inventory">Inventory</button>
       <button class="tab-btn" data-tab="devicerequests">Device Requests <span id="requestBadge"></span></button>
+      <button class="tab-btn" data-tab="issues">Issues &amp; Damage <span id="issueBadge"></span></button>
       <button class="tab-btn" data-tab="reports">Reports</button>
       <button class="tab-btn" data-tab="changereqs">Change Requests <span id="pendingBadge"></span></button>
       <button class="tab-btn" data-tab="activitylog">Activity Log</button>
@@ -312,6 +319,21 @@
         <button class="btn btn-secondary" id="clearDeviceRequestFilters">Clear filters</button>
       </div>
       <div id="deviceRequestsArea"><p class="empty-state">Loading…</p></div>
+    </div>
+
+    <!-- ISSUES & DAMAGE -->
+    <div class="tab-panel" id="tab-issues">
+      <div class="panel-bar">
+        <div><h2>Issues &amp; damage resolution</h2><p class="sub" style="margin:3px 0 0;">Every reported physical damage or phone problem becomes an IT issue. Resolve it with work-performed details; the employee is emailed automatically with an updated PDF.</p></div>
+        <button class="btn btn-secondary" id="refreshIssuesBtn">Refresh</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="issueSearch" class="search-input" placeholder="Search employee, device, IMEI, issue or resolution…" />
+        <select id="issueTypeFilter"><option value="">All issue types</option><option value="Physical Damage">Physical Damage</option><option value="Phone Problem">Phone Problem</option></select>
+        <select id="issueStatusFilter"><option value="Open">Open / unresolved</option><option value="Resolved">Resolved</option><option value="">All statuses</option></select>
+        <button class="btn btn-secondary" id="clearIssueFilters">Clear filters</button>
+      </div>
+      <div id="issuesArea"><p class="empty-state">Loading…</p></div>
     </div>
 
     <!-- REPORTS -->
@@ -488,6 +510,7 @@
     </div>
     <div class="sim-box">
       <div class="field"><label>SIM handling</label><select id="fulfillSimPlan" style="width:100%;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:#fff;"><option value="Carry existing SIM(s)">Carry existing SIM(s) from replaced phone</option><option value="Assign new SIM(s)">Assign new SIM(s)</option><option value="No SIM assigned">No SIM assigned</option></select></div>
+      <div id="fulfillSimHelp" class="fulfill-note" style="margin:0 0 9px;"></div>
       <div class="grid" id="fulfillSimInputs"><div class="field"><label>SIM 1</label><input type="text" id="fulfillSim1" placeholder="10 digits" /></div><div class="field"><label>SIM 2</label><input type="text" id="fulfillSim2" placeholder="Optional" /></div></div>
       <div class="field"><label>Employee must complete handover form within</label><select id="fulfillExpiry" style="width:100%;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:#fff;"><option value="24">24 hours</option><option value="48">48 hours</option><option value="72" selected>72 hours</option><option value="168">7 days</option></select></div>
       <div class="field" style="margin-bottom:0;"><label>Assignment note (optional)</label><textarea id="fulfillNote" placeholder="Anything employee should know about this device or collection."></textarea></div>
@@ -595,6 +618,7 @@
       }
       if(btn.dataset.tab === 'activitylog'){ loadActivityLog(); }
       if(btn.dataset.tab === 'devicerequests'){ loadDeviceRequests(); }
+      if(btn.dataset.tab === 'issues'){ Promise.all([loadSubmissions(), loadIssueResolutions()]).then(function(){ renderIssues(); renderStats(); }); }
       if(btn.dataset.tab === 'reports'){ populateReportLocationFilter(); renderReports(); }
     });
   });
@@ -633,7 +657,7 @@
     document.getElementById('lightboxImg').src = '';
   });
 
-  var currentSubs = [], currentDevices = [], currentDeviceRequests = [];
+  var currentSubs = [], currentDevices = [], currentDeviceRequests = [], currentIssueResolutions = [];
 
   // Filter/sort/selection state
   var subsFilter = { search:'', location:'', damage:'' };
@@ -641,8 +665,9 @@
   var selectedSubIds = new Set();
   var invFilter = { search:'', status:'' };
   var invSort = { field:'last_updated', dir:'desc' };
-  var PAGE_SIZE = 10, subsPage = 1, invPage = 1, requestPage = 1, reportPage = 1;
+  var PAGE_SIZE = 10, subsPage = 1, invPage = 1, requestPage = 1, issuePage = 1, reportPage = 1;
   var deviceRequestFilter = { search:'', type:'', status:'' };
+  var issueFilter = { search:'', type:'', status:'Open' };
   var activeFulfillRequest = null;
   var reportState = { type:'mobile_devices', location:'', status:'', search:'', from:'', to:'' };
   var currentReportRows = [];
@@ -688,7 +713,7 @@
   document.getElementById('refreshLogBtn').addEventListener('click', loadActivityLog);
 
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadActivityLog()]); renderInventory(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadActivityLog()]); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -721,6 +746,7 @@
     var damaged = currentSubs.filter(function(s){ return s.damage==='Yes'; }).length;
     var emailed = currentSubs.filter(function(s){ return !!s.email_sent_at; }).length;
     var pendingReqs = currentChangeReqs.filter(function(c){ return c.status==='Pending'; }).length;
+    var unresolvedIssues = buildIssueTickets().filter(function(i){ return i.status!=='Resolved'; }).length;
     // [label, value, tab, invStatusFilterValue, subsDamageFilterValue]
     var cards = [
       ['Forms submitted', total, 'submissions', null, ''],
@@ -731,12 +757,14 @@
       ['Reported damaged', damaged, 'submissions', null, 'Yes'],
       ['Handover emails sent', emailed, 'submissions', null, ''],
       ['Pending change requests', pendingReqs, 'changereqs', null, null],
-      ['Device requests pending', currentDeviceRequests.filter(function(r){ return r.status==='Pending Review' || r.status==='Approved - Preparing Device' || r.status==='Awaiting Availability' || r.status==='Device Assigned - Form Pending'; }).length, 'devicerequests', null, null]
+      ['Device requests pending', currentDeviceRequests.filter(function(r){ return r.status==='Pending Review' || r.status==='Approved - Preparing Device' || r.status==='Awaiting Availability' || r.status==='Device Assigned - Form Pending'; }).length, 'devicerequests', null, null],
+      ['Open issues / damage', unresolvedIssues, 'issues', null, null]
     ];
     document.getElementById('statsRow').innerHTML = cards.map(function(c){
       return '<div class="stat-card" data-jump-tab="'+c[2]+'" data-jump-inv="'+(c[3]===null?'':c[3])+'" data-jump-damage="'+(c[4]===null?'':c[4])+'"><div class="num">'+c[1]+'</div><div class="label">'+c[0]+'</div></div>';
     }).join('');
     document.getElementById('pendingBadge').textContent = pendingReqs > 0 ? pendingReqs : '';
+    document.getElementById('issueBadge').textContent = unresolvedIssues > 0 ? unresolvedIssues : '';
 
     document.querySelectorAll('.stat-card[data-jump-tab]').forEach(function(card){
       card.addEventListener('click', function(){
@@ -959,7 +987,9 @@
       if(d2.backPhoto) thumbs += '<img class="thumb" src="'+d2.backPhoto+'" title="Device 2 — Back (click to enlarge)" data-lightbox="'+encodeURIComponent(d2.backPhoto)+'" />';
       var checked = selectedSubIds.has(String(r.id)) ? 'checked' : '';
       var problemClass = r.phone_problem === 'Yes' ? 'problem-yes' : 'problem-no';
-      var problemText = esc(r.phone_problem || '—') + (r.phone_problem === 'Yes' && r.phone_problem_details ? ' — ' + esc(r.phone_problem_details) : '');
+      var damageResolution=issueResolutionFor(r.id,'Physical Damage'), problemResolution=issueResolutionFor(r.id,'Phone Problem');
+      var damageText=esc(r.damage)+(r.damage==='Yes' ? ' — '+esc(r.damage_what) : '')+(damageResolution&&damageResolution.status==='Resolved'?'<br/><span class="issue-status resolved">Resolved</span>':'');
+      var problemText = esc(r.phone_problem || '—') + (r.phone_problem === 'Yes' && r.phone_problem_details ? ' — ' + esc(r.phone_problem_details) : '') + (problemResolution&&problemResolution.status==='Resolved'?'<br/><span class="issue-status resolved">Resolved</span>':'');
       return '<tr>'
         + '<td class="checkbox-cell"><input type="checkbox" class="sub-checkbox" data-id="'+r.id+'" '+checked+' /></td>'
         + '<td>'+esc(new Date(r.created_at).toLocaleString())+'</td>'
@@ -970,7 +1000,7 @@
         + '<td>'+esc(r.location)+'</td>'
         + '<td>'+esc(d1.brand)+' '+esc(d1.model)+'</td>'
         + '<td>'+esc(d1.imei1)+'</td>'
-        + '<td>'+esc(r.damage)+(r.damage==='Yes' ? ' — '+esc(r.damage_what) : '')+'</td>'
+        + '<td>'+damageText+'</td>'
         + '<td class="problem-cell '+problemClass+'">'+problemText+'</td>'
         + '<td>'+(thumbs||'—')+'</td>'
         + '<td>'+ (r.email_sent_at ? ('Sent '+new Date(r.email_sent_at).toLocaleDateString()) : '—') +'</td>'
@@ -1235,7 +1265,7 @@
       await sendHandoverEmail(r);
     } else if(action === 'print'){
       var ctx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, 'Mobile Device Handover Receipt');
-      _fillHandoverDoc(ctx, r);
+      _fillHandoverDoc(ctx, recordWithIssueResolutions(r));
       var blobUrl = ctx.doc.output('bloburl');
       window.open(blobUrl, '_blank');
     }
@@ -1262,9 +1292,17 @@
     });
     section('Accessories & Condition');
     row('Charger provided', r.charger); row('Data/USB cable provided', r.cable); row('Damage present', r.damage);
-    if(r.damage === 'Yes'){ window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how); }
+    if(r.damage === 'Yes'){
+      window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how);
+      var damageResolution = recordResolution(r, 'Physical Damage');
+      if(damageResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Physical Damage', damageResolution.resolution_notes, damageResolution.resolved_by, damageResolution.resolved_at); }
+    }
     row('Phone problem reported', r.phone_problem || '—');
-    if(r.phone_problem === 'Yes'){ window.DNCCPdf.problemBlock(ctx, r.phone_problem_details || '—'); }
+    if(r.phone_problem === 'Yes'){
+      window.DNCCPdf.problemBlock(ctx, r.phone_problem_details || '—');
+      var problemResolution = recordResolution(r, 'Phone Problem');
+      if(problemResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Phone Problem', problemResolution.resolution_notes, problemResolution.resolved_by, problemResolution.resolved_at); }
+    }
     window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
   }
 
@@ -1290,9 +1328,17 @@
     });
     section('Accessories & Condition');
     row('Charger provided', r.charger); row('Data/USB cable provided', r.cable); row('Damage present', r.damage);
-    if(r.damage === 'Yes'){ window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how); }
+    if(r.damage === 'Yes'){
+      window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how);
+      var damageResolution = recordResolution(r, 'Physical Damage');
+      if(damageResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Physical Damage', damageResolution.resolution_notes, damageResolution.resolved_by, damageResolution.resolved_at); }
+    }
     row('Phone problem reported', r.phone_problem || '—');
-    if(r.phone_problem === 'Yes'){ window.DNCCPdf.problemBlock(ctx, r.phone_problem_details || '—'); }
+    if(r.phone_problem === 'Yes'){
+      window.DNCCPdf.problemBlock(ctx, r.phone_problem_details || '—');
+      var problemResolution = recordResolution(r, 'Phone Problem');
+      if(problemResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Phone Problem', problemResolution.resolution_notes, problemResolution.resolved_by, problemResolution.resolved_at); }
+    }
     window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
     return window.DNCCPdf.toBase64(ctx);
   }
@@ -1316,16 +1362,21 @@
     if(r.damage === 'Yes'){
       html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeee1;border-left:3px solid #b5691f;">';
       html += '<p style="margin:0;"><b>Reported damage:</b> ' + (r.damage_what||'—') + '<br/><b>Cause:</b> ' + (r.damage_how||'—') + '</p></div>';
+      var dr=recordResolution(r,'Physical Damage');
+      if(dr) html += '<div style="margin:10px 0;padding:12px 14px;background:#eaf7ef;border-left:3px solid #237e52;"><p style="margin:0;"><b>Damage status: RESOLVED</b><br/><b>Resolution:</b> '+esc(dr.resolution_notes||'Resolved by IT')+'<br/><b>Resolved by:</b> '+esc(dr.resolved_by||'IT Admin')+(dr.resolved_at?'<br/><b>Resolved at:</b> '+esc(new Date(dr.resolved_at).toLocaleString()):'')+'</p></div>';
     }
     if(r.phone_problem === 'Yes'){
       html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeaea;border-left:3px solid #a03a3a;">';
       html += '<p style="margin:0;"><b>Reported phone problem:</b> ' + (r.phone_problem_details||'—') + '</p></div>';
+      var pr=recordResolution(r,'Phone Problem');
+      if(pr) html += '<div style="margin:10px 0;padding:12px 14px;background:#eaf7ef;border-left:3px solid #237e52;"><p style="margin:0;"><b>Phone problem status: RESOLVED</b><br/><b>Resolution:</b> '+esc(pr.resolution_notes||'Resolved by IT')+'<br/><b>Resolved by:</b> '+esc(pr.resolved_by||'IT Admin')+(pr.resolved_at?'<br/><b>Resolved at:</b> '+esc(new Date(pr.resolved_at).toLocaleString()):'')+'</p></div>';
     }
     return html;
   }
 
   async function sendHandoverEmail(r, templateKey){
     templateKey = templateKey || 'handover';
+    r = recordWithIssueResolutions(r);
     var recipients = [r.company_email, r.personal_email].filter(isRealEmail);
     if(recipients.length === 0){ alert('This submission has no real email addresses on file (company email may be set to "NOT").'); return; }
     if(!confirm('Send the ' + templateKey + ' confirmation email to ' + recipients.join(' and ') + '?')) return;
@@ -1523,13 +1574,16 @@
     subs.filter(function(s){ return s.damage==='Yes' || s.phone_problem==='Yes'; }).forEach(function(s){
       var m=baseReportMeta(s), ds=submissionDevices(s);
       if(!ds.length) ds=[{slot:'',data:{}}];
+      var dr=issueResolutionFor(s.id,'Physical Damage'), pr=issueResolutionFor(s.id,'Phone Problem');
       ds.forEach(function(item){ var d=item.data;
         rows.push({
           'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Contact':m.contact,'Employee email':m.email,
           'Device':[(d.brand||''),(d.model||'')].join(' ').trim(),'IMEI 1':d.imei1||'',
           'Physical damage':s.damage||'No','Damage details':s.damage_what||'','Damage cause':s.damage_how||'',
-          'Phone problem':s.phone_problem||'No','Problem details':s.phone_problem_details||'','Submitted':reportDateValue(s.created_at),
-          '__date':s.created_at||'','__location':m.location
+          'Damage status':s.damage==='Yes'?(dr&&dr.status?dr.status:'Open'):'—','Damage resolution':dr&&dr.resolution_notes||'','Damage resolved by':dr&&dr.resolved_by||'','Damage resolved at':reportDateValue(dr&&dr.resolved_at),
+          'Phone problem':s.phone_problem||'No','Problem details':s.phone_problem_details||'',
+          'Problem status':s.phone_problem==='Yes'?(pr&&pr.status?pr.status:'Open'):'—','Problem resolution':pr&&pr.resolution_notes||'','Problem resolved by':pr&&pr.resolved_by||'','Problem resolved at':reportDateValue(pr&&pr.resolved_at),
+          'Submitted':reportDateValue(s.created_at),'__date':s.created_at||'','__location':m.location
         });
       });
     });
@@ -1548,7 +1602,7 @@
     return devices.filter(function(d){ return !spareRetiredOnly || d.status==='Spare' || d.status==='Retired'; }).map(function(d){
       var sub=submissionForDevice(d), loc=sub ? (sub.location||'') : '';
       return {'Device':[(d.brand||''),(d.model||'')].join(' ').trim(),'RAM':d.ram||'','Storage':d.storage||'','IMEI 1':d.imei1||'','IMEI 2':d.imei2||'',
-        'Condition':d.condition||'','SIM slots':d.sim_slots||'','SIM number(s)':Array.isArray(d.sim_numbers)?d.sim_numbers.join(', '):'',
+        'Condition':d.condition||'','SIM slots':d.sim_slots||'','SIM number(s)':resolveDeviceSims(d).join(', '),
         'SIM assignment':d.sim_assignment_mode||'','Stock source':d.stock_source||'','Charger':d.charger_available||'','USB/Data cable':d.cable_available||'',
         'Status':d.status||'','Assigned to':d.assigned_to||'','Employee ID':d.assigned_employee_id||'','Employee email':resolveDeviceEmployeeEmail(d)||'',
         'Location':loc,'Notes':d.notes||'','Last updated':reportDateValue(d.last_updated),
@@ -1780,7 +1834,7 @@
     var list = currentDevices.filter(function(d){
       if(invFilter.status && d.status !== invFilter.status) return false;
       if(!q) return true;
-      var haystack = [d.brand, d.model, d.imei1, d.imei2, d.assigned_to, d.assigned_employee_id, resolveDeviceEmployeeEmail(d)].filter(Boolean).join(' ').toLowerCase();
+      var haystack = [d.brand, d.model, d.imei1, d.imei2, d.assigned_to, d.assigned_employee_id, resolveDeviceEmployeeEmail(d), resolveDeviceSims(d).join(' ')].filter(Boolean).join(' ').toLowerCase();
       return haystack.indexOf(q) !== -1;
     });
     list.sort(function(a, b){
@@ -1810,6 +1864,23 @@
     return preferredSubmissionEmail(match);
   }
 
+  function resolveDeviceSims(device){
+    if(Array.isArray(device.sim_numbers) && device.sim_numbers.filter(Boolean).length) return device.sim_numbers.filter(Boolean);
+    var imei=device.imei1||'';
+    if(!imei) return [];
+    for(var i=0;i<currentSubs.length;i++){
+      var ds=[currentSubs[i].device1,currentSubs[i].device2];
+      for(var j=0;j<ds.length;j++){
+        var snap=ds[j];
+        if(snap && snap.imei1===imei){
+          var sims=snap.simNumbers||snap.sim_numbers||[];
+          if(Array.isArray(sims) && sims.filter(Boolean).length) return sims.filter(Boolean);
+        }
+      }
+    }
+    return [];
+  }
+
   function renderInventory(){
     var area = document.getElementById('invArea');
     if(!currentDevices.length){ area.innerHTML = '<p class="empty-state">No devices in inventory yet.</p>'; return; }
@@ -1836,7 +1907,7 @@
         + '<td>'+esc(d.imei1)+'</td>'
         + '<td>'+esc(d.imei2)+'</td>'
         + '<td>'+esc(d.condition||'—')+'</td>'
-        + '<td>'+esc(((d.sim_numbers||[]).join(', '))||'—')+'</td>'
+        + '<td>'+esc((resolveDeviceSims(d).join(', '))||'—')+'</td>'
         + '<td>'+esc(d.stock_source||'—')+'</td>'
         + '<td><span class="badge-status '+esc(d.status)+'">'+esc(d.status)+'</span></td>'
         + '<td>'+esc(d.assigned_to)+(d.assigned_employee_id?(' ('+esc(d.assigned_employee_id)+')'):'')+'</td>'
@@ -1913,7 +1984,7 @@
         if(!confirm('Permanently delete this device from inventory? This cannot be undone.')) return;
         await sb.from('devices').delete().eq('imei1', imei1);
       } else if(action === 'edit'){
-        var editSims = Array.isArray(d.sim_numbers) ? d.sim_numbers : [];
+        var editSims = resolveDeviceSims(d);
         openModal('Edit device', [
           { section:'Device identity' },
           { id:'brand', label:'Brand', value:d.brand }, { id:'model', label:'Model', value:d.model },
@@ -2075,10 +2146,11 @@
     var slot = sub.device_count === 2 ? 'device2' : (sub.device1 ? 'device2' : 'device1');
     if(!confirm('Assign ' + (device.brand||'') + ' ' + (device.model||'') + ' to ' + sub.employee_name + ' as ' + (slot==='device1'?'Device 1':'Device 2') + '? This will update their submission record and send a ' + (wasAssigned?'reassignment':'handover') + ' email.')) return;
     try{
+      var assignmentSims = resolveDeviceSims(device);
       var deviceData = {
         brand: device.brand, model: device.model, ram: device.ram, storage: device.storage,
         imei1: device.imei1, imei2: device.imei2,
-        simCount: 1, simNumbers: [], memoryCard: 'No', memoryCardSize: '',
+        simCount: Math.max(1, Math.min(2, assignmentSims.length || device.sim_slots || 1)), simNumbers: assignmentSims, memoryCard: 'No', memoryCardSize: '',
         usage: '(assigned from inventory — spare device)',
         frontPhoto: '', backPhoto: ''
       };
@@ -2214,6 +2286,170 @@
   }
 
 
+
+  // ---------- Issues & Damage Resolution ----------
+  function issueResolutionFor(submissionId, issueType){
+    return currentIssueResolutions.find(function(x){ return String(x.submission_id)===String(submissionId) && x.issue_type===issueType; }) || null;
+  }
+  function issueDeviceSummary(sub){
+    var ds=submissionDevices(sub);
+    if(!ds.length) return 'No device details';
+    return ds.map(function(item){ var d=item.data||{}; return ((d.brand||'')+' '+(d.model||'')).trim()+' · IMEI '+(d.imei1||'—'); }).join(' | ');
+  }
+  function issueOriginalSummary(sub,type){
+    if(type==='Physical Damage') return [sub.damage_what?('Damage: '+sub.damage_what):'',sub.damage_how?('Cause: '+sub.damage_how):''].filter(Boolean).join('\n') || 'Physical damage reported';
+    return sub.phone_problem_details || 'Phone problem reported';
+  }
+  function buildIssueTickets(){
+    var out=[];
+    currentSubs.forEach(function(sub){
+      var types=[];
+      if(sub.damage==='Yes') types.push('Physical Damage');
+      if(sub.phone_problem==='Yes') types.push('Phone Problem');
+      types.forEach(function(type){
+        var res=issueResolutionFor(sub.id,type);
+        out.push({
+          key:String(sub.id)+'|'+type, submission:sub, submission_id:sub.id, issue_type:type,
+          summary:issueOriginalSummary(sub,type), device_summary:issueDeviceSummary(sub),
+          status:res&&res.status?res.status:'Open', resolution:res
+        });
+      });
+    });
+    return out.sort(function(a,b){
+      if(a.status!==b.status) return a.status==='Open'?-1:1;
+      return new Date(b.submission.created_at||0)-new Date(a.submission.created_at||0);
+    });
+  }
+  function filteredIssueTickets(){
+    var q=(issueFilter.search||'').trim().toLowerCase();
+    return buildIssueTickets().filter(function(i){
+      if(issueFilter.type && i.issue_type!==issueFilter.type) return false;
+      if(issueFilter.status && i.status!==issueFilter.status) return false;
+      if(q){
+        var s=i.submission,r=i.resolution||{};
+        var hay=[s.employee_name,s.employee_id,s.location,preferredSubmissionEmail(s),i.issue_type,i.summary,i.device_summary,r.resolution_notes,r.resolved_by].join(' ').toLowerCase();
+        if(hay.indexOf(q)<0) return false;
+      }
+      return true;
+    });
+  }
+  async function loadIssueResolutions(){
+    var area=document.getElementById('issuesArea');
+    try{
+      var res=await sb.from('issue_resolutions').select('*').order('updated_at',{ascending:false});
+      if(res.error) throw res.error;
+      currentIssueResolutions=res.data||[];
+      renderIssues();
+      if(currentSubs.length){ renderSubmissions(); renderReports(); }
+      var open=buildIssueTickets().filter(function(x){return x.status!=='Resolved';}).length;
+      var badge=document.getElementById('issueBadge'); if(badge) badge.textContent=open?String(open):'';
+    }catch(err){
+      console.error(err);
+      currentIssueResolutions=[];
+      if(area) area.innerHTML='<p class="empty-state">Could not load issue resolution data. Run the latest issue-resolution SQL migration first.</p>';
+    }
+  }
+  function renderIssues(){
+    var area=document.getElementById('issuesArea'); if(!area) return;
+    var list=filteredIssueTickets();
+    if(!list.length){ area.innerHTML='<p class="empty-state">No issues match the current filters.</p>'; return; }
+    var pages=Math.max(1,Math.ceil(list.length/PAGE_SIZE)); issuePage=Math.min(Math.max(1,issuePage),pages);
+    var start=(issuePage-1)*PAGE_SIZE,page=list.slice(start,start+PAGE_SIZE);
+    var rows=page.map(function(i){
+      var s=i.submission,r=i.resolution||{},email=preferredSubmissionEmail(s)||'—';
+      var resolutionHtml=i.status==='Resolved'
+        ? '<div class="issue-resolved-box"><b>Resolved</b><br/>'+esc(r.resolution_notes||'')+'<div class="issue-meta">By '+esc(r.resolved_by||'IT Admin')+(r.resolved_at?' · '+esc(new Date(r.resolved_at).toLocaleString()):'')+(r.resolution_email_sent_at?' · email sent':'')+'</div></div>'
+        : '<div class="issue-open-box">Waiting for IT resolution</div>';
+      var actions=i.status==='Resolved'
+        ? '<button class="btn-small edit" data-issue-action="view" data-sid="'+esc(s.id)+'" data-type="'+esc(i.issue_type)+'">Details</button>'
+        : '<button class="btn-small assign" data-issue-action="resolve" data-sid="'+esc(s.id)+'" data-type="'+esc(i.issue_type)+'">Resolve issue</button>';
+      return '<tr>'
+        +'<td>'+esc(new Date(s.created_at).toLocaleString())+'</td>'
+        +'<td>'+esc(s.employee_name)+'<div class="issue-meta">'+esc(s.employee_id||'')+' · '+esc(s.location||'')+'</div><div class="issue-meta">'+esc(email)+'</div></td>'
+        +'<td>'+esc(i.device_summary)+'</td>'
+        +'<td><span class="issue-kind">'+esc(i.issue_type)+'</span></td>'
+        +'<td class="issue-summary-cell">'+esc(i.summary).replace(/\n/g,'<br/>')+'</td>'
+        +'<td><span class="issue-status '+(i.status==='Resolved'?'resolved':'open')+'">'+esc(i.status)+'</span></td>'
+        +'<td class="issue-resolution-cell">'+resolutionHtml+'</td>'
+        +'<td style="white-space:nowrap">'+actions+'</td>'
+        +'</tr>';
+    }).join('');
+    area.innerHTML=paginationHTML('issues',issuePage,pages,start+1,start+page.length,list.length)
+      +'<div class="table-scroll-shell"><div class="table-top-scroll"><div class="table-top-scroll-inner"></div></div><div class="table-wrap"><table class="issue-table"><thead><tr><th>Reported</th><th>Employee</th><th>Device(s)</th><th>Issue type</th><th>Reported details</th><th>Status</th><th>Resolution</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    bindPagination(area,'issues',function(pg){issuePage=pg;renderIssues();area.scrollIntoView({behavior:'smooth',block:'start'});});
+    wireTableScrollSync(area);
+    area.querySelectorAll('button[data-issue-action]').forEach(function(btn){btn.addEventListener('click',function(){handleIssueAction(btn.dataset.issueAction,btn.dataset.sid,btn.dataset.type);});});
+  }
+  function recordWithIssueResolutions(sub){
+    var clone=Object.assign({},sub);
+    clone._issueResolutions=currentIssueResolutions.filter(function(x){return String(x.submission_id)===String(sub.id);});
+    return clone;
+  }
+  function recordResolution(record,type){
+    var arr=record&&record._issueResolutions||[];
+    return arr.find(function(x){return x.issue_type===type && x.status==='Resolved';})||null;
+  }
+  async function sendIssueResolvedEmail(sub,ticket,resolution){
+    var recipients=[sub.company_email,sub.personal_email].filter(isRealEmail);
+    if(!recipients.length) return false;
+    var pdfRecord=recordWithIssueResolutions(sub);
+    var pdfBase64=buildHandoverPDFBase64(pdfRecord);
+    var resolvedAt=resolution.resolved_at?new Date(resolution.resolved_at).toLocaleString():new Date().toLocaleString();
+    var html='<p>Dear '+esc(sub.employee_name||'Employee')+',</p>'
+      +'<p>Your reported <b>'+esc(ticket.issue_type)+'</b> has been resolved by '+window.DNCC_CONFIG.COMPANY_NAME+' IT Department.</p>'
+      +'<p><b>Reported issue:</b><br/>'+esc(ticket.summary).replace(/\n/g,'<br/>')+'</p>'
+      +'<p><b>Resolution / work performed:</b><br/>'+esc(resolution.resolution_notes||'Resolved by IT')+'</p>'
+      +'<p><b>Resolved by:</b> '+esc(resolution.resolved_by||'IT Admin')+'<br/><b>Resolved at:</b> '+esc(resolvedAt)+'</p>'
+      +'<p>An updated device handover PDF showing the resolved status is attached for your records.</p>'
+      +'<p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';
+    try{
+      var response=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:recipients,employeeName:sub.employee_name,subject:ticket.issue_type+' resolved — '+window.DNCC_CONFIG.COMPANY_NAME,html:html,pdfBase64:pdfBase64,pdfFilename:'Resolved_'+ticket.issue_type.replace(/[^a-z0-9]+/gi,'_')+'_'+(sub.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_')+'.pdf'})});
+      var json=await response.json(); return !!(response.ok&&json.ok);
+    }catch(err){console.error('Resolution email failed',err);return false;}
+  }
+  async function handleIssueAction(action,submissionId,issueType){
+    var sub=currentSubs.find(function(x){return String(x.id)===String(submissionId);}); if(!sub) return;
+    var ticket=buildIssueTickets().find(function(x){return String(x.submission_id)===String(submissionId)&&x.issue_type===issueType;}); if(!ticket) return;
+    var existing=ticket.resolution||{};
+    if(action==='view'){
+      openModal(issueType+' — '+(sub.employee_name||''),[
+        {id:'reported',label:'Reported issue',value:ticket.summary,type:'textarea'},
+        {id:'status',label:'Status',value:ticket.status},
+        {id:'resolution',label:'Resolution / work performed',value:existing.resolution_notes||'',type:'textarea'},
+        {id:'by',label:'Resolved by',value:existing.resolved_by||''},
+        {id:'at',label:'Resolved at',value:existing.resolved_at?new Date(existing.resolved_at).toLocaleString():''}
+      ],function(){closeModal();});
+      return;
+    }
+    if(action==='resolve'){
+      openModal('Resolve '+issueType+' — '+(sub.employee_name||''),[
+        {id:'reported',label:'Reported issue',value:ticket.summary,type:'textarea'},
+        {id:'resolution',label:'What did IT do to resolve it? *',value:existing.resolution_notes||'',type:'textarea'},
+        {id:'resolved_by',label:'Resolved by (IT person) *',value:loggedInAdminUsername||existing.resolved_by||'IT Admin'}
+      ],async function(v){
+        if(!v.resolution.trim()){alert('Please enter what was done to resolve the issue.');return;}
+        if(!v.resolved_by.trim()){alert('Please enter the IT person name.');return;}
+        try{
+          var now=new Date().toISOString();
+          var up=await sb.from('issue_resolutions').upsert([{submission_id:sub.id,issue_type:issueType,original_issue_summary:ticket.summary,status:'Resolved',resolution_notes:v.resolution.trim(),resolved_by:v.resolved_by.trim(),resolved_at:now,updated_at:now}],{onConflict:'submission_id,issue_type'}).select();
+          if(up.error) throw up.error;
+          var resolution=up.data&&up.data[0]?up.data[0]:{submission_id:sub.id,issue_type:issueType,status:'Resolved',resolution_notes:v.resolution.trim(),resolved_by:v.resolved_by.trim(),resolved_at:now};
+          await loadIssueResolutions();
+          var sent=await sendIssueResolvedEmail(sub,ticket,resolution);
+          if(sent){await sb.from('issue_resolutions').update({resolution_email_sent_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('submission_id',sub.id).eq('issue_type',issueType);}
+          await logActivity('Resolved '+issueType,'submission',sub.id,v.resolution.trim()+' · by '+v.resolved_by.trim());
+          closeModal(); await loadIssueResolutions(); renderStats(); renderReports(); loadActivityLog();
+          alert(sent?'Issue marked resolved, employee emailed, and updated PDF attached.':'Issue marked resolved. Employee email could not be sent; the resolution is still saved.');
+        }catch(err){console.error(err);alert('Could not resolve issue: '+(err.message||err));}
+      });
+    }
+  }
+  document.getElementById('issueSearch').addEventListener('input',debounce(function(){issueFilter.search=this.value;issuePage=1;renderIssues();},250));
+  document.getElementById('issueTypeFilter').addEventListener('change',function(){issueFilter.type=this.value;issuePage=1;renderIssues();});
+  document.getElementById('issueStatusFilter').addEventListener('change',function(){issueFilter.status=this.value;issuePage=1;renderIssues();});
+  document.getElementById('clearIssueFilters').addEventListener('click',function(){issueFilter={search:'',type:'',status:'Open'};document.getElementById('issueSearch').value='';document.getElementById('issueTypeFilter').value='';document.getElementById('issueStatusFilter').value='Open';issuePage=1;renderIssues();});
+  document.getElementById('refreshIssuesBtn').addEventListener('click',async function(){await Promise.all([loadSubmissions(),loadIssueResolutions()]);renderIssues();renderStats();});
+
   // ---------- Device Requests ----------
   function requestStatusClass(status){if(status==='Pending Review')return'pending';if(status==='Approved - Preparing Device')return'approved';if(status==='Awaiting Availability')return'waiting';if(status==='Rejected')return'rejected';if(status==='Device Assigned - Form Pending')return'assigned';if(status==='Completed')return'completed';return'pending';}
   function requestNumber(r){return r.request_no||String(r.id||'').slice(0,8).toUpperCase();}
@@ -2240,12 +2476,12 @@
   }
   async function handleDeviceRequestAction(action,id){var r=currentDeviceRequests.find(function(x){return String(x.id)===String(id);});if(!r)return;if(action==='approve')return setRequestDecision(r,'Approved - Preparing Device','Approve device request');if(action==='waiting')return setRequestDecision(r,'Awaiting Availability','Set Awaiting Availability');if(action==='reject')return setRequestDecision(r,'Rejected','Reject device request');if(action==='fulfill')return openFulfillRequest(r);if(action==='resendform')return resendRequestFormLink(r);if(action==='view'){var cd=(r.current_devices||[]).map(function(d){return (d.brand||'')+' '+(d.model||'')+' / '+(d.imei1||'');}).join('\n')||'None';var fd=r.fulfillment_device_snapshot||{};openModal('Request #'+requestNumber(r),[{id:'employee',label:'Employee',value:(r.employee_name||'')+' ('+(r.employee_id||'')+')'},{id:'email',label:'Email',value:r.requester_email},{id:'type',label:'Type / status',value:r.request_type+' / '+r.status},{id:'current',label:'Current devices',value:cd,type:'textarea'},{id:'reason',label:'Reason',value:r.request_reason,type:'textarea'},{id:'admin',label:'IT note',value:r.admin_note||'',type:'textarea'},{id:'issued',label:'Issued device',value:fd.imei1?((fd.brand||'')+' '+(fd.model||'')+' / '+fd.imei1):'Not assigned'}],function(){closeModal();});}}
 
-  function candidateHtml(d,source){var email=resolveDeviceEmployeeEmail(d)||'';return '<div class="candidate-item"><label><input type="radio" name="fulfillDevice" value="'+esc(d.imei1)+'" data-source="'+source+'"><span><span class="name">'+esc((d.brand||'')+' '+(d.model||''))+'</span><span class="meta">'+esc(d.ram||'—')+' / '+esc(d.storage||'—')+' · IMEI '+esc(d.imei1)+' · '+esc(d.condition||'—')+(source==='Reassign'?'<br/>Current assignee: '+esc(d.assigned_to||'—')+(email?' · '+esc(email):''):'')+'<br/>SIM(s): '+esc(((d.sim_numbers||[]).join(', '))||'None recorded')+'</span></span></label></div>';}
-  function oldRequestSims(r){var rd=r.replace_device||{},s=rd.sim_numbers||[];if(s.length)return s;var imei=r.replace_imei1;if(!imei)return[];for(var i=0;i<currentSubs.length;i++){var ds=[currentSubs[i].device1,currentSubs[i].device2];for(var j=0;j<ds.length;j++){var d=ds[j];if(d&&d.imei1===imei)return d.simNumbers||[];}}return[];}
-  function syncFulfillSims(){var plan=document.getElementById('fulfillSimPlan').value,old=activeFulfillRequest?oldRequestSims(activeFulfillRequest):[];document.getElementById('fulfillSimInputs').style.display=plan==='No SIM assigned'?'none':'grid';if(plan==='Carry existing SIM(s)'){document.getElementById('fulfillSim1').value=old[0]||'';document.getElementById('fulfillSim2').value=old[1]||'';}else if(plan==='No SIM assigned'){document.getElementById('fulfillSim1').value='';document.getElementById('fulfillSim2').value='';}}
-  document.getElementById('fulfillSimPlan').addEventListener('change',syncFulfillSims);document.getElementById('fulfillCancel').addEventListener('click',function(){document.getElementById('fulfillOverlay').classList.remove('open');activeFulfillRequest=null;});
+  function candidateHtml(d,source){var email=resolveDeviceEmployeeEmail(d)||'';return '<div class="candidate-item"><label><input type="radio" name="fulfillDevice" value="'+esc(d.imei1)+'" data-source="'+source+'"><span><span class="name">'+esc((d.brand||'')+' '+(d.model||''))+'</span><span class="meta">'+esc(d.ram||'—')+' / '+esc(d.storage||'—')+' · IMEI '+esc(d.imei1)+' · '+esc(d.condition||'—')+(source==='Reassign'?'<br/>Current assignee: '+esc(d.assigned_to||'—')+(email?' · '+esc(email):''):'')+'<br/>SIM(s): '+esc((resolveDeviceSims(d).join(', '))||'None recorded')+'</span></span></label></div>';}
+  function oldRequestSims(r){var rd=r.replace_device||{},s=rd.sim_numbers||rd.simNumbers||[];if(Array.isArray(s)&&s.filter(Boolean).length)return s.filter(Boolean);var imei=r.replace_imei1;if(!imei)return[];var live=currentDevices.find(function(x){return x.imei1===imei;});if(live){var ls=resolveDeviceSims(live);if(ls.length)return ls;}for(var i=0;i<currentSubs.length;i++){var ds=[currentSubs[i].device1,currentSubs[i].device2];for(var j=0;j<ds.length;j++){var d=ds[j];if(d&&d.imei1===imei)return (d.simNumbers||d.sim_numbers||[]).filter(Boolean);}}return[];}
+  function syncFulfillSims(){var plan=document.getElementById('fulfillSimPlan').value,old=activeFulfillRequest?oldRequestSims(activeFulfillRequest):[],radio=document.querySelector('#fulfillOverlay input[name="fulfillDevice"]:checked'),selected=radio?currentDevices.find(function(x){return x.imei1===radio.value;}):null,selectedSims=selected?resolveDeviceSims(selected):[],source=radio?radio.dataset.source:'';var help=document.getElementById('fulfillSimHelp');document.getElementById('fulfillSimInputs').style.display=plan==='No SIM assigned'?'none':'grid';if(plan==='Carry existing SIM(s)'){document.getElementById('fulfillSim1').value=old[0]||'';document.getElementById('fulfillSim2').value=old[1]||'';help.textContent=old.length?'Existing SIM(s) '+old.join(', ')+' will move from the replaced phone to the issued phone. The replaced phone SIM record will be cleared.':'No SIM is currently recorded on the phone being replaced. Enter the SIM being transferred, or choose “No SIM assigned”.';}else if(plan==='Assign new SIM(s)'){var preset=source==='Spare'?selectedSims:[];document.getElementById('fulfillSim1').value=preset[0]||'';document.getElementById('fulfillSim2').value=preset[1]||'';help.textContent=preset.length?'This spare phone already has stock SIM(s) recorded: '+preset.join(', ')+'. Verify them before assigning.':'Enter the new SIM number(s) that will be issued with this phone.';}else{document.getElementById('fulfillSim1').value='';document.getElementById('fulfillSim2').value='';help.textContent=selectedSims.length?'Warning: the selected phone currently has SIM(s) '+selectedSims.join(', ')+'. Choosing No SIM will clear them from this phone’s inventory record.':'No SIM will be linked to the issued phone.';}}
+  document.getElementById('fulfillSimPlan').addEventListener('change',syncFulfillSims);document.getElementById('fulfillOverlay').addEventListener('change',function(e){if(e.target&&e.target.name==='fulfillDevice')syncFulfillSims();});document.getElementById('fulfillCancel').addEventListener('click',function(){document.getElementById('fulfillOverlay').classList.remove('open');activeFulfillRequest=null;});
   async function openFulfillRequest(r){activeFulfillRequest=r;await loadInventory();var spare=currentDevices.filter(function(d){return d.status==='Spare';}),reassign=currentDevices.filter(function(d){return d.status==='Assigned'&&!(r.employee_id&&d.assigned_employee_id===r.employee_id)&&d.imei1!==r.replace_imei1;});document.getElementById('fulfillSummary').innerHTML='<b>Request #'+esc(requestNumber(r))+'</b> · '+esc(r.employee_name||'')+' · '+esc(r.request_type)+(r.replace_imei1?' · replacing IMEI '+esc(r.replace_imei1):'');document.getElementById('fulfillSpareList').innerHTML=spare.length?spare.map(function(d){return candidateHtml(d,'Spare');}).join(''):'<p class="empty-state">No spare phones available.</p>';document.getElementById('fulfillReassignList').innerHTML=reassign.length?reassign.map(function(d){return candidateHtml(d,'Reassign');}).join(''):'<p class="empty-state">No other assigned phones available.</p>';var first=document.querySelector('#fulfillOverlay input[name="fulfillDevice"]');if(first)first.checked=true;document.getElementById('fulfillSimPlan').value=r.request_type==='Replace'?'Carry existing SIM(s)':'Assign new SIM(s)';document.getElementById('fulfillSim1').value='';document.getElementById('fulfillSim2').value='';document.getElementById('fulfillExpiry').value='72';document.getElementById('fulfillNote').value='';syncFulfillSims();document.getElementById('fulfillOverlay').classList.add('open');}
-  document.getElementById('fulfillConfirm').addEventListener('click',async function(){var r=activeFulfillRequest;if(!r)return;var radio=document.querySelector('#fulfillOverlay input[name="fulfillDevice"]:checked');if(!radio){alert('Select a device to issue.');return;}var d=currentDevices.find(function(x){return x.imei1===radio.value;});if(!d)return;var source=radio.dataset.source,plan=document.getElementById('fulfillSimPlan').value,s1=document.getElementById('fulfillSim1').value.trim(),s2=document.getElementById('fulfillSim2').value.trim();if(source==='Reassign'&&d.assigned_to&&!confirm('This phone is currently assigned to '+d.assigned_to+'. Continue and move it to '+(r.employee_name||'the requester')+'?'))return;if(plan!=='No SIM assigned'){if(s1&&!/^\d{10}$/.test(s1)){alert('SIM 1 must be 10 digits or blank.');return;}if(s2&&!/^\d{10}$/.test(s2)){alert('SIM 2 must be 10 digits or blank.');return;}}var sims=plan==='No SIM assigned'?[]:[s1,s2].filter(Boolean);var btn=this;btn.disabled=true;btn.textContent='Assigning…';try{var prev=source==='Reassign'?{employee_name:d.assigned_to,employee_id:d.assigned_employee_id,email:resolveDeviceEmployeeEmail(d),imei1:d.imei1}:null;var email=requestEmployeeEmail(r),now=new Date().toISOString();var upd=await sb.from('devices').update({status:'Assigned',assigned_to:r.employee_name,assigned_employee_id:r.employee_id,assigned_employee_email:email,sim_numbers:sims,sim_assignment_mode:plan,last_updated:now}).eq('imei1',d.imei1);if(upd.error)throw upd.error;if(r.request_type==='Replace'&&r.replace_imei1&&r.replace_imei1!==d.imei1){await sb.from('devices').update({status:'Spare',assigned_to:null,assigned_employee_id:null,assigned_employee_email:null,sim_numbers:[],sim_assignment_mode:'SIM removed during replacement',last_updated:now}).eq('imei1',r.replace_imei1);await sb.from('device_history').insert([{imei1:r.replace_imei1,action:'Returned during replacement',employee_name:r.employee_name,notes:'Request #'+requestNumber(r)}]);}await sb.from('device_history').insert([{imei1:d.imei1,action:source==='Reassign'?'Reassigned via device request':'Assigned from spare via device request',employee_name:r.employee_name,notes:'Request #'+requestNumber(r)+(prev&&prev.employee_name?' · previous assignee '+prev.employee_name:'')}]);var token=crypto.randomUUID(),hours=parseInt(document.getElementById('fulfillExpiry').value,10)||72,expires=new Date(Date.now()+hours*3600000).toISOString(),snapshot=Object.assign({},d,{status:'Assigned',assigned_to:r.employee_name,assigned_employee_id:r.employee_id,assigned_employee_email:email,sim_numbers:sims,sim_assignment_mode:plan});var note=document.getElementById('fulfillNote').value.trim();var ur=await sb.from('device_requests').update({status:'Device Assigned - Form Pending',fulfillment_source:source,fulfillment_device_id:d.id,fulfillment_device_snapshot:snapshot,previous_assignee:prev,sim_plan:plan,fulfillment_sim_numbers:sims,assigned_at:now,form_token:token,form_token_expires_at:expires,admin_note:note||r.admin_note,updated_at:now}).eq('id',r.id);if(ur.error)throw ur.error;var link=location.origin+location.pathname.replace(/admin\.html.*$/,'index.html')+'?request_id='+encodeURIComponent(r.id)+'&token='+encodeURIComponent(token);var html='<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>IT has assigned a device for your Request #'+esc(requestNumber(r))+'.</p><p><b>Device:</b> '+esc((d.brand||'')+' '+(d.model||''))+'<br/><b>IMEI:</b> '+esc(d.imei1)+'<br/><b>SIM handling:</b> '+esc(plan)+(sims.length?'<br/><b>SIM(s):</b> '+esc(sims.join(', ')):'')+'</p>'+(note?'<p><b>IT note:</b> '+esc(note)+'</p>':'')+'<p><b>Compulsory next step:</b> open the link below, verify the prefilled device details, take front/back photos and submit the handover form.</p><p><a href="'+link+'">Complete my device handover form</a></p><p>This link expires on '+esc(new Date(expires).toLocaleString())+'. The request will remain open until the form is submitted.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';var sent=await sendSimpleEmail(email,'Device assigned — complete handover form (Request #'+requestNumber(r)+')',html);await logActivity('Assigned device for request','device_request',r.id,(d.brand||'')+' '+(d.model||'')+' / '+d.imei1+' · '+source+' · '+plan);document.getElementById('fulfillOverlay').classList.remove('open');activeFulfillRequest=null;await Promise.all([loadInventory(),loadDeviceRequests()]);renderStats();alert(sent?'Device assigned and compulsory handover link emailed to employee.':'Device assigned, but email failed. Open request details and resend the form link.');}catch(err){console.error(err);alert('Could not assign device: '+(err.message||err));}finally{btn.disabled=false;btn.textContent='Assign & email handover form';}});
+  document.getElementById('fulfillConfirm').addEventListener('click',async function(){var r=activeFulfillRequest;if(!r)return;var radio=document.querySelector('#fulfillOverlay input[name="fulfillDevice"]:checked');if(!radio){alert('Select a device to issue.');return;}var d=currentDevices.find(function(x){return x.imei1===radio.value;});if(!d)return;var source=radio.dataset.source,plan=document.getElementById('fulfillSimPlan').value,s1=document.getElementById('fulfillSim1').value.trim(),s2=document.getElementById('fulfillSim2').value.trim();if(source==='Reassign'&&d.assigned_to&&!confirm('This phone is currently assigned to '+d.assigned_to+'. Continue and move it to '+(r.employee_name||'the requester')+'?'))return;if(plan!=='No SIM assigned'){if(s1&&!/^\d{10}$/.test(s1)){alert('SIM 1 must be 10 digits or blank.');return;}if(s2&&!/^\d{10}$/.test(s2)){alert('SIM 2 must be 10 digits or blank.');return;}if(!s1){alert(plan==='Carry existing SIM(s)'?'No existing SIM was found automatically. Enter the SIM number being transferred, or choose “No SIM assigned”.':'Enter at least SIM 1 when assigning new SIM(s).');return;}}var sims=plan==='No SIM assigned'?[]:[s1,s2].filter(Boolean),existingSelectedSims=resolveDeviceSims(d);if(existingSelectedSims.length&&existingSelectedSims.join(',')!==sims.join(',')){if(!confirm('The selected phone currently has SIM(s) '+existingSelectedSims.join(', ')+'. This assignment will change its recorded SIM(s) to '+(sims.length?sims.join(', '):'none')+'. Continue only after the old SIM(s) are physically removed/handled by IT.'))return;}var btn=this;btn.disabled=true;btn.textContent='Assigning…';try{var prev=source==='Reassign'?{employee_name:d.assigned_to,employee_id:d.assigned_employee_id,email:resolveDeviceEmployeeEmail(d),imei1:d.imei1}:null;var email=requestEmployeeEmail(r),now=new Date().toISOString();var upd=await sb.from('devices').update({status:'Assigned',assigned_to:r.employee_name,assigned_employee_id:r.employee_id,assigned_employee_email:email,sim_numbers:sims,sim_assignment_mode:plan,last_updated:now}).eq('imei1',d.imei1);if(upd.error)throw upd.error;if(r.request_type==='Replace'&&r.replace_imei1&&r.replace_imei1!==d.imei1){await sb.from('devices').update({status:'Spare',assigned_to:null,assigned_employee_id:null,assigned_employee_email:null,sim_numbers:[],sim_assignment_mode:'SIM removed during replacement',last_updated:now}).eq('imei1',r.replace_imei1);await sb.from('device_history').insert([{imei1:r.replace_imei1,action:'Returned during replacement',employee_name:r.employee_name,notes:'Request #'+requestNumber(r)}]);}await sb.from('device_history').insert([{imei1:d.imei1,action:source==='Reassign'?'Reassigned via device request':'Assigned from spare via device request',employee_name:r.employee_name,notes:'Request #'+requestNumber(r)+(prev&&prev.employee_name?' · previous assignee '+prev.employee_name:'')}]);var token=crypto.randomUUID(),hours=parseInt(document.getElementById('fulfillExpiry').value,10)||72,expires=new Date(Date.now()+hours*3600000).toISOString(),snapshot=Object.assign({},d,{status:'Assigned',assigned_to:r.employee_name,assigned_employee_id:r.employee_id,assigned_employee_email:email,sim_numbers:sims,sim_assignment_mode:plan});var note=document.getElementById('fulfillNote').value.trim();var ur=await sb.from('device_requests').update({status:'Device Assigned - Form Pending',fulfillment_source:source,fulfillment_device_id:d.id,fulfillment_device_snapshot:snapshot,previous_assignee:prev,sim_plan:plan,fulfillment_sim_numbers:sims,assigned_at:now,form_token:token,form_token_expires_at:expires,admin_note:note||r.admin_note,updated_at:now}).eq('id',r.id);if(ur.error)throw ur.error;var link=location.origin+location.pathname.replace(/admin\.html.*$/,'index.html')+'?request_id='+encodeURIComponent(r.id)+'&token='+encodeURIComponent(token);var html='<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>IT has assigned a device for your Request #'+esc(requestNumber(r))+'.</p><p><b>Device:</b> '+esc((d.brand||'')+' '+(d.model||''))+'<br/><b>IMEI:</b> '+esc(d.imei1)+'<br/><b>SIM handling:</b> '+esc(plan)+(sims.length?'<br/><b>SIM(s):</b> '+esc(sims.join(', ')):'')+'</p>'+(note?'<p><b>IT note:</b> '+esc(note)+'</p>':'')+'<p><b>Compulsory next step:</b> open the link below, verify the prefilled device details, take front/back photos and submit the handover form.</p><p><a href="'+link+'">Complete my device handover form</a></p><p>This link expires on '+esc(new Date(expires).toLocaleString())+'. The request will remain open until the form is submitted.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';var sent=await sendSimpleEmail(email,'Device assigned — complete handover form (Request #'+requestNumber(r)+')',html);if(prev&&isRealEmail(prev.email)&&prev.email!==email){await sendSimpleEmail(prev.email,'Device reassignment notice — '+window.DNCC_CONFIG.COMPANY_NAME,'<p>Dear '+esc(prev.employee_name||'Employee')+',</p><p>This is to confirm that the device <b>'+esc((d.brand||'')+' '+(d.model||''))+'</b> (IMEI '+esc(d.imei1)+') has been reassigned by '+window.DNCC_CONFIG.COMPANY_NAME+' IT Department.</p><p>If the device is still physically with you, please contact IT immediately.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>');}await logActivity('Assigned device for request','device_request',r.id,(d.brand||'')+' '+(d.model||'')+' / '+d.imei1+' · '+source+' · '+plan);document.getElementById('fulfillOverlay').classList.remove('open');activeFulfillRequest=null;await Promise.all([loadInventory(),loadDeviceRequests()]);renderStats();alert(sent?'Device assigned and compulsory handover link emailed to employee.':'Device assigned, but email failed. Open request details and resend the form link.');}catch(err){console.error(err);alert('Could not assign device: '+(err.message||err));}finally{btn.disabled=false;btn.textContent='Assign & email handover form';}});
   async function resendRequestFormLink(r){if(!r.form_token||!r.form_token_expires_at){alert('No active handover link exists. Assign the device first.');return;}if(new Date(r.form_token_expires_at)<=new Date()){if(!confirm('The old link expired. Generate a new 72-hour link?'))return;var token=crypto.randomUUID(),expires=new Date(Date.now()+72*3600000).toISOString();var up=await sb.from('device_requests').update({form_token:token,form_token_expires_at:expires,updated_at:new Date().toISOString()}).eq('id',r.id);if(up.error){alert(up.error.message);return;}r.form_token=token;r.form_token_expires_at=expires;}var link=location.origin+location.pathname.replace(/admin\.html.*$/,'index.html')+'?request_id='+encodeURIComponent(r.id)+'&token='+encodeURIComponent(r.form_token),email=requestEmployeeEmail(r),d=r.fulfillment_device_snapshot||{};var sent=await sendSimpleEmail(email,'Reminder: complete device handover form — Request #'+requestNumber(r),'<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>Your assigned '+esc((d.brand||'')+' '+(d.model||''))+' is still waiting for the compulsory handover form.</p><p><a href="'+link+'">Complete the handover form</a></p><p>Link valid until '+esc(new Date(r.form_token_expires_at).toLocaleString())+'.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>');alert(sent?'Form link resent.':'Could not send the email.');}
 
   // ---------- Settings ----------

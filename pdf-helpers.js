@@ -199,6 +199,47 @@ window.DNCCPdf = (function () {
     ctx.rowIndex = 0;
   }
 
+
+  function resolutionBlock(ctx, issueLabel, notes, resolvedBy, resolvedAt) {
+    var doc = ctx.doc;
+    var textWidth = ctx.right - ctx.left - 18;
+    var GREEN = [35, 126, 82];
+    var GREEN_BG = [234, 247, 239];
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.7);
+    var noteLines = wrap(doc, "Resolution: " + (notes || "Resolved by IT"), textWidth);
+    var byLines = wrap(doc, "Resolved by: " + (resolvedBy || "IT Admin"), textWidth);
+    var atText = resolvedAt ? new Date(resolvedAt).toLocaleString() : "—";
+    var atLines = wrap(doc, "Resolved at: " + atText, textWidth);
+    var lineHeight = 11.7;
+    var h = 34 + ((noteLines.length + byLines.length + atLines.length) * lineHeight);
+
+    ensureSpace(ctx, h + 18);
+    ctx.y += 8;
+    var top = ctx.y - 12;
+
+    doc.setFillColor(GREEN_BG[0], GREEN_BG[1], GREEN_BG[2]);
+    doc.rect(ctx.left, top, ctx.right - ctx.left, h, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.7);
+    doc.setTextColor(GREEN[0], GREEN[1], GREEN[2]);
+    doc.text(String(issueLabel || "ISSUE").toUpperCase() + " — RESOLVED", ctx.left + 9, top + 13);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9.7);
+    doc.setTextColor(TEXT[0], TEXT[1], TEXT[2]);
+    var textY = top + 29;
+    doc.text(noteLines, ctx.left + 9, textY, { lineHeightFactor: 1.15 });
+    textY += noteLines.length * lineHeight + 4;
+    doc.text(byLines, ctx.left + 9, textY, { lineHeightFactor: 1.15 });
+    textY += byLines.length * lineHeight + 4;
+    doc.text(atLines, ctx.left + 9, textY, { lineHeightFactor: 1.15 });
+
+    ctx.y = top + h + 18;
+    ctx.rowIndex = 0;
+  }
+
   function footer(ctx, note) {
     var doc = ctx.doc;
     doc.setFont("helvetica", "italic");
@@ -230,6 +271,7 @@ window.DNCCPdf = (function () {
     row: row,
     damageBlock: damageBlock,
     problemBlock: problemBlock,
+    resolutionBlock: resolutionBlock,
     footer: footer,
     toBase64: toBase64,
     save: save
