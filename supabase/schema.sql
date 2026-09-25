@@ -128,3 +128,108 @@ create policy "public all devices" on devices for all to anon using (true) with 
 create policy "public all device_history" on device_history for all to anon using (true) with check (true);
 create policy "public all settings" on settings for all to anon using (true) with check (true);
 create policy "public all email_templates" on email_templates for all to anon using (true) with check (true);
+
+
+-- ── Current application compatibility (keeps schema.sql aligned with the UI) ──
+alter table submissions add column if not exists company_email text;
+alter table submissions add column if not exists personal_email text;
+alter table submissions add column if not exists email_sent_via text;
+alter table email_templates add column if not exists closing text;
+alter table settings add column if not exists smtp2go_api_key text;
+alter table settings add column if not exists smtp2go_sender_name text;
+alter table settings add column if not exists smtp2go_sender_email text;
+
+create table if not exists change_requests (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  submission_id uuid,
+  employee_name text,
+  employee_id text,
+  employee_email text,
+  request_details text not null,
+  status text not null default 'Pending',
+  resolved_at timestamptz
+);
+
+create table if not exists activity_log (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  admin_username text,
+  action text,
+  target_type text,
+  target_id text,
+  details text
+);
+
+alter table change_requests enable row level security;
+alter table activity_log enable row level security;
+create policy "public all change_requests" on change_requests for all to anon using (true) with check (true);
+create policy "public all activity_log" on activity_log for all to anon using (true) with check (true);
+
+-- ── Device Request workflow additions ───────────────────────────────
+alter table devices add column if not exists condition text default 'Good';
+alter table devices add column if not exists sim_slots int default 2;
+alter table devices add column if not exists sim_numbers jsonb default '[]'::jsonb;
+alter table devices add column if not exists sim_assignment_mode text;
+alter table devices add column if not exists stock_source text;
+alter table devices add column if not exists charger_available text;
+alter table devices add column if not exists cable_available text;
+alter table settings add column if not exists it_request_email text;
+
+create table if not exists device_requests (
+  id uuid primary key default gen_random_uuid(),
+  request_no bigserial unique,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  request_type text not null,
+  employee_kind text not null default 'Existing',
+  requester_email text not null,
+  company_email text,
+  personal_email text,
+  employee_name text,
+  employee_id text,
+  location text,
+  designation text,
+  department text,
+  matched_submission_id uuid,
+  current_devices jsonb not null default '[]'::jsonb,
+  request_choice text,
+  replace_imei1 text,
+  replace_device jsonb,
+  request_reason text not null,
+  intended_use text,
+  needed_by date,
+  status text not null default 'Pending Review',
+  admin_note text,
+  expected_timeline text,
+  decision_at timestamptz,
+  fulfillment_source text,
+  fulfillment_device_id uuid,
+  fulfillment_device_snapshot jsonb,
+  previous_assignee jsonb,
+  sim_plan text,
+  fulfillment_sim_numbers jsonb not null default '[]'::jsonb,
+  assigned_at timestamptz,
+  form_token uuid,
+  form_token_expires_at timestamptz,
+  form_completed_at timestamptz,
+  employee_notified_at timestamptz,
+  it_notified_at timestamptz
+);
+
+create table if not exists form_access_tokens (
+  id uuid primary key default gen_random_uuid(),
+  token uuid not null unique default gen_random_uuid(),
+  submission_id uuid not null,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null,
+  used_at timestamptz,
+  active boolean not null default true,
+  created_by text,
+  purpose text default 'Employee correction/edit'
+);
+
+alter table device_requests enable row level security;
+alter table form_access_tokens enable row level security;
+create policy "public all device_requests" on device_requests for all to anon using (true) with check (true);
+create policy "public all form_access_tokens" on form_access_tokens for all to anon using (true) with check (true);
