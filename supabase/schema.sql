@@ -20,6 +20,8 @@ create table if not exists submissions (
   damage text,
   damage_what text,
   damage_how text,
+  phone_problem text,
+  phone_problem_details text,
   device1 jsonb,
   device2 jsonb,
   email_sent_at timestamptz
@@ -94,6 +96,8 @@ insert into settings (id) values (1) on conflict (id) do nothing;
 alter table devices add column if not exists assigned_employee_email text;
 alter table submissions add column if not exists employee_email text;
 alter table submissions add column if not exists email_sent_at timestamptz;
+alter table submissions add column if not exists phone_problem text;
+alter table submissions add column if not exists phone_problem_details text;
 
 -- ── Row Level Security ──────────────────────────────────────────────
 -- This app has no custom backend server for its data layer, so the browser

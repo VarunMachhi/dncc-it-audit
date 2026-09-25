@@ -14,7 +14,7 @@
   }
   *{box-sizing:border-box;}
   body{margin:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.5;}
-  .wrap{max-width:1120px; margin:0 auto; padding:32px 20px 80px;}
+  .wrap{max-width:1480px; margin:0 auto; padding:32px 20px 80px;}
   .masthead{display:flex; align-items:center; gap:14px; margin-bottom:20px; justify-content:space-between; flex-wrap:wrap;}
   .masthead .left{display:flex; align-items:center; gap:14px;}
   .masthead .badge{width:44px; height:44px; border-radius:8px; background:var(--navy); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex:none;}
@@ -50,8 +50,27 @@
   .btn-small.retire, .btn-small.delete{color:var(--danger); border-color:var(--danger);}
   .btn-small.edit{color:var(--navy); border-color:var(--line-strong);}
   .btn-small.email{color:var(--ok); border-color:var(--ok);}
-  .table-wrap{overflow-x:auto; border-radius:8px; border:1px solid var(--line); background:#fff;}
+  .table-scroll-shell{width:100%; min-width:0;}
+  .table-top-scroll{overflow-x:auto; overflow-y:hidden; height:20px; margin:0 0 5px; border:1px solid var(--line); border-radius:7px; background:#fff;}
+  .table-top-scroll-inner{height:1px;}
+  .table-wrap{overflow:auto; max-height:570px; border-radius:8px; border:1px solid var(--line); background:#fff; scrollbar-gutter:stable;}
+  .table-wrap table.data-wide{min-width:1640px;}
+  .table-wrap table.inventory-wide{min-width:1480px;}
+  .table-wrap table.data-wide th:last-child, .table-wrap table.data-wide td:last-child,
+  .table-wrap table.inventory-wide th:last-child, .table-wrap table.inventory-wide td:last-child{position:sticky; right:0; z-index:2; background:#fff; box-shadow:-5px 0 8px rgba(19,38,53,.05);}
+  .table-wrap table.data-wide th:last-child, .table-wrap table.inventory-wide th:last-child{z-index:5; background:var(--accent-light);}
   table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  .table-wrap thead th{position:sticky; top:0; z-index:3;}
+  .pagination{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:10px 0 14px;}
+  .pagination-info{font-size:12.5px; color:var(--text-soft);}
+  .pagination-buttons{display:flex; align-items:center; gap:5px; flex-wrap:wrap;}
+  .page-btn{border:1px solid var(--line-strong); background:#fff; color:var(--navy); border-radius:6px; min-width:32px; height:30px; padding:0 9px; font-size:12px; font-weight:700; cursor:pointer;}
+  .page-btn:hover:not(:disabled){background:var(--accent-light); border-color:var(--accent);}
+  .page-btn.active{background:var(--navy); color:#fff; border-color:var(--navy);}
+  .page-btn:disabled{opacity:.45; cursor:not-allowed;}
+  .problem-cell{min-width:220px; max-width:300px; white-space:normal;}
+  .problem-yes{color:var(--danger); font-weight:700;}
+  .problem-no{color:var(--ok); font-weight:700;}
   th, td{border:1px solid var(--line); padding:7px 9px; text-align:left; vertical-align:top;}
   th{background:var(--accent-light); color:var(--navy); font-weight:700; white-space:nowrap;}
   img.thumb{width:40px; height:40px; object-fit:cover; border-radius:4px; margin-right:4px; border:1px solid var(--line); cursor:pointer;}
@@ -461,6 +480,7 @@
   var selectedSubIds = new Set();
   var invFilter = { search:'', status:'' };
   var invSort = { field:'last_updated', dir:'desc' };
+  var PAGE_SIZE = 10, subsPage = 1, invPage = 1;
 
   async function logActivity(action, targetType, targetId, details){
     try{
@@ -503,7 +523,7 @@
   document.getElementById('refreshLogBtn').addEventListener('click', loadActivityLog);
 
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadActivityLog()]); renderStats(); populateLocationFilter(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadActivityLog()]); renderInventory(); renderStats(); populateLocationFilter(); }
 
   async function loadTemplates(){
     try{
@@ -691,7 +711,8 @@
       var d1 = r.device1 || {}, d2 = r.device2 || {};
       var haystack = [
         r.employee_name, r.employee_id, d1.imei1, d1.imei2, d2.imei1, d2.imei2,
-        r.contact, (d1.simNumbers||[]).join(' '), (d2.simNumbers||[]).join(' ')
+        r.contact, r.company_email, r.personal_email, r.phone_problem, r.phone_problem_details,
+        (d1.simNumbers||[]).join(' '), (d2.simNumbers||[]).join(' ')
       ].filter(Boolean).join(' ').toLowerCase();
       return haystack.indexOf(q) !== -1;
     });
@@ -709,13 +730,61 @@
     return '<span class="sort-arrow">'+(subsSort.dir==='asc'?'↑':'↓')+'</span>';
   }
 
+  function paginationHTML(prefix, page, totalPages, start, end, total){
+    var buttons = '';
+    for(var p=1; p<=totalPages; p++){
+      buttons += '<button class="page-btn'+(p===page?' active':'')+'" data-page="'+p+'">'+p+'</button>';
+    }
+    return '<div class="pagination" data-pagination="'+prefix+'">'
+      + '<div class="pagination-info">Showing '+start+'–'+end+' of '+total+' record(s) • 10 per page</div>'
+      + '<div class="pagination-buttons">'
+      + '<button class="page-btn" data-page="'+(page-1)+'" '+(page<=1?'disabled':'')+'>Previous</button>'
+      + buttons
+      + '<button class="page-btn" data-page="'+(page+1)+'" '+(page>=totalPages?'disabled':'')+'>Next</button>'
+      + '</div></div>';
+  }
+
+  function bindPagination(area, prefix, onPage){
+    var box = area.querySelector('[data-pagination="'+prefix+'"]');
+    if(!box) return;
+    box.querySelectorAll('button[data-page]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        if(btn.disabled) return;
+        onPage(parseInt(btn.dataset.page,10));
+      });
+    });
+  }
+
+  function wireTableScrollSync(area){
+    var top = area.querySelector('.table-top-scroll');
+    var wrap = area.querySelector('.table-wrap');
+    var table = wrap ? wrap.querySelector('table') : null;
+    var inner = top ? top.querySelector('.table-top-scroll-inner') : null;
+    if(!top || !wrap || !table || !inner) return;
+    var syncing = false;
+    function sizeTop(){
+      inner.style.width = table.scrollWidth + 'px';
+      top.style.display = table.scrollWidth > wrap.clientWidth + 1 ? 'block' : 'none';
+    }
+    sizeTop();
+    requestAnimationFrame(sizeTop);
+    top.addEventListener('scroll', function(){ if(syncing) return; syncing=true; wrap.scrollLeft=top.scrollLeft; syncing=false; });
+    wrap.addEventListener('scroll', function(){ if(syncing) return; syncing=true; top.scrollLeft=wrap.scrollLeft; syncing=false; });
+  }
+
   function renderSubmissions(){
     var area = document.getElementById('subsArea');
     if(!currentSubs.length){ area.innerHTML = '<p class="empty-state">No submissions yet.</p>'; updateBulkBar(); return; }
     var list = getFilteredSortedSubs();
     if(!list.length){ area.innerHTML = '<p class="empty-state">No submissions match your search/filters.</p>'; updateBulkBar(); return; }
 
-    var rows = list.map(function(r){
+    var totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    if(subsPage > totalPages) subsPage = totalPages;
+    if(subsPage < 1) subsPage = 1;
+    var startIndex = (subsPage - 1) * PAGE_SIZE;
+    var pageList = list.slice(startIndex, startIndex + PAGE_SIZE);
+
+    var rows = pageList.map(function(r){
       var d1 = r.device1 || {}, d2 = r.device2 || {};
       var thumbs = '';
       if(d1.frontPhoto) thumbs += '<img class="thumb" src="'+d1.frontPhoto+'" title="Device 1 — Front (click to enlarge)" data-lightbox="'+encodeURIComponent(d1.frontPhoto)+'" />';
@@ -723,6 +792,8 @@
       if(d2.frontPhoto) thumbs += '<img class="thumb" src="'+d2.frontPhoto+'" title="Device 2 — Front (click to enlarge)" data-lightbox="'+encodeURIComponent(d2.frontPhoto)+'" />';
       if(d2.backPhoto) thumbs += '<img class="thumb" src="'+d2.backPhoto+'" title="Device 2 — Back (click to enlarge)" data-lightbox="'+encodeURIComponent(d2.backPhoto)+'" />';
       var checked = selectedSubIds.has(String(r.id)) ? 'checked' : '';
+      var problemClass = r.phone_problem === 'Yes' ? 'problem-yes' : 'problem-no';
+      var problemText = esc(r.phone_problem || '—') + (r.phone_problem === 'Yes' && r.phone_problem_details ? ' — ' + esc(r.phone_problem_details) : '');
       return '<tr>'
         + '<td class="checkbox-cell"><input type="checkbox" class="sub-checkbox" data-id="'+r.id+'" '+checked+' /></td>'
         + '<td>'+esc(new Date(r.created_at).toLocaleString())+'</td>'
@@ -734,6 +805,7 @@
         + '<td>'+esc(d1.brand)+' '+esc(d1.model)+'</td>'
         + '<td>'+esc(d1.imei1)+'</td>'
         + '<td>'+esc(r.damage)+(r.damage==='Yes' ? ' — '+esc(r.damage_what) : '')+'</td>'
+        + '<td class="problem-cell '+problemClass+'">'+problemText+'</td>'
         + '<td>'+(thumbs||'—')+'</td>'
         + '<td>'+ (r.email_sent_at ? ('Sent '+new Date(r.email_sent_at).toLocaleDateString()) : '—') +'</td>'
         + '<td style="white-space:nowrap;">'
@@ -744,16 +816,22 @@
         + '</td>'
         + '</tr>';
     }).join('');
-    area.innerHTML = '<p class="empty-state">'+list.length+' of '+currentSubs.length+' submission(s) shown.</p>'
-      + '<div class="table-wrap"><table><thead><tr>'
+
+    var startShown = startIndex + 1, endShown = startIndex + pageList.length;
+    area.innerHTML = paginationHTML('subs', subsPage, totalPages, startShown, endShown, list.length)
+      + '<div class="table-scroll-shell">'
+      + '<div class="table-top-scroll" aria-label="Horizontal table scrollbar"><div class="table-top-scroll-inner"></div></div>'
+      + '<div class="table-wrap"><table class="data-wide"><thead><tr>'
       + '<th class="checkbox-cell"><input type="checkbox" id="subsSelectAll" /></th>'
       + '<th data-sort="created_at">Submitted'+sortArrow('created_at')+'</th>'
       + '<th data-sort="employee_name">Employee'+sortArrow('employee_name')+'</th>'
       + '<th>Emp ID</th><th>Company email</th><th>Personal email</th>'
       + '<th data-sort="location">Location'+sortArrow('location')+'</th>'
-      + '<th>Device 1</th><th>IMEI 1</th><th>Damage</th><th>Photos</th><th>Handover email</th><th>Actions</th>'
-      + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+      + '<th>Device 1</th><th>IMEI 1</th><th>Damage</th><th>Phone problem</th><th>Photos</th><th>Handover email</th><th>Actions</th>'
+      + '</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
 
+    bindPagination(area, 'subs', function(page){ subsPage = page; renderSubmissions(); area.scrollIntoView({behavior:'smooth', block:'start'}); });
+    wireTableScrollSync(area);
     area.querySelectorAll('button[data-action]').forEach(function(btn){
       btn.addEventListener('click', function(){ handleSubAction(btn.dataset.action, btn.dataset.id); });
     });
@@ -765,6 +843,7 @@
         var field = th.dataset.sort;
         if(subsSort.field === field){ subsSort.dir = subsSort.dir === 'asc' ? 'desc' : 'asc'; }
         else { subsSort.field = field; subsSort.dir = 'asc'; }
+        subsPage = 1;
         renderSubmissions();
       });
     });
@@ -776,9 +855,9 @@
     });
     var selectAll = document.getElementById('subsSelectAll');
     if(selectAll){
-      selectAll.checked = list.length > 0 && list.every(function(r){ return selectedSubIds.has(String(r.id)); });
+      selectAll.checked = pageList.length > 0 && pageList.every(function(r){ return selectedSubIds.has(String(r.id)); });
       selectAll.addEventListener('change', function(){
-        list.forEach(function(r){
+        pageList.forEach(function(r){
           if(selectAll.checked) selectedSubIds.add(String(r.id)); else selectedSubIds.delete(String(r.id));
         });
         renderSubmissions();
@@ -796,20 +875,20 @@
 
   document.getElementById('subsSearch').addEventListener('input', debounce(function(){
     subsFilter.search = document.getElementById('subsSearch').value;
-    renderSubmissions();
+    subsPage = 1; renderSubmissions();
   }, 250));
   document.getElementById('subsLocationFilter').addEventListener('change', function(){
-    subsFilter.location = this.value; renderSubmissions();
+    subsFilter.location = this.value; subsPage = 1; renderSubmissions();
   });
   document.getElementById('subsDamageFilter').addEventListener('change', function(){
-    subsFilter.damage = this.value; renderSubmissions();
+    subsFilter.damage = this.value; subsPage = 1; renderSubmissions();
   });
   document.getElementById('subsClearFilters').addEventListener('click', function(){
     subsFilter = { search:'', location:'', damage:'' };
     document.getElementById('subsSearch').value = '';
     document.getElementById('subsLocationFilter').value = '';
     document.getElementById('subsDamageFilter').value = '';
-    renderSubmissions();
+    subsPage = 1; renderSubmissions();
   });
 
   function debounce(fn, wait){
@@ -898,7 +977,9 @@
       { id:'cable', label:'Cable provided (Yes/No)', value:r.cable },
       { id:'damage', label:'Damage present (Yes/No)', value:r.damage },
       { id:'damage_what', label:'Damage description', value:r.damage_what, type:'textarea' },
-      { id:'damage_how', label:'Damage cause', value:r.damage_how, type:'textarea' }
+      { id:'damage_how', label:'Damage cause', value:r.damage_how, type:'textarea' },
+      { id:'phone_problem', label:'Phone problem reported (Yes/No)', value:r.phone_problem },
+      { id:'phone_problem_details', label:'Phone problem details', value:r.phone_problem_details, type:'textarea' }
     ];
     return fields;
   }
@@ -928,7 +1009,9 @@
       employee_name:v.employee_name, employee_id:v.employee_id, company_email:v.company_email, personal_email:v.personal_email,
       department:v.department, location:v.location, designation:v.designation, contact:v.contact,
       device_count:deviceCount, charger:v.charger, cable:v.cable, damage:v.damage,
-      damage_what:v.damage_what, damage_how:v.damage_how, device1:device1, device2:device2
+      damage_what:v.damage_what, damage_how:v.damage_how,
+      phone_problem:v.phone_problem, phone_problem_details:v.phone_problem_details,
+      device1:device1, device2:device2
     };
   }
 
@@ -995,6 +1078,8 @@
     section('Accessories & Condition');
     row('Charger provided', r.charger); row('Data/USB cable provided', r.cable); row('Damage present', r.damage);
     if(r.damage === 'Yes'){ window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how); }
+    row('Phone problem reported', r.phone_problem || '—');
+    if(r.phone_problem === 'Yes'){ row('Problem details', r.phone_problem_details || '—'); }
     window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
   }
 
@@ -1021,6 +1106,8 @@
     section('Accessories & Condition');
     row('Charger provided', r.charger); row('Data/USB cable provided', r.cable); row('Damage present', r.damage);
     if(r.damage === 'Yes'){ window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how); }
+    row('Phone problem reported', r.phone_problem || '—');
+    if(r.phone_problem === 'Yes'){ row('Problem details', r.phone_problem_details || '—'); }
     window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
     return window.DNCCPdf.toBase64(ctx);
   }
@@ -1044,6 +1131,10 @@
     if(r.damage === 'Yes'){
       html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeee1;border-left:3px solid #b5691f;">';
       html += '<p style="margin:0;"><b>Reported damage:</b> ' + (r.damage_what||'—') + '<br/><b>Cause:</b> ' + (r.damage_how||'—') + '</p></div>';
+    }
+    if(r.phone_problem === 'Yes'){
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeaea;border-left:3px solid #a03a3a;">';
+      html += '<p style="margin:0;"><b>Reported phone problem:</b> ' + (r.phone_problem_details||'—') + '</p></div>';
     }
     return html;
   }
@@ -1107,6 +1198,7 @@
       'Device 2 usage': d2.usage||'',
       'Charger provided': r.charger||'', 'Cable provided': r.cable||'',
       'Damage present': r.damage||'', 'Damage description': r.damage_what||'', 'Damage cause': r.damage_how||'',
+      'Phone problem reported': r.phone_problem||'', 'Phone problem details': r.phone_problem_details||'',
       'Handover email sent at': r.email_sent_at ? new Date(r.email_sent_at).toLocaleString() : '',
       'Handover email sent via': r.email_sent_via || ''
     };
@@ -1140,7 +1232,7 @@
     var list = currentDevices.filter(function(d){
       if(invFilter.status && d.status !== invFilter.status) return false;
       if(!q) return true;
-      var haystack = [d.brand, d.model, d.imei1, d.imei2, d.assigned_to, d.assigned_employee_id].filter(Boolean).join(' ').toLowerCase();
+      var haystack = [d.brand, d.model, d.imei1, d.imei2, d.assigned_to, d.assigned_employee_id, resolveDeviceEmployeeEmail(d)].filter(Boolean).join(' ').toLowerCase();
       return haystack.indexOf(q) !== -1;
     });
     list.sort(function(a, b){
@@ -1156,18 +1248,40 @@
     return '<span class="sort-arrow">'+(invSort.dir==='asc'?'↑':'↓')+'</span>';
   }
 
+  function preferredSubmissionEmail(sub){
+    if(!sub) return '';
+    return [sub.company_email, sub.personal_email].filter(isRealEmail)[0] || '';
+  }
+
+  function resolveDeviceEmployeeEmail(device){
+    if(isRealEmail(device.assigned_employee_email)) return device.assigned_employee_email;
+    var match = currentSubs.find(function(s){
+      if(device.assigned_employee_id && s.employee_id === device.assigned_employee_id) return true;
+      return !device.assigned_employee_id && device.assigned_to && s.employee_name === device.assigned_to;
+    });
+    return preferredSubmissionEmail(match);
+  }
+
   function renderInventory(){
     var area = document.getElementById('invArea');
     if(!currentDevices.length){ area.innerHTML = '<p class="empty-state">No devices in inventory yet.</p>'; return; }
     var list = getFilteredSortedDevices();
     if(!list.length){ area.innerHTML = '<p class="empty-state">No devices match your search/filters.</p>'; return; }
-    var rows = list.map(function(d){
+
+    var totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    if(invPage > totalPages) invPage = totalPages;
+    if(invPage < 1) invPage = 1;
+    var startIndex = (invPage - 1) * PAGE_SIZE;
+    var pageList = list.slice(startIndex, startIndex + PAGE_SIZE);
+
+    var rows = pageList.map(function(d){
       var actions = '';
       if(d.status !== 'Retired') actions += '<button class="btn-small assign" data-action="assigntosubmission" data-imei="'+esc(d.imei1)+'" title="Pick an existing employee submission — auto-fills their details">'+(d.status==='Assigned'?'Reassign':'Assign')+'</button>';
       if(d.status !== 'Spare' && d.status !== 'Retired') actions += '<button class="btn-small spare" data-action="spare" data-imei="'+esc(d.imei1)+'">Spare</button>';
       if(d.status !== 'Retired') actions += '<button class="btn-small retire" data-action="retire" data-imei="'+esc(d.imei1)+'">Retire</button>';
       actions += '<button class="btn-small edit" data-action="edit" data-imei="'+esc(d.imei1)+'">Edit</button>';
       actions += '<button class="btn-small delete" data-action="delete" data-imei="'+esc(d.imei1)+'">Delete</button>';
+      var employeeEmail = resolveDeviceEmployeeEmail(d) || '—';
       return '<tr>'
         + '<td>'+esc(d.brand)+' '+esc(d.model)+'</td>'
         + '<td>'+esc(d.ram)+' / '+esc(d.storage)+'</td>'
@@ -1175,20 +1289,27 @@
         + '<td>'+esc(d.imei2)+'</td>'
         + '<td><span class="badge-status '+esc(d.status)+'">'+esc(d.status)+'</span></td>'
         + '<td>'+esc(d.assigned_to)+(d.assigned_employee_id?(' ('+esc(d.assigned_employee_id)+')'):'')+'</td>'
-        + '<td>'+esc(d.assigned_employee_email)+'</td>'
+        + '<td>'+esc(employeeEmail)+'</td>'
         + '<td>'+esc(d.notes)+'</td>'
         + '<td>'+esc(d.last_updated ? new Date(d.last_updated).toLocaleString() : '')+'</td>'
         + '<td style="white-space:nowrap;">'+actions+'</td>'
         + '</tr>';
     }).join('');
-    area.innerHTML = '<p class="empty-state">'+list.length+' of '+currentDevices.length+' device(s) shown.</p>'
-      + '<div class="table-wrap"><table><thead><tr>'
+
+    var startShown = startIndex + 1, endShown = startIndex + pageList.length;
+    area.innerHTML = paginationHTML('inventory', invPage, totalPages, startShown, endShown, list.length)
+      + '<div class="table-scroll-shell">'
+      + '<div class="table-top-scroll" aria-label="Horizontal table scrollbar"><div class="table-top-scroll-inner"></div></div>'
+      + '<div class="table-wrap"><table class="inventory-wide"><thead><tr>'
       + '<th data-sort="brand">Device'+invSortArrow('brand')+'</th><th>RAM/Storage</th><th>IMEI 1</th><th>IMEI 2</th>'
       + '<th data-sort="status">Status'+invSortArrow('status')+'</th>'
       + '<th data-sort="assigned_to">Assigned to'+invSortArrow('assigned_to')+'</th>'
       + '<th>Employee email</th><th>Notes</th>'
       + '<th data-sort="last_updated">Last updated'+invSortArrow('last_updated')+'</th><th>Actions</th>'
-      + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
+      + '</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+
+    bindPagination(area, 'inventory', function(page){ invPage = page; renderInventory(); area.scrollIntoView({behavior:'smooth', block:'start'}); });
+    wireTableScrollSync(area);
     area.querySelectorAll('button[data-action]').forEach(function(btn){
       btn.addEventListener('click', function(){ handleInventoryAction(btn.dataset.action, btn.dataset.imei); });
     });
@@ -1197,6 +1318,7 @@
         var field = th.dataset.sort;
         if(invSort.field === field){ invSort.dir = invSort.dir === 'asc' ? 'desc' : 'asc'; }
         else { invSort.field = field; invSort.dir = 'asc'; }
+        invPage = 1;
         renderInventory();
       });
     });
@@ -1204,16 +1326,16 @@
 
   document.getElementById('invSearch').addEventListener('input', debounce(function(){
     invFilter.search = document.getElementById('invSearch').value;
-    renderInventory();
+    invPage = 1; renderInventory();
   }, 250));
   document.getElementById('invStatusFilter').addEventListener('change', function(){
-    invFilter.status = this.value; renderInventory();
+    invFilter.status = this.value; invPage = 1; renderInventory();
   });
   document.getElementById('invClearFilters').addEventListener('click', function(){
     invFilter = { search:'', status:'' };
     document.getElementById('invSearch').value = '';
     document.getElementById('invStatusFilter').value = '';
-    renderInventory();
+    invPage = 1; renderInventory();
   });
 
   async function handleInventoryAction(action, imei1){
@@ -1222,7 +1344,7 @@
     try{
       if(action === 'spare'){
         if(!confirm('Mark this device as spare / unassigned?')) return;
-        var prevEmployee = { name:d.assigned_to, id:d.assigned_employee_id, email:d.assigned_employee_email };
+        var prevEmployee = { name:d.assigned_to, id:d.assigned_employee_id, email:resolveDeviceEmployeeEmail(d) };
         await sb.from('devices').update({ status:'Spare', assigned_to:null, assigned_employee_id:null, assigned_employee_email:null, last_updated:new Date().toISOString() }).eq('imei1', imei1);
         await sb.from('device_history').insert([{ imei1:imei1, action:'Marked spare (takeover)', employee_name:prevEmployee.name||'', notes:'' }]);
         if(prevEmployee.email && confirm('Email a return/takeover confirmation to ' + prevEmployee.name + ' now?')){
@@ -1230,7 +1352,7 @@
         }
       } else if(action === 'retire'){
         if(!confirm('Retire this device?')) return;
-        var prevEmployeeR = { name:d.assigned_to, id:d.assigned_employee_id, email:d.assigned_employee_email };
+        var prevEmployeeR = { name:d.assigned_to, id:d.assigned_employee_id, email:resolveDeviceEmployeeEmail(d) };
         await sb.from('devices').update({ status:'Retired', last_updated:new Date().toISOString() }).eq('imei1', imei1);
         await sb.from('device_history').insert([{ imei1:imei1, action:'Retired', employee_name:prevEmployeeR.name||'', notes:'' }]);
         if(prevEmployeeR.email && confirm('Email a retirement notice to ' + prevEmployeeR.name + ' now?')){
@@ -1246,7 +1368,7 @@
           { id:'imei1', label:'IMEI 1', value:d.imei1 }, { id:'imei2', label:'IMEI 2', value:d.imei2 },
           { id:'assigned_to', label:'Assigned employee name', value:d.assigned_to },
           { id:'assigned_employee_id', label:'Assigned employee ID', value:d.assigned_employee_id },
-          { id:'assigned_employee_email', label:'Assigned employee email', value:d.assigned_employee_email },
+          { id:'assigned_employee_email', label:'Assigned employee email', value:resolveDeviceEmployeeEmail(d) },
           { id:'notes', label:'Notes', value:d.notes, type:'textarea' }
         ], async function(values){
           try{
@@ -1357,7 +1479,7 @@
           department: values.department, location: values.location,
           designation: values.designation, contact: values.contact,
           device_count: 1, charger: '', cable: '', damage: 'No', damage_what: '', damage_how: '',
-          device1: null, device2: null
+          phone_problem: 'No', phone_problem_details: '', device1: null, device2: null
         };
         var { data: inserted, error } = await sb.from('submissions').insert([row]).select();
         if(error) throw error;
@@ -1395,7 +1517,7 @@
       var prevAssignedTo = device.assigned_to;
       await sb.from('devices').update({
         status:'Assigned', assigned_to: sub.employee_name, assigned_employee_id: sub.employee_id,
-        assigned_employee_email: sub.company_email || sub.personal_email || '', last_updated: new Date().toISOString()
+        assigned_employee_email: preferredSubmissionEmail(sub), last_updated: new Date().toISOString()
       }).eq('imei1', device.imei1);
       await sb.from('device_history').insert([{ imei1:device.imei1, action:(wasAssigned?'Reassigned':'Assigned')+' to employee (from submission picker)', employee_name: sub.employee_name, notes:'Auto-filled into ' + slot + (wasAssigned ? (' — previously with ' + prevAssignedTo) : '') }]);
       await logActivity((wasAssigned?'Reassigned':'Assigned')+' device to employee', 'submission', sub.id, (device.brand||'')+' '+(device.model||'')+' (IMEI '+device.imei1+') assigned to '+sub.employee_name+' as '+slot);

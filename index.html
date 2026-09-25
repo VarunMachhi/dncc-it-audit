@@ -229,6 +229,17 @@
       </div>
     </fieldset>
 
+    <fieldset>
+      <legend><span class="num">7</span> <span data-i18n="legend7">Phone problem / issue</span></legend>
+      <div class="field" style="margin-bottom:0;"><label data-i18n="phoneProblemLabel">Are you facing any problem with the phone?</label>
+        <div class="radiogroup"><label><input type="radio" name="phoneProblem" value="Yes" /> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="phoneProblem" value="No" /> <span data-i18n="no">No</span></label></div></div>
+      <div class="conditional" id="phoneProblemDetails" style="display:none;">
+        <div class="field" style="margin-bottom:0;"><label for="phoneProblemDescription" data-i18n="phoneProblemDetailsLabel">Kindly describe the problem you are facing</label>
+          <textarea id="phoneProblemDescription" placeholder="e.g. battery drains quickly, charging issue, speaker not working, phone hangs" data-i18n-ph="phoneProblemDetailsPlaceholder"></textarea>
+          <div class="error-text" data-i18n="phoneProblemDetailsError">Please describe the phone problem.</div></div>
+      </div>
+    </fieldset>
+
     <div class="submit-bar">
       <button type="submit" class="btn-primary" id="submitBtn" data-i18n="submitBtn">Submit details</button>
       <span class="submit-note" data-i18n="submitNote">A handover PDF copy will download automatically after submission.</span>
@@ -305,6 +316,10 @@
       legend6:'Physical damage', damageLabel:'Is there any damage on the phone?', damageWhatLabel:'What is the damage?',
       damageWhatPlaceholder:'e.g. cracked screen top-left corner', damageHowLabel:'How did this damage happen?',
       damageHowPlaceholder:'e.g. dropped while boarding a cab',
+      legend7:'Phone problem / issue', phoneProblemLabel:'Are you facing any problem with the phone?',
+      phoneProblemDetailsLabel:'Kindly describe the problem you are facing',
+      phoneProblemDetailsPlaceholder:'e.g. battery drains quickly, charging issue, speaker not working, phone hangs',
+      phoneProblemDetailsError:'Please describe the phone problem.',
       submitBtn:'Submit details', submitNote:'A handover PDF copy will download automatically after submission.',
       correctionToggleClosed:'Made a mistake? Request a correction to details you already submitted →',
       correctionToggleOpen:'Hide correction form ↑',
@@ -342,6 +357,10 @@
       legend6:'શારીરિક નુકસાન', damageLabel:'શું ફોનમાં કોઈ નુકસાન છે?', damageWhatLabel:'નુકસાન શું છે?',
       damageWhatPlaceholder:'દા.ત. સ્ક્રીનના ઉપર-ડાબા ખૂણે તિરાડ', damageHowLabel:'આ નુકસાન કેવી રીતે થયું?',
       damageHowPlaceholder:'દા.ત. કેબમાંથી ઉતરતી વખતે પડી ગયો',
+      legend7:'ફોનની સમસ્યા / ઇશ્યૂ', phoneProblemLabel:'શું તમને ફોનમાં કોઈ સમસ્યા આવી રહી છે?',
+      phoneProblemDetailsLabel:'કૃપા કરીને ફોનની સમસ્યાનું વર્ણન કરો',
+      phoneProblemDetailsPlaceholder:'દા.ત. બેટરી ઝડપથી ખાલી થાય છે, ચાર્જિંગ સમસ્યા, સ્પીકર કામ કરતું નથી, ફોન હેંગ થાય છે',
+      phoneProblemDetailsError:'કૃપા કરીને ફોનની સમસ્યા લખો.',
       submitBtn:'વિગતો સબમિટ કરો', submitNote:'સબમિટ કર્યા પછી હેન્ડઓવર PDF નકલ આપમેળે ડાઉનલોડ થશે.',
       correctionToggleClosed:'ભૂલ થઈ ગઈ? પહેલાં સબમિટ કરેલી વિગતોમાં સુધારો કરવા વિનંતી કરો →',
       correctionToggleOpen:'સુધારા ફોર્મ છુપાવો ↑',
@@ -379,6 +398,10 @@
       legend6:'शारीरिक नुकसान', damageLabel:'फोनमध्ये काही नुकसान आहे का?', damageWhatLabel:'नुकसान काय आहे?',
       damageWhatPlaceholder:'उदा. स्क्रीनच्या वरच्या डाव्या कोपऱ्यात तडा', damageHowLabel:'हे नुकसान कसे झाले?',
       damageHowPlaceholder:'उदा. कॅबमधून उतरताना पडला',
+      legend7:'फोनची समस्या / इश्यू', phoneProblemLabel:'तुम्हाला फोनमध्ये काही समस्या येत आहे का?',
+      phoneProblemDetailsLabel:'कृपया फोनची समस्या लिहा',
+      phoneProblemDetailsPlaceholder:'उदा. बॅटरी लवकर संपते, चार्जिंग समस्या, स्पीकर काम करत नाही, फोन हँग होतो',
+      phoneProblemDetailsError:'कृपया फोनची समस्या लिहा.',
       submitBtn:'तपशील सबमिट करा', submitNote:'सबमिट केल्यानंतर हँडओव्हर PDF प्रत आपोआप डाउनलोड होईल.',
       correctionToggleClosed:'चूक झाली का? आधी सबमिट केलेल्या तपशीलात सुधारणा करण्याची विनंती करा →',
       correctionToggleOpen:'सुधारणा फॉर्म लपवा ↑',
@@ -416,6 +439,10 @@
       legend6:'शारीरीक हानी', damageLabel:'फोनाक कसलीच हानी जाल्या?', damageWhatLabel:'हानी कितें आसा?',
       damageWhatPlaceholder:'दा. स्क्रीनाच्या वयल्या दाव्या कोनशांत तडो', damageHowLabel:'ही हानी कशी जाली?',
       damageHowPlaceholder:'दा. कॅबींतल्यान देंवतना पडलो',
+      legend7:'फोनाची समस्या / इश्यू', phoneProblemLabel:'तुमकां फोनांत कसली समस्या येता?',
+      phoneProblemDetailsLabel:'फोनाची समस्या कृपया सांगात',
+      phoneProblemDetailsPlaceholder:'दा. बॅटरी बेगीन सोंपता, चार्जिंग समस्या, स्पीकर काम करीना, फोन हँग जाता',
+      phoneProblemDetailsError:'फोनाची समस्या कृपया बरयात.',
       submitBtn:'म्हायती सबमिट करात', submitNote:'सबमिट केल्या उपरांत हॅन्डओव्हर PDF प्रत आपशीच डावनलोड जातली.',
       correctionToggleClosed:'चूक जाली? पयलीं सबमिट केल्ल्या म्हायतींत बदल करपाची विनंती करात →',
       correctionToggleOpen:'बदल फॉर्म लिपयात ↑',
@@ -485,7 +512,7 @@
   var DRAFT_KEY = 'dncc_form_draft_v1';
   var DRAFT_FIELDS = [
     'empName','location','designation','department','contact','companyEmail','personalEmail',
-    'damageWhat','damageHow'
+    'damageWhat','damageHow','phoneProblemDescription'
   ];
   function getDeviceDraftFields(idx){
     return ['brand','model','ram','storage','imei1','imei2','simCount','memoryCardSize','usage'];
@@ -497,7 +524,7 @@
       var el = document.getElementById(id);
       if(el) draft.fields[id] = el.value;
     });
-    ['charger','cable','damage'].forEach(function(name){ draft.radios[name] = getRadioValue(name); });
+    ['charger','cable','damage','phoneProblem'].forEach(function(name){ draft.radios[name] = getRadioValue(name); });
     [1,2].forEach(function(idx){
       draft.devices[idx] = {};
       getDeviceDraftFields(idx).forEach(function(f){
@@ -610,6 +637,10 @@
     if(record.damage === 'Yes'){
       html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeee1;border-left:3px solid #b5691f;">';
       html += '<p style="margin:0;"><b>Reported damage:</b> ' + (record.damageWhat||'—') + '<br/><b>Cause:</b> ' + (record.damageHow||'—') + '</p></div>';
+    }
+    if(record.phoneProblem === 'Yes'){
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeaea;border-left:3px solid #a03a3a;">';
+      html += '<p style="margin:0;"><b>Reported phone problem:</b> ' + (record.phoneProblemDetails||'—') + '</p></div>';
     }
     return html;
   }
@@ -790,6 +821,16 @@
       document.getElementById('damageDetails').style.display = (this.value==='Yes') ? 'block' : 'none';
     });
   });
+  document.querySelectorAll('input[name="phoneProblem"]').forEach(function(r){
+    r.addEventListener('change', function(){
+      var details = document.getElementById('phoneProblemDetails');
+      details.style.display = (this.value==='Yes') ? 'block' : 'none';
+      if(this.value !== 'Yes'){
+        document.getElementById('phoneProblemDescription').value = '';
+        document.getElementById('phoneProblemDescription').closest('.field').classList.remove('has-error');
+      }
+    });
+  });
 
   // Autosave on any change/input across the whole form (photos are not saved — too large for localStorage).
   document.getElementById('intakeForm').addEventListener('input', saveDraftDebounced);
@@ -906,6 +947,12 @@
     if(!getRadioValue('charger')) ok=false;
     if(!getRadioValue('cable')) ok=false;
     if(!getRadioValue('damage')) ok=false;
+    var phoneProblem = getRadioValue('phoneProblem');
+    if(!phoneProblem) ok=false;
+    if(phoneProblem === 'Yes'){
+      var problemEl = document.getElementById('phoneProblemDescription');
+      if(!problemEl.value.trim()){ markError(problemEl); ok=false; }
+    }
     return ok;
   }
 
@@ -962,6 +1009,8 @@
     row('Data/USB cable provided', record.cable);
     row('Damage present', record.damage);
     if(record.damage === 'Yes'){ window.DNCCPdf.damageBlock(ctx, record.damageWhat, record.damageHow); }
+    row('Phone problem reported', record.phoneProblem);
+    if(record.phoneProblem === 'Yes'){ row('Problem details', record.phoneProblemDetails); }
 
     window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
 
@@ -979,13 +1028,13 @@
     return doc.output('datauristring').split(',')[1];
   }
 
-  async function upsertDevice(d, employeeName, employeeId){
+  async function upsertDevice(d, employeeName, employeeId, employeeEmail){
     if(!d || !d.imei1) return;
     try{
       await sb.from('devices').upsert([{
         brand:d.brand, model:d.model, ram:d.ram, storage:d.storage,
         imei1:d.imei1, imei2:d.imei2, status:'Assigned',
-        assigned_to:employeeName, assigned_employee_id:employeeId,
+        assigned_to:employeeName, assigned_employee_id:employeeId, assigned_employee_email:employeeEmail || '',
         last_updated:new Date().toISOString()
       }], { onConflict:'imei1' });
       await sb.from('device_history').insert([{
@@ -1014,7 +1063,9 @@
         deviceCount: deviceCount,
         charger: getRadioValue('charger'), cable: getRadioValue('cable'), damage: getRadioValue('damage'),
         damageWhat: document.getElementById('damageWhat').value.trim(),
-        damageHow: document.getElementById('damageHow').value.trim()
+        damageHow: document.getElementById('damageHow').value.trim(),
+        phoneProblem: getRadioValue('phoneProblem'),
+        phoneProblemDetails: document.getElementById('phoneProblemDescription').value.trim()
       };
       record.device1 = await collectDevice(1);
       if(deviceCount === 2) record.device2 = await collectDevice(2);
@@ -1065,7 +1116,7 @@
       html += '</div>';
     });
 
-    html += '<div class="review-section"><h4>'+t('legend5')+' / '+t('legend6')+'</h4>';
+    html += '<div class="review-section"><h4>'+t('legend5')+' / '+t('legend6')+' / '+t('legend7')+'</h4>';
     html += reviewRow(t('chargerLabel'), record.charger);
     html += reviewRow(t('cableLabel'), record.cable);
     html += reviewRow(t('damageLabel'), record.damage);
@@ -1073,6 +1124,8 @@
       html += reviewRow(t('damageWhatLabel'), record.damageWhat);
       html += reviewRow(t('damageHowLabel'), record.damageHow);
     }
+    html += reviewRow(t('phoneProblemLabel'), record.phoneProblem);
+    if(record.phoneProblem === 'Yes'){ html += reviewRow(t('phoneProblemDetailsLabel'), record.phoneProblemDetails); }
     html += '</div>';
     return html;
   }
@@ -1119,13 +1172,15 @@
         location: record.location, designation: record.designation, contact: record.contact,
         device_count: record.deviceCount, charger: record.charger, cable: record.cable,
         damage: record.damage, damage_what: record.damageWhat, damage_how: record.damageHow,
+        phone_problem: record.phoneProblem, phone_problem_details: record.phoneProblemDetails,
         device1: record.device1, device2: record.device2 || null
       }]).select();
       if(error) throw error;
       var submissionId = inserted && inserted[0] ? inserted[0].id : null;
 
-      await upsertDevice(record.device1, record.employeeName, record.employeeId);
-      if(record.device2) await upsertDevice(record.device2, record.employeeName, record.employeeId);
+      var inventoryEmail = [record.companyEmail, record.personalEmail].filter(isRealEmail)[0] || '';
+      await upsertDevice(record.device1, record.employeeName, record.employeeId, inventoryEmail);
+      if(record.device2) await upsertDevice(record.device2, record.employeeName, record.employeeId, inventoryEmail);
 
       buildHandoverPDF(record);
       submitBtn.textContent = 'Emailing your copy…';
@@ -1138,6 +1193,7 @@
       document.getElementById('empId').value = '';
       document.getElementById('device2Fieldset').style.display = 'none';
       document.getElementById('damageDetails').style.display = 'none';
+      document.getElementById('phoneProblemDetails').style.display = 'none';
       ['1','2'].forEach(function(idx){
         var wrap = document.getElementById('d'+idx+'_memoryCardSizeWrap');
         if(wrap) wrap.style.display = 'none';
