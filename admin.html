@@ -138,6 +138,31 @@
   .assign-picker-item.assign-picker-addnew{background:var(--accent-light);}
   .assign-picker-item.assign-picker-addnew .name{color:var(--accent);}
 
+
+  /* ---------- Reports ---------- */
+  .report-intro{margin:-4px 0 16px; color:var(--text-soft); font-size:12.5px;}
+  .report-presets{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-bottom:16px;}
+  .report-preset{background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px; text-align:left; cursor:pointer; transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; min-height:92px;}
+  .report-preset:hover{transform:translateY(-2px); border-color:var(--accent); box-shadow:0 7px 20px rgba(19,38,53,.06);}
+  .report-preset.active{border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-light);}
+  .report-preset .rp-title{font-weight:700; color:var(--navy); font-size:13.5px; margin-bottom:4px;}
+  .report-preset .rp-desc{font-size:11.5px; line-height:1.45; color:var(--text-soft);}
+  .report-controls{display:grid; grid-template-columns:minmax(220px,1.35fr) repeat(4,minmax(135px,.75fr)); gap:10px; align-items:end;}
+  .report-controls .field{margin:0;}
+  .report-controls select,.report-controls input[type=date],.report-controls input[type=text]{width:100%; padding:9px 10px; border:1px solid var(--line-strong); border-radius:7px; font-size:12.5px; font-family:var(--sans); background:#fff;}
+  .report-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;}
+  .report-summary{display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:10px; margin:14px 0;}
+  .report-summary-card{background:#fff; border:1px solid var(--line); border-radius:9px; padding:11px 13px;}
+  .report-summary-card .value{font-size:20px; line-height:1.1; font-weight:700; color:var(--navy);}
+  .report-summary-card .label{font-size:11.5px; color:var(--text-soft); margin-top:4px;}
+  .report-heading{display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap; margin:16px 0 8px;}
+  .report-heading h3{margin:0; color:var(--navy); font-size:15px;}
+  .report-heading .meta{font-size:11.5px; color:var(--text-soft);}
+  .report-table{min-width:1180px;}
+  .report-empty-note{padding:18px; border:1px dashed var(--line-strong); border-radius:8px; background:#fff; color:var(--text-soft); font-size:13px;}
+  @media (max-width: 980px){.report-controls{grid-template-columns:1fr 1fr;}}
+  @media (max-width: 640px){.report-controls{grid-template-columns:1fr;}.report-presets{grid-template-columns:1fr;}}
+
   @media (prefers-reduced-motion: reduce){
     html{scroll-behavior:auto;}
     *,*::before,*::after{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important;}
@@ -188,6 +213,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="submissions">Submissions</button>
       <button class="tab-btn" data-tab="inventory">Inventory</button>
+      <button class="tab-btn" data-tab="reports">Reports</button>
       <button class="tab-btn" data-tab="changereqs">Change Requests <span id="pendingBadge"></span></button>
       <button class="tab-btn" data-tab="activitylog">Activity Log</button>
       <button class="tab-btn" data-tab="settings">Settings</button>
@@ -251,6 +277,64 @@
         <button class="btn btn-primary" id="addDeviceBtn">Add to inventory as Spare</button>
       </div>
       <div id="invArea"><p class="empty-state">Loading…</p></div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="tab-panel" id="tab-reports">
+      <div class="panel-bar">
+        <h2>Reports &amp; exports</h2>
+        <div>
+          <button class="btn btn-secondary" id="refreshReportsBtn">Refresh data</button>
+          <button class="btn btn-primary" id="downloadReportPackBtn">Download full report pack</button>
+        </div>
+      </div>
+      <p class="report-intro">Choose a ready-made report, apply common filters, preview 10 rows per page, then export it to Excel or print/save it as PDF.</p>
+
+      <div class="report-presets" id="reportPresets">
+        <button class="report-preset active" data-report-type="mobile_devices"><div class="rp-title">Mobile Devices Only</div><div class="rp-desc">One row per phone with employee, location, RAM/storage, IMEIs, usage and current inventory status.</div></button>
+        <button class="report-preset" data-report-type="sim_register"><div class="rp-title">SIM Register + Employee</div><div class="rp-desc">One row per SIM slot with mobile number, employee contact/email, device and IMEI.</div></button>
+        <button class="report-preset" data-report-type="employee_device"><div class="rp-title">Employee → Device Mapping</div><div class="rp-desc">Employee-wise view showing both assigned phones and important contact details.</div></button>
+        <button class="report-preset" data-report-type="issues"><div class="rp-title">Damage &amp; Phone Problems</div><div class="rp-desc">Only records with physical damage or a reported phone issue, with full descriptions.</div></button>
+        <button class="report-preset" data-report-type="inventory"><div class="rp-title">Inventory Status</div><div class="rp-desc">Live inventory with Assigned / Spare / Retired status, assignee, email and last update.</div></button>
+        <button class="report-preset" data-report-type="location_summary"><div class="rp-title">Location-wise Summary</div><div class="rp-desc">Branch totals for employees, devices, SIMs, damage, problems and handover emails.</div></button>
+        <button class="report-preset" data-report-type="employee_directory"><div class="rp-title">Employee Directory</div><div class="rp-desc">Employee ID, branch, department, designation, contact and both email addresses.</div></button>
+        <button class="report-preset" data-report-type="data_quality"><div class="rp-title">Missing / Incomplete Data</div><div class="rp-desc">Quick audit of records missing email, IMEI, SIM details or other important information.</div></button>
+      </div>
+
+      <div class="card-form">
+        <h3>Report filters</h3>
+        <p class="sub">Filters apply to the selected report. Leave them blank to include everything.</p>
+        <div class="report-controls">
+          <div class="field"><label>Report type</label><select id="reportType">
+            <option value="mobile_devices">Mobile Devices Only</option>
+            <option value="sim_register">SIM Register + Employee Details</option>
+            <option value="employee_device">Employee → Device Mapping</option>
+            <option value="issues">Damage &amp; Phone Problems</option>
+            <option value="accessories">Accessories / Handover</option>
+            <option value="inventory">Inventory Status</option>
+            <option value="spare_retired">Spare &amp; Retired Devices</option>
+            <option value="location_summary">Location-wise Summary</option>
+            <option value="email_status">Handover Email Status</option>
+            <option value="employee_directory">Employee Directory</option>
+            <option value="data_quality">Missing / Incomplete Data</option>
+            <option value="full_audit">Full Audit Records</option>
+          </select></div>
+          <div class="field"><label>Location</label><select id="reportLocation"><option value="">All locations</option></select></div>
+          <div class="field"><label>Device status</label><select id="reportStatus"><option value="">All statuses</option><option value="Assigned">Assigned</option><option value="Spare">Spare</option><option value="Retired">Retired</option><option value="Recorded">Recorded / not in inventory</option></select></div>
+          <div class="field"><label>From date</label><input type="date" id="reportDateFrom" /></div>
+          <div class="field"><label>To date</label><input type="date" id="reportDateTo" /></div>
+        </div>
+        <div class="field" style="margin-top:10px;"><label>Search inside report</label><input type="text" id="reportSearch" placeholder="Employee, ID, IMEI, SIM number, email, model…" /></div>
+        <div class="report-actions">
+          <button class="btn btn-primary" id="generateReportBtn">Generate report</button>
+          <button class="btn btn-secondary" id="clearReportFiltersBtn">Clear filters</button>
+          <button class="btn btn-secondary" id="exportReportBtn">Download Excel (.xlsx)</button>
+          <button class="btn btn-secondary" id="printReportBtn">Print / Save as PDF</button>
+        </div>
+      </div>
+
+      <div id="reportSummary" class="report-summary"></div>
+      <div id="reportArea"><p class="empty-state">Loading report…</p></div>
     </div>
 
     <!-- CHANGE REQUESTS -->
@@ -455,6 +539,7 @@
         });
       }
       if(btn.dataset.tab === 'activitylog'){ loadActivityLog(); }
+      if(btn.dataset.tab === 'reports'){ populateReportLocationFilter(); renderReports(); }
     });
   });
 
@@ -497,7 +582,9 @@
   var selectedSubIds = new Set();
   var invFilter = { search:'', status:'' };
   var invSort = { field:'last_updated', dir:'desc' };
-  var PAGE_SIZE = 10, subsPage = 1, invPage = 1;
+  var PAGE_SIZE = 10, subsPage = 1, invPage = 1, reportPage = 1;
+  var reportState = { type:'mobile_devices', location:'', status:'', search:'', from:'', to:'' };
+  var currentReportRows = [];
 
   async function logActivity(action, targetType, targetId, details){
     try{
@@ -540,7 +627,7 @@
   document.getElementById('refreshLogBtn').addEventListener('click', loadActivityLog);
 
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadActivityLog()]); renderInventory(); renderStats(); populateLocationFilter(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadActivityLog()]); renderInventory(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -1229,6 +1316,367 @@
     XLSX.writeFile(wb, 'DNCC_Mobile_Audit_Records.xlsx');
   });
   document.getElementById('refreshSubsBtn').addEventListener('click', async function(){ await loadSubmissions(); renderStats(); });
+
+
+  // ---------- Reports ----------
+  var REPORT_DEFS = {
+    mobile_devices:{ title:'Mobile Devices Only', file:'DNCC_Mobile_Devices', usesStatus:true },
+    sim_register:{ title:'SIM Register + Employee Details', file:'DNCC_SIM_Register', usesStatus:true },
+    employee_device:{ title:'Employee to Device Mapping', file:'DNCC_Employee_Device_Mapping', usesStatus:false },
+    issues:{ title:'Damage & Phone Problems', file:'DNCC_Device_Issues', usesStatus:false },
+    accessories:{ title:'Accessories / Handover', file:'DNCC_Accessories_Handover', usesStatus:false },
+    inventory:{ title:'Inventory Status', file:'DNCC_Inventory_Status', usesStatus:true },
+    spare_retired:{ title:'Spare & Retired Devices', file:'DNCC_Spare_Retired_Devices', usesStatus:true },
+    location_summary:{ title:'Location-wise Summary', file:'DNCC_Location_Summary', usesStatus:false },
+    email_status:{ title:'Handover Email Status', file:'DNCC_Handover_Email_Status', usesStatus:false },
+    employee_directory:{ title:'Employee Directory', file:'DNCC_Employee_Directory', usesStatus:false },
+    data_quality:{ title:'Missing / Incomplete Data', file:'DNCC_Data_Quality', usesStatus:false },
+    full_audit:{ title:'Full Audit Records', file:'DNCC_Full_Audit', usesStatus:false }
+  };
+
+  function reportDateValue(value){
+    if(!value) return '';
+    var d = new Date(value);
+    return isNaN(d.getTime()) ? '' : d.toLocaleString();
+  }
+  function reportDateOnly(value){
+    if(!value) return '';
+    var d = new Date(value);
+    return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+  }
+  function normalizeSims(device){
+    var sims = device && device.simNumbers;
+    if(Array.isArray(sims)) return sims.map(function(x){ return String(x||'').trim(); });
+    if(typeof sims === 'string') return sims.split(/[,;\n]+/).map(function(x){ return x.trim(); }).filter(Boolean);
+    return [];
+  }
+  function submissionDevices(sub){
+    var out = [];
+    var d1 = sub.device1 || {}, d2 = sub.device2 || {};
+    if(d1.brand || d1.model || d1.imei1 || d1.imei2 || normalizeSims(d1).length) out.push({ slot:1, data:d1 });
+    if(d2.brand || d2.model || d2.imei1 || d2.imei2 || normalizeSims(d2).length) out.push({ slot:2, data:d2 });
+    return out;
+  }
+  function inventoryByImei(imei){
+    if(!imei) return null;
+    return currentDevices.find(function(d){ return d.imei1===imei || d.imei2===imei; }) || null;
+  }
+  function submissionForDevice(device){
+    if(!device) return null;
+    var byImei = currentSubs.find(function(s){
+      return submissionDevices(s).some(function(x){ return x.data.imei1===device.imei1 || x.data.imei2===device.imei1 || (device.imei2 && (x.data.imei1===device.imei2 || x.data.imei2===device.imei2)); });
+    });
+    if(byImei) return byImei;
+    return currentSubs.find(function(s){ return device.assigned_employee_id && s.employee_id===device.assigned_employee_id; }) || null;
+  }
+  function effectiveEmployeeEmail(sub){
+    if(!sub) return '';
+    return [sub.company_email, sub.personal_email].filter(isRealEmail)[0] || sub.company_email || sub.personal_email || '';
+  }
+  function baseReportMeta(sub){
+    return {
+      employee: sub.employee_name || '', employeeId: sub.employee_id || '', location: sub.location || '',
+      department: sub.department || '', designation: sub.designation || '', contact: sub.contact || '',
+      companyEmail: sub.company_email || '', personalEmail: sub.personal_email || '', email: effectiveEmployeeEmail(sub)
+    };
+  }
+  function cleanReportRow(row){
+    var out={}; Object.keys(row).forEach(function(k){ if(k.indexOf('__')!==0) out[k]=row[k]; }); return out;
+  }
+
+  function buildMobileDeviceRows(subs){
+    var rows=[];
+    subs.forEach(function(s){
+      var m=baseReportMeta(s);
+      submissionDevices(s).forEach(function(item){
+        var d=item.data, inv=inventoryByImei(d.imei1), sims=normalizeSims(d);
+        rows.push({
+          'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Department':m.department,'Designation':m.designation,
+          'Phone slot':'Device '+item.slot,'Brand':d.brand||'','Model':d.model||'','RAM':d.ram||'','Storage':d.storage||'',
+          'IMEI 1':d.imei1||'','IMEI 2':d.imei2||'','SIM number(s)':sims.join(', '),'Usage':d.usage||'',
+          'Status':inv ? (inv.status||'') : 'Recorded','Employee email':m.email,'Contact':m.contact,
+          '__date':s.created_at||'','__location':m.location,'__status':inv ? (inv.status||'') : 'Recorded'
+        });
+      });
+    });
+    return rows;
+  }
+
+  function buildSimRows(subs){
+    var rows=[];
+    subs.forEach(function(s){
+      var m=baseReportMeta(s);
+      submissionDevices(s).forEach(function(item){
+        var d=item.data, sims=normalizeSims(d), declared=parseInt(d.simCount||d.sim_count||0,10)||0;
+        var count=Math.max(declared,sims.length);
+        if(!count) return;
+        var inv=inventoryByImei(d.imei1);
+        for(var i=0;i<count;i++){
+          rows.push({
+            'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Department':m.department,'Designation':m.designation,
+            'Employee contact':m.contact,'Employee email':m.email,'Phone':'Device '+item.slot,'Device':[(d.brand||''),(d.model||'')].join(' ').trim(),
+            'IMEI 1':d.imei1||'','SIM slot':'SIM '+(i+1),'SIM number':sims[i]||'','Status':inv ? (inv.status||'') : 'Recorded',
+            '__date':s.created_at||'','__location':m.location,'__status':inv ? (inv.status||'') : 'Recorded'
+          });
+        }
+      });
+    });
+    return rows;
+  }
+
+  function buildEmployeeDeviceRows(subs){
+    return subs.map(function(s){
+      var m=baseReportMeta(s), ds=submissionDevices(s), d1=(ds[0]&&ds[0].data)||{}, d2=(ds[1]&&ds[1].data)||{};
+      return {
+        'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Department':m.department,'Designation':m.designation,
+        'Contact':m.contact,'Company email':m.companyEmail,'Personal email':m.personalEmail,
+        'Device 1':[(d1.brand||''),(d1.model||'')].join(' ').trim(),'Device 1 IMEI':d1.imei1||'','Device 1 SIMs':normalizeSims(d1).join(', '),
+        'Device 2':[(d2.brand||''),(d2.model||'')].join(' ').trim(),'Device 2 IMEI':d2.imei1||'','Device 2 SIMs':normalizeSims(d2).join(', '),
+        'Phone count':ds.length,'Submitted':reportDateValue(s.created_at),'__date':s.created_at||'','__location':m.location
+      };
+    });
+  }
+
+  function buildIssueRows(subs){
+    var rows=[];
+    subs.filter(function(s){ return s.damage==='Yes' || s.phone_problem==='Yes'; }).forEach(function(s){
+      var m=baseReportMeta(s), ds=submissionDevices(s);
+      if(!ds.length) ds=[{slot:'',data:{}}];
+      ds.forEach(function(item){ var d=item.data;
+        rows.push({
+          'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Contact':m.contact,'Employee email':m.email,
+          'Device':[(d.brand||''),(d.model||'')].join(' ').trim(),'IMEI 1':d.imei1||'',
+          'Physical damage':s.damage||'No','Damage details':s.damage_what||'','Damage cause':s.damage_how||'',
+          'Phone problem':s.phone_problem||'No','Problem details':s.phone_problem_details||'','Submitted':reportDateValue(s.created_at),
+          '__date':s.created_at||'','__location':m.location
+        });
+      });
+    });
+    return rows;
+  }
+
+  function buildAccessoriesRows(subs){
+    return subs.map(function(s){ var m=baseReportMeta(s), ds=submissionDevices(s);
+      return {'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Phone count':ds.length,'Charger':s.charger||'','USB/Data cable':s.cable||'',
+        'Damage':s.damage||'','Phone problem':s.phone_problem||'','Handover email sent':s.email_sent_at?'Yes':'No','Submitted':reportDateValue(s.created_at),
+        '__date':s.created_at||'','__location':m.location};
+    });
+  }
+
+  function buildInventoryRows(devices, spareRetiredOnly){
+    return devices.filter(function(d){ return !spareRetiredOnly || d.status==='Spare' || d.status==='Retired'; }).map(function(d){
+      var sub=submissionForDevice(d), loc=sub ? (sub.location||'') : '';
+      return {'Device':[(d.brand||''),(d.model||'')].join(' ').trim(),'RAM':d.ram||'','Storage':d.storage||'','IMEI 1':d.imei1||'','IMEI 2':d.imei2||'',
+        'Status':d.status||'','Assigned to':d.assigned_to||'','Employee ID':d.assigned_employee_id||'','Employee email':resolveDeviceEmployeeEmail(d)||'',
+        'Location':loc,'Notes':d.notes||'','Last updated':reportDateValue(d.last_updated),
+        '__date':d.last_updated||d.created_at||'','__location':loc,'__status':d.status||''};
+    });
+  }
+
+  function buildLocationSummaryRows(subs){
+    var map={};
+    subs.forEach(function(s){
+      var loc=s.location||'Unspecified';
+      if(!map[loc]) map[loc]={employees:new Set(), submissions:0, devices:0, sims:0, damaged:0, problems:0, emails:0, latest:''};
+      var a=map[loc]; a.submissions++; a.employees.add(s.employee_id||s.employee_name||String(s.id));
+      var ds=submissionDevices(s); a.devices+=ds.length; ds.forEach(function(x){ a.sims+=normalizeSims(x.data).filter(Boolean).length; });
+      if(s.damage==='Yes') a.damaged++; if(s.phone_problem==='Yes') a.problems++; if(s.email_sent_at) a.emails++;
+      if(!a.latest || new Date(s.created_at)>new Date(a.latest)) a.latest=s.created_at;
+    });
+    return Object.keys(map).sort().map(function(loc){ var a=map[loc]; return {
+      'Location':loc,'Employees':a.employees.size,'Submissions':a.submissions,'Mobile devices':a.devices,'SIM numbers recorded':a.sims,
+      'Damage reports':a.damaged,'Phone problems':a.problems,'Handover emails sent':a.emails,'Latest submission':reportDateValue(a.latest),
+      '__location':loc,'__date':a.latest||''
+    }; });
+  }
+
+  function buildEmailStatusRows(subs){
+    return subs.map(function(s){ var m=baseReportMeta(s); return {
+      'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Company email':m.companyEmail,'Personal email':m.personalEmail,
+      'Handover email sent':s.email_sent_at?'Yes':'No','Sent at':reportDateValue(s.email_sent_at),'Sent via':s.email_sent_via||'',
+      'Submitted':reportDateValue(s.created_at),'__date':s.created_at||'','__location':m.location
+    }; });
+  }
+
+  function buildEmployeeDirectoryRows(subs){
+    return subs.map(function(s){ var m=baseReportMeta(s); return {
+      'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Department':m.department,'Designation':m.designation,'Contact':m.contact,
+      'Company email':m.companyEmail,'Personal email':m.personalEmail,'Phones submitted':submissionDevices(s).length,'Last submission':reportDateValue(s.created_at),
+      '__date':s.created_at||'','__location':m.location
+    }; });
+  }
+
+  function buildDataQualityRows(subs){
+    var rows=[];
+    subs.forEach(function(s){
+      var m=baseReportMeta(s), missing=[];
+      if(!m.employeeId) missing.push('Employee ID'); if(!isRealEmail(m.companyEmail) && !isRealEmail(m.personalEmail)) missing.push('Valid email');
+      if(!m.location) missing.push('Location'); if(!m.contact) missing.push('Contact');
+      var ds=submissionDevices(s); if(!ds.length) missing.push('Device details');
+      ds.forEach(function(item){ var d=item.data, prefix='Device '+item.slot+' ';
+        if(!d.imei1) missing.push(prefix+'IMEI 1'); if(!d.brand && !d.model) missing.push(prefix+'brand/model');
+        if(!d.frontPhoto) missing.push(prefix+'front photo'); if(!d.backPhoto) missing.push(prefix+'back photo');
+        var declared=parseInt(d.simCount||d.sim_count||0,10)||0, sims=normalizeSims(d).filter(Boolean);
+        if(declared>sims.length) missing.push(prefix+'SIM number(s)');
+      });
+      if(!missing.length) return;
+      rows.push({'Employee':m.employee,'Employee ID':m.employeeId,'Location':m.location,'Missing / incomplete fields':missing.join(', '),
+        'Submitted':reportDateValue(s.created_at),'__date':s.created_at||'','__location':m.location});
+    });
+    return rows;
+  }
+
+  function buildFullAuditRows(subs){
+    return subs.map(function(s){ var row=flattenSub(s); row.__date=s.created_at||''; row.__location=s.location||''; return row; });
+  }
+
+  function getRawReportRows(type){
+    switch(type){
+      case 'mobile_devices': return buildMobileDeviceRows(currentSubs);
+      case 'sim_register': return buildSimRows(currentSubs);
+      case 'employee_device': return buildEmployeeDeviceRows(currentSubs);
+      case 'issues': return buildIssueRows(currentSubs);
+      case 'accessories': return buildAccessoriesRows(currentSubs);
+      case 'inventory': return buildInventoryRows(currentDevices,false);
+      case 'spare_retired': return buildInventoryRows(currentDevices,true);
+      case 'location_summary': return buildLocationSummaryRows(currentSubs);
+      case 'email_status': return buildEmailStatusRows(currentSubs);
+      case 'employee_directory': return buildEmployeeDirectoryRows(currentSubs);
+      case 'data_quality': return buildDataQualityRows(currentSubs);
+      case 'full_audit': return buildFullAuditRows(currentSubs);
+      default: return [];
+    }
+  }
+
+  function rowMatchesReportFilters(row){
+    if(reportState.location && String(row.__location||row.Location||'')!==reportState.location) return false;
+    if(reportState.status && String(row.__status||row.Status||'')!==reportState.status) return false;
+    var ts=row.__date ? new Date(row.__date).getTime() : NaN;
+    if(reportState.from){ var from=new Date(reportState.from+'T00:00:00').getTime(); if(!isNaN(ts) && ts<from) return false; }
+    if(reportState.to){ var to=new Date(reportState.to+'T23:59:59').getTime(); if(!isNaN(ts) && ts>to) return false; }
+    var q=(reportState.search||'').trim().toLowerCase();
+    if(q){ var hay=Object.keys(row).filter(function(k){return k.indexOf('__')!==0;}).map(function(k){return row[k];}).join(' ').toLowerCase(); if(hay.indexOf(q)===-1) return false; }
+    return true;
+  }
+
+  function populateReportLocationFilter(){
+    var sel=document.getElementById('reportLocation'); if(!sel) return;
+    var current=sel.value;
+    var locations=Array.from(new Set(currentSubs.map(function(s){return s.location;}).filter(Boolean))).sort();
+    sel.innerHTML='<option value="">All locations</option>'+locations.map(function(l){return '<option value="'+esc(l)+'">'+esc(l)+'</option>';}).join('');
+    sel.value=current;
+  }
+
+  function syncReportStateFromControls(){
+    reportState.type=document.getElementById('reportType').value;
+    reportState.location=document.getElementById('reportLocation').value;
+    reportState.status=document.getElementById('reportStatus').value;
+    reportState.search=document.getElementById('reportSearch').value;
+    reportState.from=document.getElementById('reportDateFrom').value;
+    reportState.to=document.getElementById('reportDateTo').value;
+  }
+
+  function updateReportPresetUI(){
+    document.querySelectorAll('.report-preset').forEach(function(btn){ btn.classList.toggle('active',btn.dataset.reportType===reportState.type); });
+    var def=REPORT_DEFS[reportState.type]||{};
+    var statusSel=document.getElementById('reportStatus');
+    statusSel.disabled=!def.usesStatus;
+    if(!def.usesStatus){ statusSel.value=''; reportState.status=''; }
+  }
+
+  function reportSummaryHTML(rows){
+    var employees=new Set(), locations=new Set();
+    rows.forEach(function(r){ var e=r['Employee ID']||r['Employee']; if(e) employees.add(String(e)); var l=r['Location']; if(l) locations.add(String(l)); });
+    var type=reportState.type, fourthLabel='Rows', fourthValue=rows.length;
+    if(type==='sim_register'){ fourthLabel='SIM entries'; }
+    else if(type==='mobile_devices'||type==='inventory'||type==='spare_retired'){ fourthLabel='Devices'; }
+    else if(type==='issues'){ fourthLabel='Issue rows'; }
+    else if(type==='location_summary'){ fourthLabel='Locations'; fourthValue=rows.length; }
+    return '<div class="report-summary-card"><div class="value">'+rows.length+'</div><div class="label">Report rows</div></div>'
+      +'<div class="report-summary-card"><div class="value">'+employees.size+'</div><div class="label">Employees in report</div></div>'
+      +'<div class="report-summary-card"><div class="value">'+locations.size+'</div><div class="label">Locations</div></div>'
+      +'<div class="report-summary-card"><div class="value">'+fourthValue+'</div><div class="label">'+fourthLabel+'</div></div>';
+  }
+
+  function renderReports(){
+    var area=document.getElementById('reportArea'); if(!area) return;
+    updateReportPresetUI();
+    var def=REPORT_DEFS[reportState.type]||REPORT_DEFS.mobile_devices;
+    var rawRows;
+    if(reportState.type==='location_summary'){
+      var baseSubs=currentSubs.filter(function(s){
+        if(reportState.location && (s.location||'')!==reportState.location) return false;
+        var ts=s.created_at ? new Date(s.created_at).getTime() : NaN;
+        if(reportState.from){ var from=new Date(reportState.from+'T00:00:00').getTime(); if(!isNaN(ts) && ts<from) return false; }
+        if(reportState.to){ var to=new Date(reportState.to+'T23:59:59').getTime(); if(!isNaN(ts) && ts>to) return false; }
+        return true;
+      });
+      rawRows=buildLocationSummaryRows(baseSubs);
+    } else {
+      rawRows=getRawReportRows(reportState.type);
+    }
+    var rows=rawRows.filter(rowMatchesReportFilters);
+    currentReportRows=rows;
+    document.getElementById('reportSummary').innerHTML=reportSummaryHTML(rows);
+    if(!rows.length){ area.innerHTML='<div class="report-heading"><div><h3>'+esc(def.title)+'</h3><div class="meta">0 matching records</div></div></div><div class="report-empty-note">No records match this report and the selected filters.</div>'; return; }
+    var totalPages=Math.max(1,Math.ceil(rows.length/PAGE_SIZE)); if(reportPage>totalPages) reportPage=totalPages; if(reportPage<1) reportPage=1;
+    var startIndex=(reportPage-1)*PAGE_SIZE, pageRows=rows.slice(startIndex,startIndex+PAGE_SIZE), columns=Object.keys(cleanReportRow(rows[0]));
+    var head=columns.map(function(c){return '<th>'+esc(c)+'</th>';}).join('');
+    var body=pageRows.map(function(row){ var clean=cleanReportRow(row); return '<tr>'+columns.map(function(c){return '<td>'+esc(clean[c])+'</td>';}).join('')+'</tr>'; }).join('');
+    var startShown=startIndex+1,endShown=startIndex+pageRows.length;
+    area.innerHTML='<div class="report-heading"><div><h3>'+esc(def.title)+'</h3><div class="meta">Generated from current DNCC records</div></div><div class="meta">'+rows.length+' matching row(s)</div></div>'
+      +paginationHTML('report',reportPage,totalPages,startShown,endShown,rows.length)
+      +'<div class="table-scroll-shell"><div class="table-top-scroll" aria-label="Horizontal report scrollbar"><div class="table-top-scroll-inner"></div></div>'
+      +'<div class="table-wrap"><table class="report-table"><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table></div></div>';
+    bindPagination(area,'report',function(page){reportPage=page;renderReports();area.scrollIntoView({behavior:'smooth',block:'start'});});
+    wireTableScrollSync(area);
+  }
+
+  function exportCurrentReport(){
+    if(!currentReportRows.length){ alert('No matching rows to export.'); return; }
+    var def=REPORT_DEFS[reportState.type]||REPORT_DEFS.mobile_devices;
+    var clean=currentReportRows.map(cleanReportRow), ws=XLSX.utils.json_to_sheet(clean), wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,(def.title||'Report').slice(0,31));
+    XLSX.writeFile(wb,def.file+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  }
+
+  function printCurrentReport(){
+    if(!currentReportRows.length){ alert('No matching rows to print.'); return; }
+    var def=REPORT_DEFS[reportState.type]||REPORT_DEFS.mobile_devices, clean=currentReportRows.map(cleanReportRow), columns=Object.keys(clean[0]);
+    var win=window.open('','_blank'); if(!win){ alert('Please allow pop-ups to print this report.'); return; }
+    var filterBits=[]; if(reportState.location) filterBits.push('Location: '+reportState.location); if(reportState.status) filterBits.push('Status: '+reportState.status); if(reportState.from) filterBits.push('From: '+reportState.from); if(reportState.to) filterBits.push('To: '+reportState.to); if(reportState.search) filterBits.push('Search: '+reportState.search);
+    var html='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(def.title)+'</title><style>body{font-family:Arial,sans-serif;color:#182530;margin:24px}h1{font-size:20px;margin:0;color:#132635}p{font-size:11px;color:#5b6b74}.head{border-bottom:3px solid #132635;padding-bottom:10px;margin-bottom:14px}table{width:100%;border-collapse:collapse;font-size:9px}th,td{border:1px solid #ccd5db;padding:5px;vertical-align:top;text-align:left;word-break:break-word}th{background:#eaf2f6;color:#132635}tr{break-inside:avoid}@page{size:landscape;margin:10mm}@media print{body{margin:0}}</style></head><body>'
+      +'<div class="head"><h1>'+esc(window.DNCC_CONFIG.COMPANY_NAME)+' — '+esc(def.title)+'</h1><p>'+esc(window.DNCC_CONFIG.DEPARTMENT)+' • Generated '+esc(new Date().toLocaleString())+(filterBits.length?' • '+esc(filterBits.join(' • ')):'')+'</p></div>'
+      +'<table><thead><tr>'+columns.map(function(c){return '<th>'+esc(c)+'</th>';}).join('')+'</tr></thead><tbody>'
+      +clean.map(function(r){return '<tr>'+columns.map(function(c){return '<td>'+esc(r[c])+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></body></html>';
+    win.document.open(); win.document.write(html); win.document.close(); win.focus(); setTimeout(function(){win.print();},250);
+  }
+
+  function downloadFullReportPack(){
+    var wb=XLSX.utils.book_new();
+    var pack=[['mobile_devices','Mobile Devices'],['sim_register','SIM Register'],['employee_device','Emp-Device'],['issues','Issues'],['inventory','Inventory'],['location_summary','Locations'],['employee_directory','Employees'],['data_quality','Data Quality']];
+    pack.forEach(function(item){ var rows=getRawReportRows(item[0]).map(cleanReportRow); if(!rows.length) rows=[{'No data':'No records available'}]; XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),item[1].slice(0,31)); });
+    XLSX.writeFile(wb,'DNCC_IT_Report_Pack_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  }
+
+  document.querySelectorAll('.report-preset').forEach(function(btn){ btn.addEventListener('click',function(){
+    document.getElementById('reportType').value=btn.dataset.reportType; syncReportStateFromControls(); reportState.type=btn.dataset.reportType; reportPage=1; renderReports();
+  }); });
+  document.getElementById('reportType').addEventListener('change',function(){ syncReportStateFromControls(); reportPage=1; renderReports(); });
+  document.getElementById('generateReportBtn').addEventListener('click',function(){ syncReportStateFromControls(); reportPage=1; renderReports(); });
+  document.getElementById('reportLocation').addEventListener('change',function(){ syncReportStateFromControls(); reportPage=1; renderReports(); });
+  document.getElementById('reportStatus').addEventListener('change',function(){ syncReportStateFromControls(); reportPage=1; renderReports(); });
+  document.getElementById('reportDateFrom').addEventListener('change',function(){ syncReportStateFromControls(); reportPage=1; renderReports(); });
+  document.getElementById('reportDateTo').addEventListener('change',function(){ syncReportStateFromControls(); reportPage=1; renderReports(); });
+  document.getElementById('reportSearch').addEventListener('input',debounce(function(){ syncReportStateFromControls(); reportPage=1; renderReports(); },250));
+  document.getElementById('clearReportFiltersBtn').addEventListener('click',function(){
+    document.getElementById('reportLocation').value=''; document.getElementById('reportStatus').value=''; document.getElementById('reportSearch').value=''; document.getElementById('reportDateFrom').value=''; document.getElementById('reportDateTo').value='';
+    syncReportStateFromControls(); reportPage=1; renderReports();
+  });
+  document.getElementById('exportReportBtn').addEventListener('click',exportCurrentReport);
+  document.getElementById('printReportBtn').addEventListener('click',printCurrentReport);
+  document.getElementById('downloadReportPackBtn').addEventListener('click',downloadFullReportPack);
+  document.getElementById('refreshReportsBtn').addEventListener('click',async function(){ await Promise.all([loadSubmissions(),loadInventory()]); populateReportLocationFilter(); reportPage=1; renderReports(); });
 
   // ---------- Inventory ----------
   async function loadInventory(){
