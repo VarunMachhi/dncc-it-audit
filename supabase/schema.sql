@@ -233,3 +233,72 @@ alter table device_requests enable row level security;
 alter table form_access_tokens enable row level security;
 create policy "public all device_requests" on device_requests for all to anon using (true) with check (true);
 create policy "public all form_access_tokens" on form_access_tokens for all to anon using (true) with check (true);
+
+-- ── Issue / damage resolution workflow ─────────────────────────────
+create table if not exists issue_resolutions (
+  id uuid primary key default gen_random_uuid(),
+  submission_id uuid not null references submissions(id) on delete cascade,
+  issue_type text not null check (issue_type in ('Physical Damage','Phone Problem')),
+  original_issue_summary text,
+  status text not null default 'Open' check (status in ('Open','Resolved')),
+  resolution_notes text,
+  resolved_by text,
+  resolved_at timestamptz,
+  resolution_email_sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (submission_id, issue_type)
+);
+create index if not exists issue_resolutions_status_idx on issue_resolutions(status);
+create index if not exists issue_resolutions_submission_idx on issue_resolutions(submission_id);
+alter table issue_resolutions enable row level security;
+create policy "public all issue_resolutions" on issue_resolutions for all to anon using (true) with check (true);
+
+create or replace function dncc_sync_issue_resolution_tickets()
+returns trigger
+language plpgsql
+as $$
+declare
+  damage_summary text;
+  problem_summary text;
+begin
+  damage_summary := trim(concat_ws(E'\n',
+    case when nullif(trim(new.damage_what),'') is not null then 'Damage: ' || trim(new.damage_what) end,
+    case when nullif(trim(new.damage_how),'') is not null then 'Cause: ' || trim(new.damage_how) end
+  ));
+  problem_summary := coalesce(nullif(trim(new.phone_problem_details),''),'Phone problem reported');
+
+  if new.damage = 'Yes' then
+    insert into issue_resolutions (submission_id, issue_type, original_issue_summary, status, updated_at)
+    values (new.id, 'Physical Damage', damage_summary, 'Open', now())
+    on conflict (submission_id, issue_type) do update
+    set original_issue_summary = excluded.original_issue_summary,
+        status = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then 'Open' else issue_resolutions.status end,
+        resolution_notes = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then null else issue_resolutions.resolution_notes end,
+        resolved_by = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then null else issue_resolutions.resolved_by end,
+        resolved_at = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then null else issue_resolutions.resolved_at end,
+        resolution_email_sent_at = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then null else issue_resolutions.resolution_email_sent_at end,
+        updated_at = now();
+  end if;
+
+  if new.phone_problem = 'Yes' then
+    insert into issue_resolutions (submission_id, issue_type, original_issue_summary, status, updated_at)
+    values (new.id, 'Phone Problem', problem_summary, 'Open', now())
+    on conflict (submission_id, issue_type) do update
+    set original_issue_summary = excluded.original_issue_summary,
+        status = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then 'Open' else issue_resolutions.status end,
+        resolution_notes = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then null else issue_resolutions.resolution_notes end,
+        resolved_by = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then null else issue_resolutions.resolved_by end,
+        resolved_at = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then null else issue_resolutions.resolved_at end,
+        resolution_email_sent_at = case when issue_resolutions.original_issue_summary is distinct from excluded.original_issue_summary then null else issue_resolutions.resolution_email_sent_at end,
+        updated_at = now();
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_dncc_sync_issue_resolution_tickets on submissions;
+create trigger trg_dncc_sync_issue_resolution_tickets
+after insert or update of damage, damage_what, damage_how, phone_problem, phone_problem_details
+on submissions
+for each row execute function dncc_sync_issue_resolution_tickets();
