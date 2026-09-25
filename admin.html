@@ -139,6 +139,17 @@
   .assign-picker-item.assign-picker-addnew .name{color:var(--accent);}
 
 
+
+  /* ---------- Device Requests ---------- */
+  #requestBadge{display:inline-block;min-width:16px;padding:1px 5px;border-radius:10px;background:var(--amber);color:#fff;font-size:10.5px;font-weight:700;vertical-align:middle;margin-left:2px}#requestBadge:empty{display:none}
+  .request-status{display:inline-block;padding:3px 8px;border-radius:14px;font-size:10.5px;font-weight:700;white-space:nowrap}.request-status.pending{background:#fff3df;color:#a05a10}.request-status.approved{background:#e8f4fb;color:#24648a}.request-status.waiting{background:#fff3df;color:#a05a10}.request-status.rejected{background:var(--danger-light);color:var(--danger)}.request-status.assigned{background:#eef3ff;color:#425fa5}.request-status.completed{background:var(--ok-light);color:var(--ok)}
+  .request-reason{min-width:240px;max-width:340px;white-space:normal;line-height:1.4}.request-table{min-width:1600px}.request-detail-card{background:#f8fafb;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:12px;margin-top:8px}.request-detail-card strong{color:var(--navy)}
+  #fulfillOverlay{display:none;position:fixed;inset:0;background:rgba(15,25,35,.5);z-index:92;align-items:center;justify-content:center;padding:20px}#fulfillOverlay.open{display:flex}#fulfillBox{background:#fff;border-radius:12px;padding:22px;max-width:760px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(10,20,30,.2);animation:dnccModalIn .2s ease both}#fulfillBox h3{margin:0;color:var(--navy);font-size:17px}#fulfillSummary{font-size:12.5px;color:var(--text-soft);margin:5px 0 14px}
+  .device-source-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.device-source-card{border:1px solid var(--line);border-radius:9px;padding:12px;background:#fafcfd}.device-source-card h4{margin:0 0 8px;color:var(--navy);font-size:13px}.candidate-list{display:grid;gap:7px;max-height:250px;overflow:auto}.candidate-item{border:1px solid var(--line);border-radius:7px;background:#fff;padding:9px 10px;font-size:11.8px}.candidate-item label{display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin:0}.candidate-item input{margin-top:3px}.candidate-item .name{font-weight:700;color:var(--navy)}.candidate-item .meta{color:var(--text-soft);margin-top:2px;line-height:1.35}.candidate-item:has(input:checked){border-color:var(--accent);background:var(--accent-light)}
+  .sim-box{border:1px solid #cddbe3;background:#f5fafc;border-radius:8px;padding:12px;margin-top:12px}.sim-box .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fulfill-note{font-size:11.5px;color:var(--text-soft);margin:5px 0 0}.edit-link-btn{color:#6f4c9c!important;border-color:#9e84bd!important}
+  .stock-grid-wide{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}.stock-grid-wide .field{margin:0}.stock-grid-wide select,.stock-grid-wide input{width:100%;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;font-size:13px;font-family:var(--sans);background:#fff}.stock-notes{margin-top:10px}
+  @media(max-width:760px){.device-source-grid{grid-template-columns:1fr}.sim-box .grid{grid-template-columns:1fr}}
+
   /* ---------- Reports ---------- */
   .report-intro{margin:-4px 0 16px; color:var(--text-soft); font-size:12.5px;}
   .report-presets{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-bottom:16px;}
@@ -213,6 +224,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="submissions">Submissions</button>
       <button class="tab-btn" data-tab="inventory">Inventory</button>
+      <button class="tab-btn" data-tab="devicerequests">Device Requests <span id="requestBadge"></span></button>
       <button class="tab-btn" data-tab="reports">Reports</button>
       <button class="tab-btn" data-tab="changereqs">Change Requests <span id="pendingBadge"></span></button>
       <button class="tab-btn" data-tab="activitylog">Activity Log</button>
@@ -265,18 +277,41 @@
       </div>
       <div class="card-form">
         <h3>Add a spare / stock device</h3>
-        <p class="sub">Use this for devices not yet tied to an employee submission.</p>
-        <div class="grid">
-          <input id="newBrand" placeholder="Brand" />
-          <input id="newModel" placeholder="Model" />
-          <input id="newRam" placeholder="RAM" />
-          <input id="newStorage" placeholder="Storage" />
-          <input id="newImei1" placeholder="IMEI 1" />
-          <input id="newImei2" placeholder="IMEI 2 (optional)" />
+        <p class="sub">Record enough information now so IT can choose the right phone later for a new or replacement request.</p>
+        <div class="stock-grid-wide">
+          <div class="field"><label>Brand *</label><input id="newBrand" placeholder="Samsung" /></div>
+          <div class="field"><label>Model *</label><input id="newModel" placeholder="Galaxy A55" /></div>
+          <div class="field"><label>RAM</label><input id="newRam" placeholder="8 GB" /></div>
+          <div class="field"><label>Storage</label><input id="newStorage" placeholder="128 GB" /></div>
+          <div class="field"><label>IMEI 1 *</label><input id="newImei1" placeholder="15 digits" /></div>
+          <div class="field"><label>IMEI 2</label><input id="newImei2" placeholder="Optional" /></div>
+          <div class="field"><label>Condition</label><select id="newCondition"><option>New</option><option selected>Good</option><option>Fair</option><option>Needs repair</option></select></div>
+          <div class="field"><label>SIM slots</label><select id="newSimSlots"><option value="1">1</option><option value="2" selected>2</option></select></div>
+          <div class="field"><label>SIM 1 (if already installed)</label><input id="newSim1" placeholder="10 digits / blank" /></div>
+          <div class="field"><label>SIM 2 (optional)</label><input id="newSim2" placeholder="10 digits / blank" /></div>
+          <div class="field"><label>Stock source</label><select id="newStockSource"><option>New purchase</option><option>Employee return</option><option>Recovered / existing stock</option><option>Other</option></select></div>
+          <div class="field"><label>Charger available</label><select id="newCharger"><option>Yes</option><option>No</option><option selected>Unknown</option></select></div>
+          <div class="field"><label>USB cable available</label><select id="newCable"><option>Yes</option><option>No</option><option selected>Unknown</option></select></div>
         </div>
+        <div class="field stock-notes"><label>Stock notes</label><textarea id="newDeviceNotes" placeholder="Physical condition, box/accessories, repair history, etc."></textarea></div>
         <button class="btn btn-primary" id="addDeviceBtn">Add to inventory as Spare</button>
       </div>
       <div id="invArea"><p class="empty-state">Loading…</p></div>
+    </div>
+
+    <!-- DEVICE REQUESTS -->
+    <div class="tab-panel" id="tab-devicerequests">
+      <div class="panel-bar">
+        <div><h2>New / Replace device requests</h2><p class="sub" style="margin:3px 0 0;">Review employee requests, approve or place them in Awaiting Availability, then issue a spare/reassigned phone with SIM handling and a compulsory handover-form link.</p></div>
+        <button class="btn btn-secondary" id="refreshDeviceRequestsBtn">Refresh</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="deviceRequestSearch" class="search-input" placeholder="Search request, employee, email, IMEI, reason…" />
+        <select id="deviceRequestType"><option value="">All request types</option><option value="New">New</option><option value="Replace">Replace</option></select>
+        <select id="deviceRequestStatus"><option value="">All statuses</option><option>Pending Review</option><option>Approved - Preparing Device</option><option>Awaiting Availability</option><option>Rejected</option><option>Device Assigned - Form Pending</option><option>Completed</option></select>
+        <button class="btn btn-secondary" id="clearDeviceRequestFilters">Clear filters</button>
+      </div>
+      <div id="deviceRequestsArea"><p class="empty-state">Loading…</p></div>
     </div>
 
     <!-- REPORTS -->
@@ -366,6 +401,7 @@
           <div class="field"><label>SMTP2GO API key</label><input type="password" id="smtp2goApiKey" placeholder="api-xxxxxxxxxxxx" /></div>
           <div class="field"><label>Sender name</label><input type="text" id="smtp2goSenderName" placeholder="DNCC IT Department" /></div>
           <div class="field"><label>Verified sender email</label><input type="text" id="smtp2goSenderEmail" placeholder="varun.machhi@dncc.in" /></div>
+          <div class="field"><label>IT request notification email</label><input type="text" id="itRequestEmail" placeholder="it@dncc.in — receives new device requests" /></div>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <button class="btn btn-primary" id="saveSmtpBtn">Save SMTP2GO settings</button>
@@ -438,6 +474,25 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" id="assignPickerCancel">Cancel</button>
     </div>
+  </div>
+</div>
+
+
+<div id="fulfillOverlay">
+  <div id="fulfillBox">
+    <h3>Assign device for request</h3>
+    <p id="fulfillSummary"></p>
+    <div class="device-source-grid">
+      <div class="device-source-card"><h4>Spare / stock phones</h4><div id="fulfillSpareList" class="candidate-list"></div></div>
+      <div class="device-source-card"><h4>Reassign currently-used phone</h4><div id="fulfillReassignList" class="candidate-list"></div><p class="fulfill-note">Choosing this will move the selected phone away from its current assignee. Historical submissions are kept unchanged.</p></div>
+    </div>
+    <div class="sim-box">
+      <div class="field"><label>SIM handling</label><select id="fulfillSimPlan" style="width:100%;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:#fff;"><option value="Carry existing SIM(s)">Carry existing SIM(s) from replaced phone</option><option value="Assign new SIM(s)">Assign new SIM(s)</option><option value="No SIM assigned">No SIM assigned</option></select></div>
+      <div class="grid" id="fulfillSimInputs"><div class="field"><label>SIM 1</label><input type="text" id="fulfillSim1" placeholder="10 digits" /></div><div class="field"><label>SIM 2</label><input type="text" id="fulfillSim2" placeholder="Optional" /></div></div>
+      <div class="field"><label>Employee must complete handover form within</label><select id="fulfillExpiry" style="width:100%;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:#fff;"><option value="24">24 hours</option><option value="48">48 hours</option><option value="72" selected>72 hours</option><option value="168">7 days</option></select></div>
+      <div class="field" style="margin-bottom:0;"><label>Assignment note (optional)</label><textarea id="fulfillNote" placeholder="Anything employee should know about this device or collection."></textarea></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-secondary" id="fulfillCancel">Cancel</button><button class="btn btn-primary" id="fulfillConfirm">Assign & email handover form</button></div>
   </div>
 </div>
 
@@ -539,6 +594,7 @@
         });
       }
       if(btn.dataset.tab === 'activitylog'){ loadActivityLog(); }
+      if(btn.dataset.tab === 'devicerequests'){ loadDeviceRequests(); }
       if(btn.dataset.tab === 'reports'){ populateReportLocationFilter(); renderReports(); }
     });
   });
@@ -552,7 +608,10 @@
       if(f.type==='textarea'){
         return '<div class="field"><label>'+esc(f.label)+'</label><textarea id="mf_'+f.id+'">'+esc(val)+'</textarea></div>';
       }
-      return '<div class="field"><label>'+esc(f.label)+'</label><input type="text" id="mf_'+f.id+'" value="'+esc(val)+'" /></div>';
+      if(f.type==='select'){
+        return '<div class="field"><label>'+esc(f.label)+'</label><select id="mf_'+f.id+'" style="width:100%;padding:8px 10px;border:1px solid var(--line-strong);border-radius:6px;background:#fff;">'+(f.options||[]).map(function(o){var ov=typeof o==='string'?o:o.value,ol=typeof o==='string'?o:o.label;return '<option value="'+esc(ov)+'" '+(String(ov)===val?'selected':'')+'>'+esc(ol)+'</option>';}).join('')+'</select></div>';
+      }
+      return '<div class="field"><label>'+esc(f.label)+'</label><input type="'+esc(f.type||'text')+'" id="mf_'+f.id+'" value="'+esc(val)+'" /></div>';
     }).join('');
     document.getElementById('modalOverlay').classList.add('open');
     document.getElementById('modalSave').onclick = function(){
@@ -574,7 +633,7 @@
     document.getElementById('lightboxImg').src = '';
   });
 
-  var currentSubs = [], currentDevices = [];
+  var currentSubs = [], currentDevices = [], currentDeviceRequests = [];
 
   // Filter/sort/selection state
   var subsFilter = { search:'', location:'', damage:'' };
@@ -582,7 +641,9 @@
   var selectedSubIds = new Set();
   var invFilter = { search:'', status:'' };
   var invSort = { field:'last_updated', dir:'desc' };
-  var PAGE_SIZE = 10, subsPage = 1, invPage = 1, reportPage = 1;
+  var PAGE_SIZE = 10, subsPage = 1, invPage = 1, requestPage = 1, reportPage = 1;
+  var deviceRequestFilter = { search:'', type:'', status:'' };
+  var activeFulfillRequest = null;
   var reportState = { type:'mobile_devices', location:'', status:'', search:'', from:'', to:'' };
   var currentReportRows = [];
 
@@ -627,7 +688,7 @@
   document.getElementById('refreshLogBtn').addEventListener('click', loadActivityLog);
 
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadActivityLog()]); renderInventory(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadActivityLog()]); renderInventory(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -669,7 +730,8 @@
       ['Retired', retired, 'inventory', 'Retired', null],
       ['Reported damaged', damaged, 'submissions', null, 'Yes'],
       ['Handover emails sent', emailed, 'submissions', null, ''],
-      ['Pending change requests', pendingReqs, 'changereqs', null, null]
+      ['Pending change requests', pendingReqs, 'changereqs', null, null],
+      ['Device requests pending', currentDeviceRequests.filter(function(r){ return r.status==='Pending Review' || r.status==='Approved - Preparing Device' || r.status==='Awaiting Availability' || r.status==='Device Assigned - Form Pending'; }).length, 'devicerequests', null, null]
     ];
     document.getElementById('statsRow').innerHTML = cards.map(function(c){
       return '<div class="stat-card" data-jump-tab="'+c[2]+'" data-jump-inv="'+(c[3]===null?'':c[3])+'" data-jump-damage="'+(c[4]===null?'':c[4])+'"><div class="num">'+c[1]+'</div><div class="label">'+c[0]+'</div></div>';
@@ -915,6 +977,7 @@
         + '<td style="white-space:nowrap;">'
         +   '<button class="btn-small email" data-action="email" data-id="'+r.id+'">Email</button>'
         +   '<button class="btn-small edit" data-action="edit" data-id="'+r.id+'">Edit</button>'
+        +   '<button class="btn-small edit-link-btn" data-action="allowedit" data-id="'+r.id+'" title="Send a time-limited employee edit link">Allow edit</button>'
         +   '<button class="btn-small assign" data-action="print" data-id="'+r.id+'" title="Open a printable PDF">Print</button>'
         +   '<button class="btn-small delete" data-action="delete" data-id="'+r.id+'">Delete</button>'
         + '</td>'
@@ -1142,6 +1205,24 @@
           await logActivity('Edited submission', 'submission', id, 'Updated details for ' + (row.employee_name||r.employee_name||'employee'));
           closeModal(); await loadSubmissions(); renderStats(); loadActivityLog();
         }catch(err){ console.error(err); alert('Could not save changes: ' + (err.message||err)); }
+      });
+    } else if(action === 'allowedit'){
+      var defaultEmail=[r.company_email,r.personal_email].filter(isRealEmail)[0]||'';
+      openModal('Allow employee to edit — '+(r.employee_name||''),[
+        {id:'email',label:'Send edit link to',value:defaultEmail,type:'email'},
+        {id:'duration',label:'Link valid for',value:'2',type:'select',options:[{value:'0.5',label:'30 minutes'},{value:'2',label:'2 hours'},{value:'24',label:'24 hours'}]},
+        {id:'note',label:'Reason / note to employee',value:'IT has enabled temporary access so you can correct your submitted mobile details.',type:'textarea'}
+      ],async function(values){
+        if(!isRealEmail(values.email)){alert('Enter a valid employee email.');return;}
+        try{
+          var token=crypto.randomUUID(), hours=parseFloat(values.duration)||2, expires=new Date(Date.now()+hours*3600000).toISOString();
+          var ins=await sb.from('form_access_tokens').insert([{token:token,submission_id:r.id,expires_at:expires,active:true,created_by:loggedInAdminUsername||'admin'}]).select();if(ins.error)throw ins.error;
+          var link=location.origin+location.pathname.replace(/admin\.html.*$/,'index.html')+'?edit_token='+encodeURIComponent(token);
+          var html='<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>'+esc(values.note||'IT has enabled temporary edit access.')+'</p><p><b>This link expires:</b> '+new Date(expires).toLocaleString()+'</p><p><a href="'+link+'">Open and edit my mobile audit form</a></p><p>After you submit, the link becomes invalid automatically.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';
+          var sent=await sendSimpleEmail(values.email,'Temporary mobile audit edit access — '+window.DNCC_CONFIG.COMPANY_NAME,html);
+          try{await navigator.clipboard.writeText(link);}catch(e){}
+          await logActivity('Issued temporary employee edit link','submission',r.id,'Valid until '+expires+'; sent to '+values.email);closeModal();alert((sent?'Edit link emailed.':'Link created, but email could not be sent.')+'\n\nThe link was also copied to your clipboard:\n'+link);
+        }catch(err){console.error(err);alert('Could not create edit access: '+(err.message||err));}
       });
     } else if(action === 'delete'){
       if(!confirm('Delete this submission permanently? This cannot be undone.')) return;
@@ -1467,6 +1548,8 @@
     return devices.filter(function(d){ return !spareRetiredOnly || d.status==='Spare' || d.status==='Retired'; }).map(function(d){
       var sub=submissionForDevice(d), loc=sub ? (sub.location||'') : '';
       return {'Device':[(d.brand||''),(d.model||'')].join(' ').trim(),'RAM':d.ram||'','Storage':d.storage||'','IMEI 1':d.imei1||'','IMEI 2':d.imei2||'',
+        'Condition':d.condition||'','SIM slots':d.sim_slots||'','SIM number(s)':Array.isArray(d.sim_numbers)?d.sim_numbers.join(', '):'',
+        'SIM assignment':d.sim_assignment_mode||'','Stock source':d.stock_source||'','Charger':d.charger_available||'','USB/Data cable':d.cable_available||'',
         'Status':d.status||'','Assigned to':d.assigned_to||'','Employee ID':d.assigned_employee_id||'','Employee email':resolveDeviceEmployeeEmail(d)||'',
         'Location':loc,'Notes':d.notes||'','Last updated':reportDateValue(d.last_updated),
         '__date':d.last_updated||d.created_at||'','__location':loc,'__status':d.status||''};
@@ -1752,6 +1835,9 @@
         + '<td>'+esc(d.ram)+' / '+esc(d.storage)+'</td>'
         + '<td>'+esc(d.imei1)+'</td>'
         + '<td>'+esc(d.imei2)+'</td>'
+        + '<td>'+esc(d.condition||'—')+'</td>'
+        + '<td>'+esc(((d.sim_numbers||[]).join(', '))||'—')+'</td>'
+        + '<td>'+esc(d.stock_source||'—')+'</td>'
         + '<td><span class="badge-status '+esc(d.status)+'">'+esc(d.status)+'</span></td>'
         + '<td>'+esc(d.assigned_to)+(d.assigned_employee_id?(' ('+esc(d.assigned_employee_id)+')'):'')+'</td>'
         + '<td>'+esc(employeeEmail)+'</td>'
@@ -1766,7 +1852,7 @@
       + '<div class="table-scroll-shell">'
       + '<div class="table-top-scroll" aria-label="Horizontal table scrollbar"><div class="table-top-scroll-inner"></div></div>'
       + '<div class="table-wrap"><table class="inventory-wide"><thead><tr>'
-      + '<th data-sort="brand">Device'+invSortArrow('brand')+'</th><th>RAM/Storage</th><th>IMEI 1</th><th>IMEI 2</th>'
+      + '<th data-sort="brand">Device'+invSortArrow('brand')+'</th><th>RAM/Storage</th><th>IMEI 1</th><th>IMEI 2</th><th>Condition</th><th>SIM(s)</th><th>Source</th>'
       + '<th data-sort="status">Status'+invSortArrow('status')+'</th>'
       + '<th data-sort="assigned_to">Assigned to'+invSortArrow('assigned_to')+'</th>'
       + '<th>Employee email</th><th>Notes</th>'
@@ -1827,26 +1913,48 @@
         if(!confirm('Permanently delete this device from inventory? This cannot be undone.')) return;
         await sb.from('devices').delete().eq('imei1', imei1);
       } else if(action === 'edit'){
+        var editSims = Array.isArray(d.sim_numbers) ? d.sim_numbers : [];
         openModal('Edit device', [
+          { section:'Device identity' },
           { id:'brand', label:'Brand', value:d.brand }, { id:'model', label:'Model', value:d.model },
           { id:'ram', label:'RAM', value:d.ram }, { id:'storage', label:'Storage', value:d.storage },
           { id:'imei1', label:'IMEI 1', value:d.imei1 }, { id:'imei2', label:'IMEI 2', value:d.imei2 },
+          { id:'condition', label:'Condition', value:d.condition||'Good', type:'select', options:['New','Good','Fair','Needs repair'] },
+          { id:'stock_source', label:'Stock source', value:d.stock_source||'', type:'select', options:['','New purchase','Existing stock','Employee return','Transferred from another branch','Other'] },
+          { section:'SIM & accessories' },
+          { id:'sim_slots', label:'SIM slots', value:d.sim_slots||2, type:'select', options:['1','2'] },
+          { id:'sim1', label:'SIM 1 number', value:editSims[0]||'' },
+          { id:'sim2', label:'SIM 2 number', value:editSims[1]||'' },
+          { id:'sim_assignment_mode', label:'SIM assignment note', value:d.sim_assignment_mode||'' },
+          { id:'charger_available', label:'Charger available', value:d.charger_available||'', type:'select', options:['','Yes','No'] },
+          { id:'cable_available', label:'USB/Data cable available', value:d.cable_available||'', type:'select', options:['','Yes','No'] },
+          { section:'Current assignment' },
           { id:'assigned_to', label:'Assigned employee name', value:d.assigned_to },
           { id:'assigned_employee_id', label:'Assigned employee ID', value:d.assigned_employee_id },
           { id:'assigned_employee_email', label:'Assigned employee email', value:resolveDeviceEmployeeEmail(d) },
           { id:'notes', label:'Notes', value:d.notes, type:'textarea' }
         ], async function(values){
           try{
+            if(values.imei1 && !/^\d{15}$/.test(values.imei1)){ alert('IMEI 1 must be exactly 15 digits.'); return; }
+            if(values.imei2 && !/^\d{15}$/.test(values.imei2)){ alert('IMEI 2 must be exactly 15 digits or blank.'); return; }
+            if(values.sim1 && !/^\d{10}$/.test(values.sim1)){ alert('SIM 1 must be 10 digits or blank.'); return; }
+            if(values.sim2 && !/^\d{10}$/.test(values.sim2)){ alert('SIM 2 must be 10 digits or blank.'); return; }
+            var editedSims=[values.sim1,values.sim2].filter(Boolean);
             var detailsChanged = values.brand !== (d.brand||'') || values.model !== (d.model||'')
               || values.ram !== (d.ram||'') || values.storage !== (d.storage||'')
-              || values.imei1 !== (d.imei1||'') || values.imei2 !== (d.imei2||'');
+              || values.imei1 !== (d.imei1||'') || values.imei2 !== (d.imei2||'')
+              || values.condition !== (d.condition||'Good');
 
-            await sb.from('devices').update({
+            var deviceUpdate = await sb.from('devices').update({
               brand:values.brand, model:values.model, ram:values.ram, storage:values.storage,
-              imei1:values.imei1, imei2:values.imei2,
+              imei1:values.imei1, imei2:values.imei2, condition:values.condition,
+              stock_source:values.stock_source||null, sim_slots:parseInt(values.sim_slots,10)||2,
+              sim_numbers:editedSims, sim_assignment_mode:values.sim_assignment_mode||null,
+              charger_available:values.charger_available||null, cable_available:values.cable_available||null,
               assigned_to:values.assigned_to, assigned_employee_id:values.assigned_employee_id,
               assigned_employee_email:values.assigned_employee_email, notes:values.notes, last_updated:new Date().toISOString()
             }).eq('imei1', imei1);
+            if(deviceUpdate.error) throw deviceUpdate.error;
             await logActivity('Edited device', 'device', values.imei1, 'Updated details for ' + (values.brand||'')+' '+(values.model||'') + (detailsChanged ? ' (device details changed)' : ''));
 
             closeModal(); await loadInventory(); renderStats(); loadActivityLog();
@@ -1998,19 +2106,14 @@
   }
 
   document.getElementById('addDeviceBtn').addEventListener('click', async function(){
-    var brand = document.getElementById('newBrand').value.trim();
-    var model = document.getElementById('newModel').value.trim();
-    var ram = document.getElementById('newRam').value.trim();
-    var storage = document.getElementById('newStorage').value.trim();
-    var imei1 = document.getElementById('newImei1').value.trim();
-    var imei2 = document.getElementById('newImei2').value.trim();
-    if(!brand || !model || !imei1){ alert('Brand, model and IMEI 1 are required.'); return; }
+    var brand=document.getElementById('newBrand').value.trim(),model=document.getElementById('newModel').value.trim(),ram=document.getElementById('newRam').value.trim(),storage=document.getElementById('newStorage').value.trim(),imei1=document.getElementById('newImei1').value.trim(),imei2=document.getElementById('newImei2').value.trim();
+    var condition=document.getElementById('newCondition').value,simSlots=parseInt(document.getElementById('newSimSlots').value,10)||2,sim1=document.getElementById('newSim1').value.trim(),sim2=document.getElementById('newSim2').value.trim(),stockSource=document.getElementById('newStockSource').value,charger=document.getElementById('newCharger').value,cable=document.getElementById('newCable').value,notes=document.getElementById('newDeviceNotes').value.trim();
+    if(!brand||!model||!/^\d{15}$/.test(imei1)){alert('Brand, model and a valid 15-digit IMEI 1 are required.');return;}if(imei2&&!/^\d{15}$/.test(imei2)){alert('IMEI 2 must be 15 digits or blank.');return;}if(sim1&&!/^\d{10}$/.test(sim1)){alert('SIM 1 must be 10 digits or blank.');return;}if(sim2&&!/^\d{10}$/.test(sim2)){alert('SIM 2 must be 10 digits or blank.');return;}
     try{
-      await sb.from('devices').upsert([{ brand:brand, model:model, ram:ram, storage:storage, imei1:imei1, imei2:imei2, status:'Spare', assigned_to:null, assigned_employee_id:null, last_updated:new Date().toISOString() }], { onConflict:'imei1' });
-      await sb.from('device_history').insert([{ imei1:imei1, action:'Added to inventory', employee_name:'', notes:'Added as spare via admin panel' }]);
-      ['newBrand','newModel','newRam','newStorage','newImei1','newImei2'].forEach(function(id){ document.getElementById(id).value=''; });
-      await loadInventory(); renderStats();
-    }catch(err){ console.error(err); alert('Could not add device: ' + (err.message||err)); }
+      var payload={brand:brand,model:model,ram:ram,storage:storage,imei1:imei1,imei2:imei2,status:'Spare',assigned_to:null,assigned_employee_id:null,assigned_employee_email:null,condition:condition,sim_slots:simSlots,sim_numbers:[sim1,sim2].filter(Boolean),sim_assignment_mode:(sim1||sim2)?'Pre-installed stock SIM':'No SIM assigned',stock_source:stockSource,charger_available:charger,cable_available:cable,notes:notes,last_updated:new Date().toISOString()};
+      var res=await sb.from('devices').upsert([payload],{onConflict:'imei1'});if(res.error)throw res.error;await sb.from('device_history').insert([{imei1:imei1,action:'Added to inventory',employee_name:'',notes:'Added as spare via admin panel · '+condition+' · '+stockSource}]);
+      ['newBrand','newModel','newRam','newStorage','newImei1','newImei2','newSim1','newSim2','newDeviceNotes'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('newCondition').value='Good';document.getElementById('newSimSlots').value='2';document.getElementById('newStockSource').value='New purchase';document.getElementById('newCharger').value='Unknown';document.getElementById('newCable').value='Unknown';await loadInventory();renderStats();
+    }catch(err){console.error(err);alert('Could not add device: '+(err.message||err));}
   });
   document.getElementById('refreshInvBtn').addEventListener('click', async function(){ await loadInventory(); renderStats(); });
 
@@ -2110,12 +2213,48 @@
     }
   }
 
+
+  // ---------- Device Requests ----------
+  function requestStatusClass(status){if(status==='Pending Review')return'pending';if(status==='Approved - Preparing Device')return'approved';if(status==='Awaiting Availability')return'waiting';if(status==='Rejected')return'rejected';if(status==='Device Assigned - Form Pending')return'assigned';if(status==='Completed')return'completed';return'pending';}
+  function requestNumber(r){return r.request_no||String(r.id||'').slice(0,8).toUpperCase();}
+  function requestEmployeeEmail(r){return [r.company_email,r.personal_email,r.requester_email].filter(isRealEmail)[0]||r.requester_email||'';}
+  function sendSimpleEmail(to,subject,html){return fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:to,subject:subject,html:html})}).then(function(res){return res.json().then(function(j){if(!res.ok||!j.ok)throw new Error(j.error||'Send failed');return true;});}).catch(function(err){console.error(err);return false;});}
+
+  async function loadDeviceRequests(){
+    var area=document.getElementById('deviceRequestsArea');
+    try{var res=await sb.from('device_requests').select('*').order('created_at',{ascending:false});if(res.error)throw res.error;currentDeviceRequests=res.data||[];renderDeviceRequests();renderStats();var open=currentDeviceRequests.filter(function(r){return r.status!=='Rejected'&&r.status!=='Completed';}).length;document.getElementById('requestBadge').textContent=open?String(open):'';}catch(err){console.error(err);area.innerHTML='<p class="empty-state">Could not load device requests. Run the Device Request SQL migration first.</p>';}
+  }
+  function filteredDeviceRequests(){var q=(deviceRequestFilter.search||'').toLowerCase().trim();return currentDeviceRequests.filter(function(r){if(deviceRequestFilter.type&&r.request_type!==deviceRequestFilter.type)return false;if(deviceRequestFilter.status&&r.status!==deviceRequestFilter.status)return false;if(q){var hay=[r.request_no,r.employee_name,r.employee_id,r.requester_email,r.location,r.request_type,r.status,r.request_reason,r.replace_imei1,JSON.stringify(r.fulfillment_device_snapshot||{})].join(' ').toLowerCase();if(hay.indexOf(q)<0)return false;}return true;});}
+  function renderDeviceRequests(){
+    var area=document.getElementById('deviceRequestsArea'),list=filteredDeviceRequests();if(!list.length){area.innerHTML='<p class="empty-state">No device requests match the current filters.</p>';return;}var pages=Math.max(1,Math.ceil(list.length/PAGE_SIZE));requestPage=Math.min(Math.max(1,requestPage),pages);var start=(requestPage-1)*PAGE_SIZE,page=list.slice(start,start+PAGE_SIZE);
+    var rows=page.map(function(r){var replace=r.replace_device||{},issued=r.fulfillment_device_snapshot||{},actions='';if(r.status==='Pending Review'){actions+='<button class="btn-small assign" data-ra="approve" data-id="'+r.id+'">Approve</button><button class="btn-small spare" data-ra="waiting" data-id="'+r.id+'">Awaiting Availability</button><button class="btn-small retire" data-ra="reject" data-id="'+r.id+'">Reject</button>';}if(r.status==='Approved - Preparing Device'||r.status==='Awaiting Availability'){actions+='<button class="btn-small assign" data-ra="fulfill" data-id="'+r.id+'">Assign device</button>';}if(r.status==='Device Assigned - Form Pending'){actions+='<button class="btn-small email" data-ra="resendform" data-id="'+r.id+'">Resend form link</button>';}actions+='<button class="btn-small edit" data-ra="view" data-id="'+r.id+'">Details</button>';return '<tr><td>#'+esc(requestNumber(r))+'<br/><span style="color:var(--text-soft);font-size:10.5px">'+esc(new Date(r.created_at).toLocaleString())+'</span></td><td><b>'+esc(r.request_type)+'</b><br/><span style="font-size:11px;color:var(--text-soft)">'+esc(r.employee_kind)+'</span></td><td>'+esc(r.employee_name)+'<br/><span style="font-size:11px;color:var(--text-soft)">'+esc(r.employee_id||'')+'</span></td><td>'+esc(r.requester_email)+'<br/><span style="font-size:11px;color:var(--text-soft)">'+esc(r.location||'')+'</span></td><td>'+(r.request_type==='Replace'?(esc((replace.brand||'')+' '+(replace.model||''))+'<br/><span style="font-size:11px">'+esc(r.replace_imei1||'')+'</span>'):'—')+'</td><td class="request-reason">'+esc(r.request_reason)+(r.intended_use?'<div class="request-detail-card"><strong>Use:</strong> '+esc(r.intended_use)+'</div>':'')+'</td><td><span class="request-status '+requestStatusClass(r.status)+'">'+esc(r.status)+'</span>'+(r.expected_timeline?'<div style="font-size:11px;margin-top:4px">'+esc(r.expected_timeline)+'</div>':'')+'</td><td>'+((issued.imei1)?(esc((issued.brand||'')+' '+(issued.model||''))+'<br/><span style="font-size:11px">'+esc(issued.imei1)+'</span>'):'—')+'</td><td style="white-space:nowrap">'+actions+'</td></tr>';}).join('');
+    area.innerHTML=paginationHTML('devreq',requestPage,pages,start+1,start+page.length,list.length)+'<div class="table-scroll-shell"><div class="table-top-scroll"><div class="table-top-scroll-inner"></div></div><div class="table-wrap"><table class="request-table"><thead><tr><th>Request</th><th>Type</th><th>Employee</th><th>Email / Location</th><th>Replace phone</th><th>Reason</th><th>Status</th><th>Issued device</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';bindPagination(area,'devreq',function(pg){requestPage=pg;renderDeviceRequests();area.scrollIntoView({behavior:'smooth',block:'start'});});wireTableScrollSync(area);area.querySelectorAll('button[data-ra]').forEach(function(b){b.addEventListener('click',function(){handleDeviceRequestAction(b.dataset.ra,b.dataset.id);});});
+  }
+  document.getElementById('deviceRequestSearch').addEventListener('input',debounce(function(){deviceRequestFilter.search=this.value;requestPage=1;renderDeviceRequests();},250));document.getElementById('deviceRequestType').addEventListener('change',function(){deviceRequestFilter.type=this.value;requestPage=1;renderDeviceRequests();});document.getElementById('deviceRequestStatus').addEventListener('change',function(){deviceRequestFilter.status=this.value;requestPage=1;renderDeviceRequests();});document.getElementById('clearDeviceRequestFilters').addEventListener('click',function(){deviceRequestFilter={search:'',type:'',status:''};document.getElementById('deviceRequestSearch').value='';document.getElementById('deviceRequestType').value='';document.getElementById('deviceRequestStatus').value='';requestPage=1;renderDeviceRequests();});document.getElementById('refreshDeviceRequestsBtn').addEventListener('click',loadDeviceRequests);
+
+  async function setRequestDecision(r,status,title){
+    openModal(title+' — Request #'+requestNumber(r),[
+      {id:'timeline',label:status==='Rejected'?'Expected timeline (not required)':'Expected timeline / ready-by message',value:r.expected_timeline||'',type:'text'},
+      {id:'note',label:status==='Rejected'?'Reason for rejection':'Message / note to employee',value:r.admin_note||'',type:'textarea'}
+    ],async function(v){if(status==='Rejected'&&!v.note.trim()){alert('Please enter a rejection reason.');return;}try{var now=new Date().toISOString();var up=await sb.from('device_requests').update({status:status,expected_timeline:v.timeline.trim(),admin_note:v.note.trim(),decision_at:now,updated_at:now}).eq('id',r.id);if(up.error)throw up.error;var email=requestEmployeeEmail(r),subj='',lead='';if(status==='Approved - Preparing Device'){subj='Device Request #'+requestNumber(r)+' approved — '+window.DNCC_CONFIG.COMPANY_NAME;lead='Your device request has been <b>approved</b> and IT is preparing a suitable device.';}else if(status==='Awaiting Availability'){subj='Device Request #'+requestNumber(r)+' — awaiting device availability';lead='Your request has been reviewed and is currently <b>Awaiting Availability</b>. This means IT accepts the requirement, but a suitable device is not ready to issue yet.';}else{subj='Device Request #'+requestNumber(r)+' update — '+window.DNCC_CONFIG.COMPANY_NAME;lead='After review, your device request has been <b>rejected</b>.';}var html='<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>'+lead+'</p>'+(v.timeline?'<p><b>Expected timeline:</b> '+esc(v.timeline)+'</p>':'')+(v.note?'<p><b>IT note:</b> '+esc(v.note)+'</p>':'')+'<p>Request #'+esc(requestNumber(r))+'</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';var sent=await sendSimpleEmail(email,subj,html);await logActivity('Device request status: '+status,'device_request',r.id,'Request #'+requestNumber(r)+' · '+(v.note||''));closeModal();await loadDeviceRequests();alert(sent?'Status saved and employee emailed.':'Status saved, but employee email could not be sent.');}catch(err){console.error(err);alert('Could not update request: '+(err.message||err));}});
+  }
+  async function handleDeviceRequestAction(action,id){var r=currentDeviceRequests.find(function(x){return String(x.id)===String(id);});if(!r)return;if(action==='approve')return setRequestDecision(r,'Approved - Preparing Device','Approve device request');if(action==='waiting')return setRequestDecision(r,'Awaiting Availability','Set Awaiting Availability');if(action==='reject')return setRequestDecision(r,'Rejected','Reject device request');if(action==='fulfill')return openFulfillRequest(r);if(action==='resendform')return resendRequestFormLink(r);if(action==='view'){var cd=(r.current_devices||[]).map(function(d){return (d.brand||'')+' '+(d.model||'')+' / '+(d.imei1||'');}).join('\n')||'None';var fd=r.fulfillment_device_snapshot||{};openModal('Request #'+requestNumber(r),[{id:'employee',label:'Employee',value:(r.employee_name||'')+' ('+(r.employee_id||'')+')'},{id:'email',label:'Email',value:r.requester_email},{id:'type',label:'Type / status',value:r.request_type+' / '+r.status},{id:'current',label:'Current devices',value:cd,type:'textarea'},{id:'reason',label:'Reason',value:r.request_reason,type:'textarea'},{id:'admin',label:'IT note',value:r.admin_note||'',type:'textarea'},{id:'issued',label:'Issued device',value:fd.imei1?((fd.brand||'')+' '+(fd.model||'')+' / '+fd.imei1):'Not assigned'}],function(){closeModal();});}}
+
+  function candidateHtml(d,source){var email=resolveDeviceEmployeeEmail(d)||'';return '<div class="candidate-item"><label><input type="radio" name="fulfillDevice" value="'+esc(d.imei1)+'" data-source="'+source+'"><span><span class="name">'+esc((d.brand||'')+' '+(d.model||''))+'</span><span class="meta">'+esc(d.ram||'—')+' / '+esc(d.storage||'—')+' · IMEI '+esc(d.imei1)+' · '+esc(d.condition||'—')+(source==='Reassign'?'<br/>Current assignee: '+esc(d.assigned_to||'—')+(email?' · '+esc(email):''):'')+'<br/>SIM(s): '+esc(((d.sim_numbers||[]).join(', '))||'None recorded')+'</span></span></label></div>';}
+  function oldRequestSims(r){var rd=r.replace_device||{},s=rd.sim_numbers||[];if(s.length)return s;var imei=r.replace_imei1;if(!imei)return[];for(var i=0;i<currentSubs.length;i++){var ds=[currentSubs[i].device1,currentSubs[i].device2];for(var j=0;j<ds.length;j++){var d=ds[j];if(d&&d.imei1===imei)return d.simNumbers||[];}}return[];}
+  function syncFulfillSims(){var plan=document.getElementById('fulfillSimPlan').value,old=activeFulfillRequest?oldRequestSims(activeFulfillRequest):[];document.getElementById('fulfillSimInputs').style.display=plan==='No SIM assigned'?'none':'grid';if(plan==='Carry existing SIM(s)'){document.getElementById('fulfillSim1').value=old[0]||'';document.getElementById('fulfillSim2').value=old[1]||'';}else if(plan==='No SIM assigned'){document.getElementById('fulfillSim1').value='';document.getElementById('fulfillSim2').value='';}}
+  document.getElementById('fulfillSimPlan').addEventListener('change',syncFulfillSims);document.getElementById('fulfillCancel').addEventListener('click',function(){document.getElementById('fulfillOverlay').classList.remove('open');activeFulfillRequest=null;});
+  async function openFulfillRequest(r){activeFulfillRequest=r;await loadInventory();var spare=currentDevices.filter(function(d){return d.status==='Spare';}),reassign=currentDevices.filter(function(d){return d.status==='Assigned'&&!(r.employee_id&&d.assigned_employee_id===r.employee_id)&&d.imei1!==r.replace_imei1;});document.getElementById('fulfillSummary').innerHTML='<b>Request #'+esc(requestNumber(r))+'</b> · '+esc(r.employee_name||'')+' · '+esc(r.request_type)+(r.replace_imei1?' · replacing IMEI '+esc(r.replace_imei1):'');document.getElementById('fulfillSpareList').innerHTML=spare.length?spare.map(function(d){return candidateHtml(d,'Spare');}).join(''):'<p class="empty-state">No spare phones available.</p>';document.getElementById('fulfillReassignList').innerHTML=reassign.length?reassign.map(function(d){return candidateHtml(d,'Reassign');}).join(''):'<p class="empty-state">No other assigned phones available.</p>';var first=document.querySelector('#fulfillOverlay input[name="fulfillDevice"]');if(first)first.checked=true;document.getElementById('fulfillSimPlan').value=r.request_type==='Replace'?'Carry existing SIM(s)':'Assign new SIM(s)';document.getElementById('fulfillSim1').value='';document.getElementById('fulfillSim2').value='';document.getElementById('fulfillExpiry').value='72';document.getElementById('fulfillNote').value='';syncFulfillSims();document.getElementById('fulfillOverlay').classList.add('open');}
+  document.getElementById('fulfillConfirm').addEventListener('click',async function(){var r=activeFulfillRequest;if(!r)return;var radio=document.querySelector('#fulfillOverlay input[name="fulfillDevice"]:checked');if(!radio){alert('Select a device to issue.');return;}var d=currentDevices.find(function(x){return x.imei1===radio.value;});if(!d)return;var source=radio.dataset.source,plan=document.getElementById('fulfillSimPlan').value,s1=document.getElementById('fulfillSim1').value.trim(),s2=document.getElementById('fulfillSim2').value.trim();if(source==='Reassign'&&d.assigned_to&&!confirm('This phone is currently assigned to '+d.assigned_to+'. Continue and move it to '+(r.employee_name||'the requester')+'?'))return;if(plan!=='No SIM assigned'){if(s1&&!/^\d{10}$/.test(s1)){alert('SIM 1 must be 10 digits or blank.');return;}if(s2&&!/^\d{10}$/.test(s2)){alert('SIM 2 must be 10 digits or blank.');return;}}var sims=plan==='No SIM assigned'?[]:[s1,s2].filter(Boolean);var btn=this;btn.disabled=true;btn.textContent='Assigning…';try{var prev=source==='Reassign'?{employee_name:d.assigned_to,employee_id:d.assigned_employee_id,email:resolveDeviceEmployeeEmail(d),imei1:d.imei1}:null;var email=requestEmployeeEmail(r),now=new Date().toISOString();var upd=await sb.from('devices').update({status:'Assigned',assigned_to:r.employee_name,assigned_employee_id:r.employee_id,assigned_employee_email:email,sim_numbers:sims,sim_assignment_mode:plan,last_updated:now}).eq('imei1',d.imei1);if(upd.error)throw upd.error;if(r.request_type==='Replace'&&r.replace_imei1&&r.replace_imei1!==d.imei1){await sb.from('devices').update({status:'Spare',assigned_to:null,assigned_employee_id:null,assigned_employee_email:null,sim_numbers:[],sim_assignment_mode:'SIM removed during replacement',last_updated:now}).eq('imei1',r.replace_imei1);await sb.from('device_history').insert([{imei1:r.replace_imei1,action:'Returned during replacement',employee_name:r.employee_name,notes:'Request #'+requestNumber(r)}]);}await sb.from('device_history').insert([{imei1:d.imei1,action:source==='Reassign'?'Reassigned via device request':'Assigned from spare via device request',employee_name:r.employee_name,notes:'Request #'+requestNumber(r)+(prev&&prev.employee_name?' · previous assignee '+prev.employee_name:'')}]);var token=crypto.randomUUID(),hours=parseInt(document.getElementById('fulfillExpiry').value,10)||72,expires=new Date(Date.now()+hours*3600000).toISOString(),snapshot=Object.assign({},d,{status:'Assigned',assigned_to:r.employee_name,assigned_employee_id:r.employee_id,assigned_employee_email:email,sim_numbers:sims,sim_assignment_mode:plan});var note=document.getElementById('fulfillNote').value.trim();var ur=await sb.from('device_requests').update({status:'Device Assigned - Form Pending',fulfillment_source:source,fulfillment_device_id:d.id,fulfillment_device_snapshot:snapshot,previous_assignee:prev,sim_plan:plan,fulfillment_sim_numbers:sims,assigned_at:now,form_token:token,form_token_expires_at:expires,admin_note:note||r.admin_note,updated_at:now}).eq('id',r.id);if(ur.error)throw ur.error;var link=location.origin+location.pathname.replace(/admin\.html.*$/,'index.html')+'?request_id='+encodeURIComponent(r.id)+'&token='+encodeURIComponent(token);var html='<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>IT has assigned a device for your Request #'+esc(requestNumber(r))+'.</p><p><b>Device:</b> '+esc((d.brand||'')+' '+(d.model||''))+'<br/><b>IMEI:</b> '+esc(d.imei1)+'<br/><b>SIM handling:</b> '+esc(plan)+(sims.length?'<br/><b>SIM(s):</b> '+esc(sims.join(', ')):'')+'</p>'+(note?'<p><b>IT note:</b> '+esc(note)+'</p>':'')+'<p><b>Compulsory next step:</b> open the link below, verify the prefilled device details, take front/back photos and submit the handover form.</p><p><a href="'+link+'">Complete my device handover form</a></p><p>This link expires on '+esc(new Date(expires).toLocaleString())+'. The request will remain open until the form is submitted.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';var sent=await sendSimpleEmail(email,'Device assigned — complete handover form (Request #'+requestNumber(r)+')',html);await logActivity('Assigned device for request','device_request',r.id,(d.brand||'')+' '+(d.model||'')+' / '+d.imei1+' · '+source+' · '+plan);document.getElementById('fulfillOverlay').classList.remove('open');activeFulfillRequest=null;await Promise.all([loadInventory(),loadDeviceRequests()]);renderStats();alert(sent?'Device assigned and compulsory handover link emailed to employee.':'Device assigned, but email failed. Open request details and resend the form link.');}catch(err){console.error(err);alert('Could not assign device: '+(err.message||err));}finally{btn.disabled=false;btn.textContent='Assign & email handover form';}});
+  async function resendRequestFormLink(r){if(!r.form_token||!r.form_token_expires_at){alert('No active handover link exists. Assign the device first.');return;}if(new Date(r.form_token_expires_at)<=new Date()){if(!confirm('The old link expired. Generate a new 72-hour link?'))return;var token=crypto.randomUUID(),expires=new Date(Date.now()+72*3600000).toISOString();var up=await sb.from('device_requests').update({form_token:token,form_token_expires_at:expires,updated_at:new Date().toISOString()}).eq('id',r.id);if(up.error){alert(up.error.message);return;}r.form_token=token;r.form_token_expires_at=expires;}var link=location.origin+location.pathname.replace(/admin\.html.*$/,'index.html')+'?request_id='+encodeURIComponent(r.id)+'&token='+encodeURIComponent(r.form_token),email=requestEmployeeEmail(r),d=r.fulfillment_device_snapshot||{};var sent=await sendSimpleEmail(email,'Reminder: complete device handover form — Request #'+requestNumber(r),'<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>Your assigned '+esc((d.brand||'')+' '+(d.model||''))+' is still waiting for the compulsory handover form.</p><p><a href="'+link+'">Complete the handover form</a></p><p>Link valid until '+esc(new Date(r.form_token_expires_at).toLocaleString())+'.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>');alert(sent?'Form link resent.':'Could not send the email.');}
+
   // ---------- Settings ----------
   function populateSettingsForm(){
     if(!currentSettings) return;
     document.getElementById('smtp2goApiKey').value = currentSettings.smtp2go_api_key || '';
     document.getElementById('smtp2goSenderName').value = currentSettings.smtp2go_sender_name || 'DNCC IT Department';
-    document.getElementById('smtp2goSenderEmail').value = currentSettings.smtp2go_sender_email || '';
+    document.getElementById('smtp2goSenderEmail').value = currentSettings.smtp2go_sender_email || currentSettings.smtp_from_email || '';
+    document.getElementById('itRequestEmail').value = currentSettings.it_request_email || currentSettings.smtp2go_sender_email || currentSettings.smtp_from_email || '';
     document.getElementById('newUsername').value = currentSettings.admin_username || 'Varunit';
   }
 
@@ -2130,6 +2269,7 @@
         smtp2go_api_key: document.getElementById('smtp2goApiKey').value.trim(),
         smtp2go_sender_name: document.getElementById('smtp2goSenderName').value.trim(),
         smtp2go_sender_email: document.getElementById('smtp2goSenderEmail').value.trim(),
+        it_request_email: document.getElementById('itRequestEmail').value.trim(),
         updated_at: new Date().toISOString()
       };
       var { error } = await sb.from('settings').update(payload).eq('id',1);

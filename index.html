@@ -109,6 +109,25 @@
   }
   #correctionForm{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
 
+
+  /* ---------- Device request workflow ---------- */
+  .request-launch{margin:0 0 28px;background:linear-gradient(135deg,#fff 0%,#f4f8fa 100%);border:1px solid #cddbe3;border-radius:12px;padding:18px;box-shadow:0 10px 30px rgba(19,38,53,.045);}
+  .request-launch-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px;}
+  .request-launch h2{font-size:16px;color:var(--navy);margin:0 0 3px;}.request-launch p{margin:0;color:var(--text-soft);font-size:12.5px;}
+  .request-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .request-card-btn{background:#fff;border:1px solid var(--line-strong);text-align:left;padding:14px 15px;color:var(--navy);box-shadow:0 3px 10px rgba(19,38,53,.025);}
+  .request-card-btn:hover{border-color:var(--accent);background:var(--accent-light);box-shadow:0 8px 18px rgba(19,38,53,.07);}
+  .request-card-btn strong{display:block;font-size:14px;margin-bottom:2px}.request-card-btn span{display:block;font-size:11.5px;color:var(--text-soft);font-weight:500;line-height:1.4;}
+  #requestOverlay{display:none;position:fixed;inset:0;background:rgba(15,25,35,.55);z-index:95;align-items:center;justify-content:center;padding:18px;overflow:auto;}
+  #requestOverlay.open{display:flex}.request-box{background:#fff;border-radius:12px;max-width:720px;width:100%;max-height:92vh;overflow:auto;padding:24px;box-shadow:0 20px 60px rgba(10,20,30,.22);animation:dnccPanelIn .22s ease both;}
+  .request-box h2{margin:0;color:var(--navy);font-size:19px}.request-box .request-sub{font-size:12.5px;color:var(--text-soft);margin:4px 0 18px}.request-step{display:none}.request-step.active{display:block;animation:dnccPanelIn .18s ease both;}
+  .request-device-list{display:grid;gap:8px;margin:10px 0 14px}.request-device{border:1px solid var(--line);border-radius:8px;padding:11px 12px;background:#fafcfd;font-size:12.5px;}
+  .request-device strong{color:var(--navy)}.request-device .mini{color:var(--text-soft);font-size:11.5px;margin-top:2px}.request-device label{display:flex;gap:9px;align-items:flex-start;margin:0;cursor:pointer}.request-device input{margin-top:3px;}
+  .lookup-result{border:1px solid #bed8c9;background:var(--ok-light);border-radius:8px;padding:12px 14px;margin:12px 0}.lookup-result.warn{background:#fff8ec;border-color:#ead0aa}.lookup-result h3{font-size:13.5px;margin:0 0 5px;color:var(--navy)}.lookup-result p{font-size:12px;margin:2px 0;color:var(--text-soft)}
+  .request-choice{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:12px 0}.request-choice label{border:1px solid var(--line-strong);border-radius:8px;padding:11px;cursor:pointer;font-size:12.5px}.request-choice label:has(input:checked){border-color:var(--accent);background:var(--accent-light)}
+  .request-footer{display:flex;justify-content:flex-end;gap:9px;margin-top:18px;flex-wrap:wrap}.request-msg{display:none;margin-top:12px;padding:11px 12px;border-radius:8px;font-size:12.5px}.request-msg.ok{display:block;background:var(--ok-light);color:var(--ok);border:1px solid #b8e0cb}.request-msg.err{display:block;background:var(--danger-light);color:var(--danger);border:1px solid #ecc4c4}
+  .special-access-banner{display:none;margin:0 0 18px;border:1px solid #b9d7e7;background:#eef7fb;border-radius:10px;padding:13px 15px;color:#214e68;font-size:12.5px}.special-access-banner.show{display:block}.special-access-banner strong{display:block;color:var(--navy);font-size:13.5px;margin-bottom:3px}
+  @media(max-width:600px){.request-actions,.request-choice{grid-template-columns:1fr}.request-box{padding:18px}.request-launch-head{display:block}.request-launch-head .hint{margin-top:5px}}
   @media (prefers-reduced-motion: reduce){
     html{scroll-behavior:auto;}
     *,*::before,*::after{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important;}
@@ -151,6 +170,19 @@
   <div class="intro" data-i18n-html="intro">
     <strong>Before you start:</strong> keep your phone(s) nearby to check the IMEI (dial <span style="font-family:var(--mono)">*#06#</span>), SIM numbers, and take clear front/back photos. This takes about 5 minutes. After submitting, a handover PDF downloads automatically and a copy is emailed to the address you enter below.
   </div>
+
+  <div class="request-launch">
+    <div class="request-launch-head">
+      <div><h2>Need a company mobile?</h2><p>Send a request to IT before the device is issued. Existing employees are detected automatically from their email.</p></div>
+      <span class="hint">IT request desk</span>
+    </div>
+    <div class="request-actions">
+      <button type="button" class="request-card-btn" id="newDeviceRequestBtn"><strong>+ New Device Request</strong><span>Request an additional/new company phone for work.</span></button>
+      <button type="button" class="request-card-btn" id="replaceDeviceRequestBtn"><strong>↻ Replace Device Request</strong><span>Select your current phone and request a replacement.</span></button>
+    </div>
+  </div>
+
+  <div class="special-access-banner" id="specialAccessBanner"></div>
 
   <form id="intakeForm" novalidate>
     <fieldset>
@@ -280,6 +312,38 @@
   <p class="foot-link"><a href="admin.html">IT admin login →</a></p>
 </div>
 
+
+<div id="requestOverlay" aria-hidden="true">
+  <div class="request-box">
+    <h2 id="requestTitle">Device Request</h2>
+    <p class="request-sub" id="requestSubtitle">Enter any company or personal email. We will check your existing employee/device record.</p>
+
+    <div class="request-step active" id="requestStepLookup">
+      <div class="field"><label for="requestEmail">Your company or personal email</label><input type="email" id="requestEmail" placeholder="name@dncc.in or name@gmail.com" /></div>
+      <div id="requestLookupResult"></div>
+      <div class="request-footer"><button type="button" class="btn-secondary-review" id="requestCancelBtn">Cancel</button><button type="button" class="btn-primary" id="requestLookupBtn">Find my record</button></div>
+    </div>
+
+    <div class="request-step" id="requestStepDetails">
+      <div id="requestEmployeeSummary"></div>
+      <div id="newEmployeeFields" style="display:none;">
+        <div class="row2"><div class="field"><label>Employee name</label><input type="text" id="requestEmpName" /></div><div class="field"><label>Location</label><select id="requestLocation"><option value="">Select location…</option><option>Vadodara</option><option>Surat</option><option>Anand</option><option>Ahmedabad</option><option>Rajkot</option><option>Bandra</option><option>Thane</option><option>Borivali</option><option>Panjim</option></select></div></div>
+        <div class="row2"><div class="field"><label>Designation</label><input type="text" id="requestDesignation" /></div><div class="field"><label>Department (optional)</label><input type="text" id="requestDepartment" /></div></div>
+      </div>
+      <div id="requestExistingDevices"></div>
+      <div id="newRequestChoice" style="display:none;">
+        <label style="margin-top:12px;">You already have a device. What do you want?</label>
+        <div class="request-choice"><label><input type="radio" name="requestChoice" value="Additional" checked /> Request an additional/new device</label><label><input type="radio" name="requestChoice" value="Replace" /> Replace one of my current devices</label></div>
+      </div>
+      <div id="replaceDeviceChooser" style="display:none;"></div>
+      <div class="field"><label for="requestReason">Why is the device required / why should it be replaced?</label><textarea id="requestReason" placeholder="Explain the business need, current issue, or reason for replacement."></textarea></div>
+      <div class="row2"><div class="field"><label for="requestUse">Main work use</label><input type="text" id="requestUse" placeholder="e.g. WhatsApp, calls, clinic coordination" /></div><div class="field"><label for="requestNeededBy">Needed by (optional)</label><input type="date" id="requestNeededBy" /></div></div>
+      <div class="request-msg" id="requestMsg"></div>
+      <div class="request-footer"><button type="button" class="btn-secondary-review" id="requestBackBtn">← Back</button><button type="button" class="btn-primary" id="requestSubmitBtn">Send request to IT</button></div>
+    </div>
+  </div>
+</div>
+
 <div id="reviewOverlay" class="review-overlay">
   <div class="review-box">
     <h2 data-i18n="reviewTitle">Review your details</h2>
@@ -303,6 +367,8 @@
 
   var sb = window.supabase.createClient(window.DNCC_CONFIG.SUPABASE_URL, window.DNCC_CONFIG.SUPABASE_ANON_KEY);
   var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL + '/functions/v1';
+  var REQUEST_CONTEXT = null;
+  var EDIT_CONTEXT = null;
 
   function fillTemplate(str, vars){
     return (str||'').replace(/\{\{(\w+)\}\}/g, function(_, k){ return (vars[k] !== undefined && vars[k] !== null) ? vars[k] : ''; });
@@ -565,6 +631,7 @@
   }
 
   function restoreDraft(){
+    if(new URLSearchParams(location.search).has('edit_token') || new URLSearchParams(location.search).has('request_id')) return;
     var raw;
     try{ raw = localStorage.getItem(DRAFT_KEY); }catch(e){ return; }
     if(!raw) return;
@@ -761,8 +828,12 @@
           .select('id, employee_name')
           .or('device1->>imei1.eq.' + v + ',device2->>imei1.eq.' + v);
         if(dupes && dupes.length > 0){
-          warnEl.textContent = 'This IMEI already has a submission on file (by ' + (dupes[0].employee_name||'someone') + '). You can still edit it below, or use "Request a correction" instead if this is a mistake.';
-          warnEl.classList.add('show');
+          var allowedRequestImei = REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot && REQUEST_CONTEXT.fulfillment_device_snapshot.imei1 === v;
+          var onlyOwnEdit = EDIT_CONTEXT && dupes.every(function(x){ return String(x.id) === String(EDIT_CONTEXT.submission.id); });
+          if(!allowedRequestImei && !onlyOwnEdit){
+            warnEl.textContent = 'This IMEI already has a submission on file (by ' + (dupes[0].employee_name||'someone') + '). Use a valid IT request/temporary edit link if this device is being reassigned.';
+            warnEl.classList.add('show');
+          }
         }
       }catch(err){ /* non-blocking — the real check still runs again at submit time */ }
     }, 500);
@@ -943,8 +1014,9 @@
       if(!checkImeiField(document.getElementById('d'+d+'_imei2'), false)) ok=false;
       var frontFileEl = document.getElementById('d'+d+'_front');
       var backFileEl = document.getElementById('d'+d+'_back');
-      if(!frontFileEl.files || !frontFileEl.files[0]){ markError(frontFileEl); ok=false; }
-      if(!backFileEl.files || !backFileEl.files[0]){ markError(backFileEl); ok=false; }
+      var existingDeviceForEdit = EDIT_CONTEXT && EDIT_CONTEXT.submission ? (d===1 ? EDIT_CONTEXT.submission.device1 : EDIT_CONTEXT.submission.device2) : null;
+      if((!frontFileEl.files || !frontFileEl.files[0]) && !(existingDeviceForEdit && existingDeviceForEdit.frontPhoto)){ markError(frontFileEl); ok=false; }
+      if((!backFileEl.files || !backFileEl.files[0]) && !(existingDeviceForEdit && existingDeviceForEdit.backPhoto)){ markError(backFileEl); ok=false; }
       var simCount=parseInt(document.getElementById('d'+d+'_simCount').value,10);
       for(var s=1;s<=simCount;s++){
         var simEl=document.getElementById('d'+d+'_sim'+s);
@@ -977,8 +1049,9 @@
     for(var s=1;s<=simCount;s++){ var el=document.getElementById('d'+idx+'_sim'+s); if(el) sims.push(el.value.trim()); }
     var frontFile=document.getElementById('d'+idx+'_front').files[0];
     var backFile=document.getElementById('d'+idx+'_back').files[0];
-    var frontPhoto=await compressImage(frontFile,480,0.6);
-    var backPhoto=await compressImage(backFile,480,0.6);
+    var existingEditDevice = EDIT_CONTEXT && EDIT_CONTEXT.submission ? (idx===1 ? EDIT_CONTEXT.submission.device1 : EDIT_CONTEXT.submission.device2) : null;
+    var frontPhoto=frontFile ? await compressImage(frontFile,480,0.6) : ((existingEditDevice||{}).frontPhoto||'');
+    var backPhoto=backFile ? await compressImage(backFile,480,0.6) : ((existingEditDevice||{}).backPhoto||'');
     return {
       brand:document.getElementById('d'+idx+'_brand').value.trim(),
       model:document.getElementById('d'+idx+'_model').value.trim(),
@@ -1048,6 +1121,7 @@
         brand:d.brand, model:d.model, ram:d.ram, storage:d.storage,
         imei1:d.imei1, imei2:d.imei2, status:'Assigned',
         assigned_to:employeeName, assigned_employee_id:employeeId, assigned_employee_email:employeeEmail || '',
+        sim_slots:d.simCount||((d.simNumbers||[]).length||1), sim_numbers:d.simNumbers||[], sim_assignment_mode:(d.simNumbers&&d.simNumbers.length)?'Recorded via handover form':'No SIM assigned',
         last_updated:new Date().toISOString()
       }], { onConflict:'imei1' });
       await sb.from('device_history').insert([{
@@ -1171,14 +1245,18 @@
           .select('id, employee_name, created_at')
           .or('device1->>imei1.eq.' + checkImei + ',device2->>imei1.eq.' + checkImei);
         if(dupes && dupes.length > 0){
-          showToast('This device (IMEI ' + checkImei + ') already has a submission on file (by ' + (dupes[0].employee_name||'someone') + '). If this is a mistake, please use "Request a correction" below instead of submitting again.', 'err');
-          submitBtn.disabled = false; submitBtn.textContent = t('submitBtn');
-          return;
+          var requestAuthorized = REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot && REQUEST_CONTEXT.fulfillment_device_snapshot.imei1 === checkImei;
+          var editAuthorized = EDIT_CONTEXT && dupes.every(function(x){ return String(x.id) === String(EDIT_CONTEXT.submission.id); });
+          if(!requestAuthorized && !editAuthorized){
+            showToast('This device (IMEI ' + checkImei + ') already has a submission on file (by ' + (dupes[0].employee_name||'someone') + '). Please use an IT-issued request/edit link for a reassigned device.', 'err');
+            submitBtn.disabled = false; submitBtn.textContent = t('submitBtn');
+            return;
+          }
         }
       }
       submitBtn.textContent = 'Saving…';
 
-      var { data: inserted, error } = await sb.from('submissions').insert([{
+      var submissionPayload = {
         employee_name: record.employeeName, employee_id: record.employeeId,
         company_email: record.companyEmail, personal_email: record.personalEmail,
         department: record.department,
@@ -1187,13 +1265,28 @@
         damage: record.damage, damage_what: record.damageWhat, damage_how: record.damageHow,
         phone_problem: record.phoneProblem, phone_problem_details: record.phoneProblemDetails,
         device1: record.device1, device2: record.device2 || null
-      }]).select();
+      };
+      var inserted, error;
+      if(EDIT_CONTEXT && EDIT_CONTEXT.submission){
+        var editResult = await sb.from('submissions').update(submissionPayload).eq('id', EDIT_CONTEXT.submission.id).select();
+        inserted = editResult.data; error = editResult.error;
+      } else {
+        var insertResult = await sb.from('submissions').insert([submissionPayload]).select();
+        inserted = insertResult.data; error = insertResult.error;
+      }
       if(error) throw error;
-      var submissionId = inserted && inserted[0] ? inserted[0].id : null;
+      var submissionId = inserted && inserted[0] ? inserted[0].id : (EDIT_CONTEXT && EDIT_CONTEXT.submission ? EDIT_CONTEXT.submission.id : null);
 
       var inventoryEmail = [record.companyEmail, record.personalEmail].filter(isRealEmail)[0] || '';
       await upsertDevice(record.device1, record.employeeName, record.employeeId, inventoryEmail);
       if(record.device2) await upsertDevice(record.device2, record.employeeName, record.employeeId, inventoryEmail);
+
+      if(REQUEST_CONTEXT && REQUEST_CONTEXT.id){
+        await sb.from('device_requests').update({ status:'Completed', employee_id:record.employeeId, company_email:record.companyEmail, personal_email:record.personalEmail, form_completed_at:new Date().toISOString(), updated_at:new Date().toISOString() }).eq('id', REQUEST_CONTEXT.id);
+      }
+      if(EDIT_CONTEXT && EDIT_CONTEXT.access && EDIT_CONTEXT.access.id){
+        await sb.from('form_access_tokens').update({ active:false, used_at:new Date().toISOString() }).eq('id', EDIT_CONTEXT.access.id);
+      }
 
       buildHandoverPDF(record);
       submitBtn.textContent = 'Emailing your copy…';
@@ -1272,7 +1365,151 @@
     }finally{
       btn.disabled = false; btn.textContent = 'Send correction request';
     }
+
   });
+
+  // ---------- New / Replace Device Request workflow ----------
+  var requestState = { type:'New', employee:null, devices:[], isNew:false };
+  function validEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v||'').trim()); }
+  function preferredEmailFromSubmission(s){
+    if(s && validEmail(s.company_email)) return s.company_email.trim();
+    if(s && validEmail(s.personal_email)) return s.personal_email.trim();
+    return '';
+  }
+  function setRequestMsg(text, type){ var el=document.getElementById('requestMsg'); el.textContent=text||''; el.className='request-msg '+(type||''); }
+  function openRequest(type){
+    requestState={type:type,employee:null,devices:[],isNew:false};
+    document.getElementById('requestTitle').textContent = type==='Replace' ? 'Replace Device Request' : 'New Device Request';
+    document.getElementById('requestSubtitle').textContent = 'Enter any company or personal email. We will check your existing employee and currently assigned device records.';
+    document.getElementById('requestEmail').value=''; document.getElementById('requestLookupResult').innerHTML='';
+    ['requestEmpName','requestDesignation','requestDepartment','requestReason','requestUse','requestNeededBy'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('requestLocation').value=''; var addChoice=document.querySelector('input[name="requestChoice"][value="Additional"]'); if(addChoice)addChoice.checked=true;
+    document.getElementById('requestStepLookup').classList.add('active'); document.getElementById('requestStepDetails').classList.remove('active');
+    document.getElementById('requestOverlay').classList.add('open'); document.getElementById('requestOverlay').setAttribute('aria-hidden','false');
+  }
+  function closeRequest(){ document.getElementById('requestOverlay').classList.remove('open'); document.getElementById('requestOverlay').setAttribute('aria-hidden','true'); setRequestMsg('',''); }
+  document.getElementById('newDeviceRequestBtn').addEventListener('click',function(){openRequest('New');});
+  document.getElementById('replaceDeviceRequestBtn').addEventListener('click',function(){openRequest('Replace');});
+  document.getElementById('requestCancelBtn').addEventListener('click',closeRequest);
+  document.getElementById('requestBackBtn').addEventListener('click',function(){document.getElementById('requestStepDetails').classList.remove('active');document.getElementById('requestStepLookup').classList.add('active');});
+  document.getElementById('requestOverlay').addEventListener('click',function(e){if(e.target===this) closeRequest();});
+
+  async function lookupRequestEmployee(email){
+    var { data: matches, error } = await sb.from('submissions').select('*').or('company_email.eq.'+email+',personal_email.eq.'+email).order('created_at',{ascending:false}).limit(10);
+    if(error) throw error;
+    var employee = matches && matches.length ? matches[0] : null;
+    var devices=[];
+    if(employee){
+      var q = sb.from('devices').select('*').eq('status','Assigned');
+      var filters=[];
+      if(employee.employee_id) filters.push('assigned_employee_id.eq.'+employee.employee_id);
+      if(email) filters.push('assigned_employee_email.eq.'+email);
+      if(employee.employee_name) filters.push('assigned_to.eq.'+employee.employee_name);
+      if(filters.length){ var res=await q.or(filters.join(',')); if(!res.error) devices=res.data||[]; }
+      var historical=[employee.device1,employee.device2].filter(Boolean);
+      devices=devices.map(function(dev){
+        var h=historical.find(function(x){ return x && x.imei1===dev.imei1; }) || {};
+        return Object.assign({},dev,{ sim_numbers:(dev.sim_numbers&&dev.sim_numbers.length)?dev.sim_numbers:(h.simNumbers||[]), sim_slots:dev.sim_slots||h.simCount||2 });
+      });
+    }
+    return {employee:employee, devices:devices};
+  }
+
+  function requestDeviceLabel(d){ return (d.brand||'')+' '+(d.model||'')+' · IMEI '+(d.imei1||'—'); }
+  function renderRequestDetails(){
+    var e=requestState.employee, devices=requestState.devices||[];
+    var sum=document.getElementById('requestEmployeeSummary'), list=document.getElementById('requestExistingDevices');
+    document.getElementById('newEmployeeFields').style.display=requestState.isNew?'block':'none';
+    document.getElementById('newRequestChoice').style.display=(!requestState.isNew && requestState.type==='New' && devices.length)?'block':'none';
+    if(requestState.isNew){
+      sum.innerHTML='<div class="lookup-result warn"><h3>New employee request</h3><p>No previous employee record was found for <b>'+requestState.email.replace(/</g,'&lt;')+'</b>. Confirm the basic employee details below.</p></div>';
+      list.innerHTML='';
+    } else {
+      sum.innerHTML='<div class="lookup-result"><h3>Employee found</h3><p><b>'+((e||{}).employee_name||'Employee')+'</b> · '+((e||{}).employee_id||'No employee ID')+' · '+((e||{}).location||'')+'</p><p>'+devices.length+' currently assigned device(s) found.</p></div>';
+      list.innerHTML=devices.length?'<label>Currently assigned phone(s)</label><div class="request-device-list">'+devices.map(function(d){return '<div class="request-device"><strong>'+requestDeviceLabel(d)+'</strong><div class="mini">'+(d.ram||'—')+' RAM · '+(d.storage||'—')+' storage · '+((d.sim_numbers||[]).join(', ')||'SIM details from last audit')+'</div></div>';}).join('')+'</div>':'<div class="lookup-result warn"><h3>No active phone assigned</h3><p>Your employee record exists, but the live inventory does not currently show a phone assigned to you.</p></div>';
+    }
+    renderReplaceChooser();
+  }
+  function renderReplaceChooser(){
+    var choice=document.querySelector('input[name="requestChoice"]:checked');
+    var replaceMode=requestState.type==='Replace' || (requestState.type==='New' && choice && choice.value==='Replace');
+    var box=document.getElementById('replaceDeviceChooser');
+    if(!replaceMode){box.style.display='none';box.innerHTML='';return;}
+    box.style.display='block';
+    if(!requestState.devices.length){ box.innerHTML='<div class="lookup-result warn"><h3>No device available to replace</h3><p>Please use a New Device Request instead, or contact IT.</p></div>'; return; }
+    box.innerHTML='<label>Select the phone you want to replace</label><div class="request-device-list">'+requestState.devices.map(function(d,i){return '<div class="request-device"><label><input type="radio" name="replaceImei" value="'+(d.imei1||'')+'" '+(i===0?'checked':'')+'/><span><strong>'+requestDeviceLabel(d)+'</strong><span class="mini">Current owner: '+(d.assigned_to||'You')+'</span></span></label></div>';}).join('')+'</div>';
+  }
+  document.querySelectorAll('input[name="requestChoice"]').forEach(function(r){r.addEventListener('change',renderReplaceChooser);});
+
+  document.getElementById('requestLookupBtn').addEventListener('click',async function(){
+    var email=document.getElementById('requestEmail').value.trim().toLowerCase(); if(!validEmail(email)){document.getElementById('requestLookupResult').innerHTML='<div class="request-msg err" style="display:block">Enter a valid email address.</div>';return;}
+    var btn=this;btn.disabled=true;btn.textContent='Checking…';
+    try{
+      var found=await lookupRequestEmployee(email); requestState.email=email; requestState.employee=found.employee; requestState.devices=found.devices; requestState.isNew=!found.employee;
+      if(requestState.isNew){ if(!confirm('No existing employee record was found for this email. Continue as a NEW employee request?')){return;} }
+      if(requestState.type==='Replace' && !requestState.isNew && !requestState.devices.length){
+        alert('Your employee record was found, but no currently assigned device was found. Please send a New Device Request instead.'); return;
+      }
+      document.getElementById('requestStepLookup').classList.remove('active');document.getElementById('requestStepDetails').classList.add('active');renderRequestDetails();
+    }catch(err){console.error(err);document.getElementById('requestLookupResult').innerHTML='<div class="request-msg err" style="display:block">Could not check your record. Please try again.</div>';}
+    finally{btn.disabled=false;btn.textContent='Find my record';}
+  });
+
+  async function sendRequestEmail(to,subject,html){
+    if(!validEmail(to)) return false;
+    try{var res=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:to,subject:subject,html:html})});var j=await res.json();return !!(res.ok&&j.ok);}catch(e){console.error(e);return false;}
+  }
+  function employeeAckHtml(reqNo,name,type){return '<p>Dear '+(name||'Employee')+',</p><p>Your <b>'+type+' Device Request</b> has been received by '+window.DNCC_CONFIG.COMPANY_NAME+' IT Department.</p><p><b>Request:</b> #'+reqNo+'<br/><b>Status:</b> Pending Review</p><p>IT will review your request and email you when it is approved, awaiting availability, rejected, or a device is assigned.</p><p><b>Important:</b> after a device is issued, you will receive a secure handover-form link. Completing that form is compulsory to close the request.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';}
+
+  document.getElementById('requestSubmitBtn').addEventListener('click',async function(){
+    var btn=this, e=requestState.employee||{}; setRequestMsg('','');
+    var requestChoice=requestState.type==='New' ? ((document.querySelector('input[name="requestChoice"]:checked')||{}).value||'Additional') : 'Replace';
+    var effectiveType=requestChoice==='Replace'?'Replace':requestState.type;
+    var replaceImei=effectiveType==='Replace'?((document.querySelector('input[name="replaceImei"]:checked')||{}).value||''):'';
+    if(effectiveType==='Replace'&&!replaceImei){setRequestMsg('Select the phone that should be replaced.','err');return;}
+    var name=requestState.isNew?document.getElementById('requestEmpName').value.trim():(e.employee_name||'');
+    var employeeLocation=requestState.isNew?document.getElementById('requestLocation').value:(e.location||'');
+    var designation=requestState.isNew?document.getElementById('requestDesignation').value.trim():(e.designation||'');
+    var department=requestState.isNew?document.getElementById('requestDepartment').value.trim():(e.department||'');
+    var reason=document.getElementById('requestReason').value.trim(), intended=document.getElementById('requestUse').value.trim(), needed=document.getElementById('requestNeededBy').value||null;
+    if(!name||!employeeLocation||!designation||!reason){setRequestMsg('Please complete employee name, location, designation and the reason for the request.','err');return;}
+    var replaceDevice=(requestState.devices||[]).find(function(d){return d.imei1===replaceImei;})||null;
+    btn.disabled=true;btn.textContent='Sending…';
+    try{
+      var payload={request_type:effectiveType,employee_kind:requestState.isNew?'New':'Existing',requester_email:requestState.email,company_email:e.company_email||((requestState.email||'').endsWith('@dncc.in')?requestState.email:null),personal_email:e.personal_email||(!(requestState.email||'').endsWith('@dncc.in')?requestState.email:null),employee_name:name,employee_id:e.employee_id||null,location:employeeLocation,designation:designation,department:department,matched_submission_id:e.id||null,current_devices:requestState.devices||[],request_choice:requestChoice,replace_imei1:replaceImei||null,replace_device:replaceDevice,request_reason:reason,intended_use:intended,needed_by:needed,status:'Pending Review',updated_at:new Date().toISOString()};
+      var ins=await sb.from('device_requests').insert([payload]).select(); if(ins.error) throw ins.error; var req=ins.data&&ins.data[0];
+      var reqNo=req.request_no||String(req.id).slice(0,8).toUpperCase();
+      var ack=await sendRequestEmail(requestState.email,'Device Request #'+reqNo+' received — '+window.DNCC_CONFIG.COMPANY_NAME,employeeAckHtml(reqNo,name,effectiveType));
+      var setRes=await sb.from('settings').select('*').eq('id',1).single(); var settings=setRes.data||{}; var itEmail=settings.it_request_email||settings.smtp2go_sender_email||settings.smtp_from_email||'';
+      var adminLink=location.origin+location.pathname.replace(/index\.html.*$/,'admin.html');
+      var itSent=await sendRequestEmail(itEmail,'New '+effectiveType+' Device Request #'+reqNo+' — '+name,'<p>A new <b>'+effectiveType+' Device Request</b> was submitted.</p><p><b>Employee:</b> '+name+'<br/><b>Email:</b> '+requestState.email+'<br/><b>Location:</b> '+employeeLocation+'<br/><b>Reason:</b> '+reason+(replaceDevice?'<br/><b>Replace:</b> '+requestDeviceLabel(replaceDevice):'')+'</p><p><a href="'+adminLink+'">Open IT Admin Panel</a></p>');
+      await sb.from('device_requests').update({employee_notified_at:ack?new Date().toISOString():null,it_notified_at:itSent?new Date().toISOString():null}).eq('id',req.id);
+      setRequestMsg('Request #'+reqNo+' sent successfully. IT will review it and notify you by email.','ok');
+      setTimeout(closeRequest,1800);
+    }catch(err){console.error(err);setRequestMsg('Could not send the request: '+(err.message||err),'err');}
+    finally{btn.disabled=false;btn.textContent='Send request to IT';}
+  });
+
+  function setRadioValue(name,value){ var el=document.querySelector('input[name="'+name+'"][value="'+value+'"]'); if(el){el.checked=true;el.dispatchEvent(new Event('change',{bubbles:true}));} }
+  function prefillDevice(idx,d){ if(!d)return; ['brand','model','ram','storage','imei1','imei2','usage'].forEach(function(k){var el=document.getElementById('d'+idx+'_'+k);if(el&&d[k]!==undefined)el.value=d[k]||'';}); var sims=d.simNumbers||d.sim_numbers||[]; var count=Math.max(1,Math.min(2,sims.length||d.simCount||d.sim_slots||1)); var sel=document.getElementById('d'+idx+'_simCount');sel.value=String(count);sel.dispatchEvent(new Event('change'));sims.slice(0,count).forEach(function(v,i){var el=document.getElementById('d'+idx+'_sim'+(i+1));if(el)el.value=v;}); if(d.memoryCard)setRadioValue('d'+idx+'_memoryCard',d.memoryCard);var size=document.getElementById('d'+idx+'_memoryCardSize');if(size)size.value=d.memoryCardSize||''; if(d.frontPhoto){var fp=document.getElementById('d'+idx+'_frontPrev');fp.src=d.frontPhoto;fp.style.display='block';} if(d.backPhoto){var bp=document.getElementById('d'+idx+'_backPrev');bp.src=d.backPhoto;bp.style.display='block';} }
+  function prefillEmployeeForm(s){
+    document.getElementById('empName').value=s.employee_name||'';document.getElementById('empId').value=s.employee_id||'';document.getElementById('location').value=s.location||'';document.getElementById('designation').value=s.designation||'';document.getElementById('department').value=s.department||'';document.getElementById('contact').value=s.contact||'';document.getElementById('companyEmail').value=s.company_email||'NOT';document.getElementById('personalEmail').value=s.personal_email||'';
+    var dc=parseInt(s.device_count||1,10)===2?2:1;setRadioValue('deviceCount',String(dc));document.getElementById('device2Fieldset').style.display=dc===2?'block':'none';prefillDevice(1,s.device1||{});if(dc===2)prefillDevice(2,s.device2||{});setRadioValue('charger',s.charger||'');setRadioValue('cable',s.cable||'');setRadioValue('damage',s.damage||'');document.getElementById('damageWhat').value=s.damage_what||'';document.getElementById('damageHow').value=s.damage_how||'';setRadioValue('phoneProblem',s.phone_problem||'');document.getElementById('phoneProblemDescription').value=s.phone_problem_details||'';if(!document.getElementById('empId').value) updateAutoEmpId();
+  }
+  async function loadSpecialAccessContext(){
+    var qs=new URLSearchParams(location.search), editToken=qs.get('edit_token'), requestId=qs.get('request_id'), requestToken=qs.get('token'), banner=document.getElementById('specialAccessBanner');
+    try{
+      if(editToken){
+        var ar=await sb.from('form_access_tokens').select('*').eq('token',editToken).eq('active',true).single(); if(ar.error||!ar.data) throw new Error('This edit link is invalid or has already been used.'); if(new Date(ar.data.expires_at)<=new Date()) throw new Error('This edit link has expired. Ask IT for a new one.');
+        var sr=await sb.from('submissions').select('*').eq('id',ar.data.submission_id).single();if(sr.error||!sr.data)throw new Error('The linked submission was not found.');EDIT_CONTEXT={access:ar.data,submission:sr.data};prefillEmployeeForm(sr.data);banner.innerHTML='<strong>Temporary edit access</strong>IT has allowed you to update this existing submission until '+new Date(ar.data.expires_at).toLocaleString()+'. Existing photos are kept unless you upload new ones.';banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});return;
+      }
+      if(requestId&&requestToken){
+        var rr=await sb.from('device_requests').select('*').eq('id',requestId).eq('form_token',requestToken).single();if(rr.error||!rr.data)throw new Error('This handover link is invalid.');if(!rr.data.form_token_expires_at||new Date(rr.data.form_token_expires_at)<=new Date())throw new Error('This handover link has expired. Ask IT to issue a new link.');REQUEST_CONTEXT=rr.data;
+        var d=rr.data.fulfillment_device_snapshot||{}; var formSub={employee_name:rr.data.employee_name,employee_id:rr.data.employee_id,location:rr.data.location,designation:rr.data.designation,department:rr.data.department,company_email:rr.data.company_email||((rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:'NOT'),personal_email:rr.data.personal_email||(!(rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:rr.data.fulfillment_sim_numbers||[]})};prefillEmployeeForm(formSub);banner.innerHTML='<strong>Device assigned — handover form required</strong>IT assigned '+((d.brand||'')+' '+(d.model||'')).trim()+' to you for Request #'+(rr.data.request_no||'')+'. Please verify the prefilled details, add photos/condition information, and submit this form to complete the handover.';banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});
+      }
+    }catch(err){banner.innerHTML='<strong>Link cannot be used</strong>'+(err.message||err);banner.classList.add('show');}
+  }
+  loadSpecialAccessContext();
 })();
 </script>
 </body>
