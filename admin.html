@@ -200,6 +200,89 @@
     .filter-bar select, .search-input{width:100%;}
     .bulk-bar{flex-direction:column; align-items:stretch;}
   }
+  /* ---------- Responsive mobile admin workspace ---------- */
+  html,body{max-width:100%;overflow-x:hidden;}
+  img,svg,video,canvas{max-width:100%;}
+  button,input,select,textarea{max-width:100%;}
+  button,.tab-btn,.page-btn,.btn-small{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
+
+  @media (max-width: 820px){
+    body{font-size:14px;}
+    .wrap{width:100%;max-width:none;padding:10px 8px calc(64px + env(safe-area-inset-bottom));}
+    #loginGate{margin:28px auto;padding:20px 16px;width:calc(100% - 12px);}
+    #loginGate input,#loginGate button{font-size:16px;min-height:46px;width:100%;}
+    .masthead{display:flex;flex-direction:column;align-items:stretch;gap:10px;margin-bottom:12px;}
+    .masthead .left{align-items:center;min-width:0;}
+    .masthead .left > div:last-child{min-width:0;}
+    .masthead h1{font-size:17px;line-height:1.25;overflow-wrap:anywhere;}
+    .masthead p{font-size:12px;}
+    .masthead .right{display:grid;grid-template-columns:1fr 1fr;gap:7px;width:100%;}
+    .masthead .right a,.masthead .right button{text-align:center;min-height:42px;display:flex;align-items:center;justify-content:center;}
+    .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+    .stat{padding:12px 10px;min-width:0;}
+    .stat .num{font-size:21px;}
+    .stat .label{font-size:10.5px;line-height:1.25;overflow-wrap:anywhere;}
+    .tabs{position:sticky;top:0;z-index:35;display:flex;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;gap:4px;margin-left:-8px;margin-right:-8px;padding:7px 8px 4px;background:rgba(244,246,247,.96);backdrop-filter:blur(9px);border-bottom:1px solid var(--line);scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;}
+    .tabs::-webkit-scrollbar{height:3px;}
+    .tab-btn{flex:0 0 auto;scroll-snap-align:start;min-height:40px;padding:8px 11px;white-space:nowrap;border-radius:7px;}
+    .panel{padding-top:10px;}
+    .panel-bar{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-bottom:10px;}
+    .panel-bar h2{font-size:16px;margin:0;}
+    .panel-bar > div{display:grid!important;grid-template-columns:1fr 1fr;gap:7px;width:100%;}
+    .panel-bar button{width:100%;min-width:0!important;min-height:42px;padding:9px 8px;font-size:12.5px;}
+    .filter-bar,.bulk-bar{display:grid;grid-template-columns:1fr;gap:8px;align-items:stretch;}
+    .filter-bar select,.search-input,.bulk-bar select,.bulk-bar input{width:100%;min-width:0;font-size:16px!important;min-height:44px;}
+    .bulk-bar{padding:10px;}
+    .card-form{padding:12px 10px;overflow:hidden;}
+    .card-form .grid,.stock-grid-wide,.report-controls,.report-presets{grid-template-columns:minmax(0,1fr)!important;}
+    .card-form input,.card-form select,.card-form textarea,.stock-grid-wide input,.stock-grid-wide select,.report-controls input,.report-controls select{font-size:16px!important;min-height:44px;}
+    .report-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+    .report-actions button{width:100%;min-height:42px;}
+    .report-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+    .report-preset{min-height:0;padding:12px;}
+    .pagination{gap:5px;align-items:center;justify-content:center;flex-wrap:wrap;}
+    .page-btn{height:38px;min-width:38px;padding:0 9px;}
+    .table-top-scroll{display:none!important;}
+    .table-scroll-shell{min-width:0;width:100%;}
+    .table-wrap{overflow:visible;max-height:none;border:none;background:transparent;border-radius:0;scrollbar-gutter:auto;}
+    .table-wrap table,.table-wrap table.data-wide,.table-wrap table.inventory-wide,.request-table,.issue-table,.report-table{display:block;width:100%!important;min-width:0!important;border:0!important;background:transparent;}
+    .table-wrap thead{display:none!important;}
+    .table-wrap tbody{display:block;width:100%;}
+    .table-wrap tbody tr{display:block;width:100%;margin:0 0 10px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 2px 9px rgba(19,38,53,.035);}
+    .table-wrap tbody td{position:static!important;display:grid;grid-template-columns:minmax(96px,35%) minmax(0,1fr);gap:10px;align-items:start;width:100%!important;min-width:0!important;max-width:none!important;padding:9px 10px!important;border:0!important;border-bottom:1px solid #edf0f2!important;background:#fff!important;box-shadow:none!important;white-space:normal!important;text-align:left!important;overflow-wrap:anywhere;word-break:break-word;line-height:1.4;}
+    .table-wrap tbody td:last-child{border-bottom:0!important;}
+    .table-wrap tbody td::before{content:attr(data-label);font-size:10.5px;font-weight:800;color:var(--text-soft);text-transform:uppercase;letter-spacing:.02em;line-height:1.35;}
+    .table-wrap tbody td.checkbox-cell{grid-template-columns:26px 1fr;align-items:center;}
+    .table-wrap tbody td.checkbox-cell::before{content:'Select';grid-column:2;grid-row:1;font-size:10.5px;}
+    .table-wrap tbody td.checkbox-cell input{grid-column:1;grid-row:1;width:20px;height:20px;margin:0;}
+    .table-wrap tbody td[data-label="Actions"]{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+    .table-wrap tbody td[data-label="Actions"]::before{width:100%;flex:0 0 100%;}
+    .table-wrap tbody td[data-label="Actions"] button{flex:1 1 95px;min-height:38px;margin:0!important;padding:7px 8px;font-size:11.5px;}
+    .problem-cell,.request-reason,.issue-summary-cell,.issue-resolution-cell{min-width:0!important;max-width:none!important;}
+    .thumbs{display:flex;gap:6px;flex-wrap:wrap;}
+    .thumbs img{width:58px;height:58px;object-fit:cover;}
+    #modalOverlay,#assignPickerOverlay,#fulfillOverlay{padding:7px;align-items:flex-start;overflow:auto;}
+    #modalBox,#assignPickerBox,#fulfillBox{width:100%;max-width:none;max-height:calc(100dvh - 14px);padding:15px 12px;border-radius:10px;overscroll-behavior:contain;}
+    .modal-actions{display:grid;grid-template-columns:1fr;gap:7px;}
+    .modal-actions button{width:100%;min-height:44px;}
+    #assignPickerBox{min-height:0;}
+    #assignPickerSearch{font-size:16px;min-height:44px;}
+    .device-source-grid,.sim-box .grid{grid-template-columns:minmax(0,1fr)!important;}
+    .candidate-list{max-height:none;}
+    #lightboxOverlay{padding:8px;}
+    #lightboxOverlay img{max-width:98vw;max-height:92dvh;}
+    button:hover,.report-preset:hover{transform:none;}
+  }
+
+  @media (max-width: 430px){
+    .wrap{padding-left:6px;padding-right:6px;}
+    .stats{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .masthead .right,.panel-bar > div,.report-actions{grid-template-columns:1fr;}
+    .report-summary{grid-template-columns:1fr 1fr;}
+    .table-wrap tbody td{grid-template-columns:minmax(86px,34%) minmax(0,1fr);padding:8px!important;gap:8px;}
+  }
+
+
 </style>
 </head>
 <body>
@@ -2559,5 +2642,35 @@
 
 })();
 </script>
+
+<script>
+(function(){
+  function labelResponsiveTables(root){
+    (root || document).querySelectorAll('.table-wrap table').forEach(function(table){
+      var heads = Array.prototype.map.call(table.querySelectorAll('thead th'), function(th, i){
+        var label = (th.textContent || '').replace(/[↑↓↕]/g,'').trim();
+        if(!label && i === 0) label = 'Select';
+        return label || ('Field ' + (i + 1));
+      });
+      table.querySelectorAll('tbody tr').forEach(function(tr){
+        Array.prototype.forEach.call(tr.children, function(td, i){
+          if(td.tagName === 'TD' && !td.hasAttribute('data-label')) td.setAttribute('data-label', heads[i] || ('Field ' + (i + 1)));
+        });
+      });
+    });
+  }
+  function run(){ labelResponsiveTables(document); }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+  var scheduled = false;
+  var observer = new MutationObserver(function(){
+    if(scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function(){ scheduled = false; labelResponsiveTables(document); });
+  });
+  if(document.body) observer.observe(document.body,{childList:true,subtree:true});
+  else document.addEventListener('DOMContentLoaded',function(){observer.observe(document.body,{childList:true,subtree:true});});
+})();
+</script>
+
 </body>
 </html>
