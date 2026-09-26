@@ -616,9 +616,9 @@
           populateTemplateForm();
         });
       }
-      if(btn.dataset.tab === 'activitylog'){ loadActivityLog(); }
+      if(btn.dataset.tab === 'activitylog' && !loadedTabs.activity){ loadedTabs.activity=true; loadActivityLog(); }
       if(btn.dataset.tab === 'devicerequests'){ loadDeviceRequests(); }
-      if(btn.dataset.tab === 'issues'){ Promise.all([loadSubmissions(), loadIssueResolutions(), loadEmployeeIssueReports()]).then(function(){ renderIssues(); renderStats(); }); }
+      if(btn.dataset.tab === 'issues'){ Promise.all([loadIssueResolutions(), loadEmployeeIssueReports()]).then(function(){ renderIssues(); renderStats(); }); }
       if(btn.dataset.tab === 'reports'){ populateReportLocationFilter(); renderReports(); }
     });
   });
@@ -658,6 +658,8 @@
   });
 
   var currentSubs = [], currentDevices = [], currentDeviceRequests = [], currentIssueResolutions = [], currentEmployeeIssueReports = [];
+  var fullSubmissionCache = new Map();
+  var loadedTabs = {activity:false};
 
   // Filter/sort/selection state
   var subsFilter = { search:'', location:'', damage:'' };
@@ -710,10 +712,10 @@
       + '<th>When</th><th>Admin</th><th>Action</th><th>On</th><th>Details</th>'
       + '</tr></thead><tbody>'+rows+'</tbody></table></div>';
   }
-  document.getElementById('refreshLogBtn').addEventListener('click', loadActivityLog);
+  document.getElementById('refreshLogBtn').addEventListener('click', function(){ loadedTabs.activity=true; loadActivityLog(); });
 
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadActivityLog()]); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports()]); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -874,13 +876,54 @@
 
   document.getElementById('refreshChangeReqsBtn').addEventListener('click', async function(){ await loadChangeRequests(); renderStats(); });
 
+  async function getFullSubmission(id, force){
+    var key=String(id);
+    if(!force && fullSubmissionCache.has(key)) return fullSubmissionCache.get(key);
+    var res=await sb.from('submissions').select('*').eq('id',id).single();
+    if(res.error) throw res.error;
+    fullSubmissionCache.set(key,res.data);
+    return res.data;
+  }
+
+  function openSubmissionPhotoGallery(record){
+    var d1=record.device1||{},d2=record.device2||{},imgs=[];
+    if(d1.frontPhoto) imgs.push({label:'Device 1 — Front',src:d1.frontPhoto});
+    if(d1.backPhoto) imgs.push({label:'Device 1 — Back',src:d1.backPhoto});
+    if(d2.frontPhoto) imgs.push({label:'Device 2 — Front',src:d2.frontPhoto});
+    if(d2.backPhoto) imgs.push({label:'Device 2 — Back',src:d2.backPhoto});
+    if(!imgs.length){ alert('No photos are stored for this submission.'); return; }
+    var ov=document.getElementById('submissionPhotoGallery');
+    if(!ov){
+      ov=document.createElement('div');
+      ov.id='submissionPhotoGallery';
+      ov.style.cssText='position:fixed;inset:0;background:rgba(10,20,30,.66);z-index:120;display:none;align-items:center;justify-content:center;padding:20px;';
+      ov.innerHTML='<div style="background:#fff;border-radius:12px;max-width:920px;width:100%;max-height:90vh;overflow:auto;padding:18px 18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px"><strong id="submissionPhotoGalleryTitle" style="font-size:16px;color:#132635">Device photos</strong><button type="button" id="submissionPhotoGalleryClose" class="btn-small">Close</button></div><div id="submissionPhotoGalleryGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px"></div></div>';
+      document.body.appendChild(ov);
+      document.getElementById('submissionPhotoGalleryClose').onclick=function(){ov.style.display='none';};
+      ov.addEventListener('click',function(e){if(e.target===ov)ov.style.display='none';});
+    }
+    document.getElementById('submissionPhotoGalleryTitle').textContent='Device photos — '+(record.employee_name||'Employee');
+    document.getElementById('submissionPhotoGalleryGrid').innerHTML=imgs.map(function(x){return '<figure style="margin:0"><img loading="lazy" decoding="async" src="'+x.src+'" alt="'+esc(x.label)+'" style="width:100%;max-height:420px;object-fit:contain;border:1px solid #d7dfe4;border-radius:8px;background:#f7f9fa;cursor:zoom-in" data-gallery-lightbox="'+encodeURIComponent(x.src)+'"><figcaption style="font-size:12px;color:#5d6b76;margin-top:6px">'+esc(x.label)+'</figcaption></figure>';}).join('');
+    document.querySelectorAll('[data-gallery-lightbox]').forEach(function(img){img.onclick=function(){openLightbox(decodeURIComponent(img.dataset.galleryLightbox));};});
+    ov.style.display='flex';
+  }
+
+  async function showSubmissionPhotos(id, btn){
+    var oldText=btn?btn.textContent:'';
+    if(btn){btn.disabled=true;btn.textContent='Loading…';}
+    try{ openSubmissionPhotoGallery(await getFullSubmission(id)); }
+    catch(err){ console.error(err); alert('Could not load photos: '+(err.message||err)); }
+    finally{ if(btn){btn.disabled=false;btn.textContent=oldText;} }
+  }
+
   // ---------- Submissions ----------
   async function loadSubmissions(){
     var area = document.getElementById('subsArea');
     try{
-      var { data, error } = await sb.from('submissions').select('*').order('created_at', { ascending:false });
+      var { data, error } = await sb.from('submission_summaries').select('*').order('created_at', { ascending:false });
       if(error) throw error;
       currentSubs = data || [];
+      fullSubmissionCache.clear();
       renderSubmissions();
     }catch(err){
       console.error(err);
@@ -980,11 +1023,8 @@
 
     var rows = pageList.map(function(r){
       var d1 = r.device1 || {}, d2 = r.device2 || {};
-      var thumbs = '';
-      if(d1.frontPhoto) thumbs += '<img class="thumb" src="'+d1.frontPhoto+'" title="Device 1 — Front (click to enlarge)" data-lightbox="'+encodeURIComponent(d1.frontPhoto)+'" />';
-      if(d1.backPhoto) thumbs += '<img class="thumb" src="'+d1.backPhoto+'" title="Device 1 — Back (click to enlarge)" data-lightbox="'+encodeURIComponent(d1.backPhoto)+'" />';
-      if(d2.frontPhoto) thumbs += '<img class="thumb" src="'+d2.frontPhoto+'" title="Device 2 — Front (click to enlarge)" data-lightbox="'+encodeURIComponent(d2.frontPhoto)+'" />';
-      if(d2.backPhoto) thumbs += '<img class="thumb" src="'+d2.backPhoto+'" title="Device 2 — Back (click to enlarge)" data-lightbox="'+encodeURIComponent(d2.backPhoto)+'" />';
+      var photoCount = Number(r.photo_count||0);
+      var thumbs = photoCount ? '<button class="btn-small" type="button" data-photo-id="'+r.id+'">View '+photoCount+' photo'+(photoCount===1?'':'s')+'</button>' : '—';
       var checked = selectedSubIds.has(String(r.id)) ? 'checked' : '';
       var problemClass = r.phone_problem === 'Yes' ? 'problem-yes' : 'problem-no';
       var damageResolution=issueResolutionFor(r.id,'Physical Damage'), problemResolution=issueResolutionFor(r.id,'Phone Problem');
@@ -1033,8 +1073,8 @@
     area.querySelectorAll('button[data-action]').forEach(function(btn){
       btn.addEventListener('click', function(){ handleSubAction(btn.dataset.action, btn.dataset.id); });
     });
-    area.querySelectorAll('img[data-lightbox]').forEach(function(img){
-      img.addEventListener('click', function(){ openLightbox(decodeURIComponent(img.dataset.lightbox)); });
+    area.querySelectorAll('button[data-photo-id]').forEach(function(btn){
+      btn.addEventListener('click', function(){ showSubmissionPhotos(btn.dataset.photoId, btn); });
     });
     area.querySelectorAll('th[data-sort]').forEach(function(th){
       th.addEventListener('click', function(){
@@ -1228,6 +1268,7 @@
     var r = currentSubs.find(function(s){ return String(s.id)===String(id); });
     if(!r) return;
     if(action === 'edit'){
+      try{ r = await getFullSubmission(id); }catch(err){ console.error(err); alert('Could not load complete submission: '+(err.message||err)); return; }
       openModal('Edit submission — ' + (r.employee_name||''), subEditFields(r), async function(values){
         try{
           var row = valuesToSubmissionRow(values, r.device1, r.device2);

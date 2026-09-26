@@ -352,3 +352,26 @@ create index if not exists employee_issue_reports_imei_idx on employee_issue_rep
 create index if not exists employee_issue_reports_created_idx on employee_issue_reports(created_at desc);
 alter table employee_issue_reports enable row level security;
 create policy "public all employee_issue_reports" on employee_issue_reports for all to anon using (true) with check (true);
+
+-- Performance view: same submission data without embedded Base64 photos.
+-- Admin lists and employee lookup use this view; full rows are loaded only on demand.
+create or replace view public.submission_summaries
+with (security_invoker = true)
+as
+select
+  id, created_at, employee_name, employee_id, employee_email,
+  department, location, designation, contact, device_count,
+  charger, cable, damage, damage_what, damage_how,
+  phone_problem, phone_problem_details,
+  case when device1 is null then null else device1 - 'frontPhoto' - 'backPhoto' end as device1,
+  case when device2 is null then null else device2 - 'frontPhoto' - 'backPhoto' end as device2,
+  email_sent_at, company_email, personal_email, email_sent_via,
+  (
+    case when coalesce(device1->>'frontPhoto','') <> '' then 1 else 0 end +
+    case when coalesce(device1->>'backPhoto','')  <> '' then 1 else 0 end +
+    case when coalesce(device2->>'frontPhoto','') <> '' then 1 else 0 end +
+    case when coalesce(device2->>'backPhoto','')  <> '' then 1 else 0 end
+  )::int as photo_count
+from public.submissions;
+
+grant select on public.submission_summaries to anon, authenticated;

@@ -1531,7 +1531,7 @@
   document.querySelectorAll('input[name="employeeIssueType"]').forEach(function(el){el.addEventListener('change',function(){document.getElementById('reportedDamageCauseWrap').style.display=this.value==='Physical Damage'?'block':'none';});});
 
   async function findIssueEmployees(term){
-    var res=await sb.from('submissions').select('id,created_at,employee_name,employee_id,company_email,personal_email,location,designation,department,device_count,device1,device2').order('created_at',{ascending:false}).limit(500);if(res.error)throw res.error;
+    var res=await sb.from('submission_summaries').select('id,created_at,employee_name,employee_id,company_email,personal_email,location,designation,department,device_count,device1,device2').order('created_at',{ascending:false}).limit(500);if(res.error)throw res.error;
     var q=term.trim().toLowerCase(),seen=new Set(),out=[];
     (res.data||[]).forEach(function(s){
       var vals=[s.employee_name,s.employee_id,s.company_email,s.personal_email].map(function(v){return String(v||'').toLowerCase();});
@@ -1614,7 +1614,7 @@
   document.getElementById('requestOverlay').addEventListener('click',function(e){if(e.target===this) closeRequest();});
 
   async function lookupRequestEmployee(email){
-    var { data: matches, error } = await sb.from('submissions').select('*').or('company_email.eq.'+email+',personal_email.eq.'+email).order('created_at',{ascending:false}).limit(10);
+    var { data: matches, error } = await sb.from('submission_summaries').select('*').or('company_email.eq.'+email+',personal_email.eq.'+email).order('created_at',{ascending:false}).limit(10);
     if(error) throw error;
     var employee = matches && matches.length ? matches[0] : null;
     var devices=[];
