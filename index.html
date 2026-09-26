@@ -1550,10 +1550,31 @@
     var emp=issueReportState.matches.find(function(x){return String(x.id)===String(id);});if(!emp)return;issueReportState.employee=emp;document.getElementById('issueDetailsArea').style.display='none';setIssueToast('','');
     try{
       var res=await sb.from('devices').select('*').eq('status','Assigned').order('last_updated',{ascending:false});if(res.error)throw res.error;
-      var emails=[emp.company_email,emp.personal_email].filter(validEmail).map(function(v){return v.toLowerCase();});
-      var devs=(res.data||[]).filter(function(d){return (emp.employee_id&&d.assigned_employee_id===emp.employee_id)||(d.assigned_employee_email&&emails.indexOf(String(d.assigned_employee_email).toLowerCase())>=0)||((d.assigned_to||'').trim().toLowerCase()===(emp.employee_name||'').trim().toLowerCase());});
-      var hist=submissionDeviceArray(emp);devs=devs.map(function(d){var hd=hist.find(function(x){return x.imei1===d.imei1;})||{};return Object.assign({},hd,d,{sim_numbers:(d.sim_numbers&&d.sim_numbers.length)?d.sim_numbers:(hd.simNumbers||[])});});
-      if(!devs.length){devs=hist.map(function(d){return Object.assign({},d,{_historical:true,sim_numbers:d.simNumbers||[]});});}
+      var live=res.data||[];
+      var hist=submissionDeviceArray(emp); // latest selected handover is authoritative for the employee's current device list
+      var emails=[emp.company_email,emp.personal_email].filter(validEmail).map(function(v){return String(v).trim().toLowerCase();});
+      function strongOwnerMatch(d){
+        if(emp.employee_id&&d.assigned_employee_id&&String(d.assigned_employee_id).trim().toLowerCase()===String(emp.employee_id).trim().toLowerCase())return true;
+        if(d.assigned_employee_email&&emails.indexOf(String(d.assigned_employee_email).trim().toLowerCase())>=0)return true;
+        return false;
+      }
+      var devs=[];
+      if(hist.length){
+        // Only the IMEIs recorded on the employee's latest submission are shown here.
+        // This prevents stale/old devices with the same assigned_to name from appearing.
+        devs=hist.map(function(hd){
+          var ld=live.find(function(d){return String(d.imei1||'')===String(hd.imei1||'');});
+          return Object.assign({},hd,ld||{}, {
+            _historical:!ld,
+            sim_numbers:(ld&&ld.sim_numbers&&ld.sim_numbers.length)?ld.sim_numbers:(hd.simNumbers||hd.sim_numbers||[])
+          });
+        }).filter(function(d){return d.imei1;});
+      }else{
+        // Fallback for employees whose old submission has no device snapshot: use strong ID/email ownership only.
+        devs=live.filter(strongOwnerMatch).map(function(d){return Object.assign({},d,{sim_numbers:d.sim_numbers||[]});});
+      }
+      var seen=new Set();
+      devs=devs.filter(function(d){var k=String(d.imei1||'');if(!k||seen.has(k))return false;seen.add(k);return true;});
       issueReportState.devices=devs;renderIssueDevices();
     }catch(err){console.error(err);issueReportState.devices=[];renderIssueDevices();}
   }
