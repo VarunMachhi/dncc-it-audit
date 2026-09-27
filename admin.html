@@ -2573,81 +2573,74 @@
     if(!r||r.request_type!=='Replace'||r.status!=='Completed'){alert('Repair is available only for completed replacement requests.');return;}
     var oldImei=r.replace_imei1||((r.replace_device||{}).imei1)||'', snap=r.fulfillment_device_snapshot||{}, newImei=snap.imei1||'';
     if(!oldImei||!newImei){alert('This request does not contain enough replacement IMEI information to repair safely.');return;}
+
     var q=sb.from('submissions').select('*').order('created_at',{ascending:false});
     if(r.employee_id) q=q.eq('employee_id',r.employee_id);
     else if(isRealEmail(r.requester_email)) q=q.or('company_email.eq.'+r.requester_email+',personal_email.eq.'+r.requester_email);
     else q=q.eq('employee_name',r.employee_name||'');
-    var res=await q;if(res.error){alert('Could not inspect submissions: '+res.error.message);return;}
+    var res=await q;
+    if(res.error){alert('Could not inspect submissions: '+res.error.message);return;}
     var rows=(res.data||[]).filter(function(x){return requestIdentityMatch(r,x);});
     if(!rows.length){alert('No matching employee submissions were found. Nothing was changed.');return;}
 
-    // If a single current-state row already contains the issued IMEI and another preserved device,
-    // the request has already been merged correctly and must not be repaired again.
     var mergedCandidates=rows.filter(function(x){var ds=submissionDeviceList(x);return submissionHasImei(x,newImei)&&ds.length>=2&&!submissionHasImei(x,oldImei);});
     var baseCandidates=rows.filter(function(x){return submissionHasImei(x,oldImei);});
     var duplicateCandidates=rows.filter(function(x){return submissionHasImei(x,newImei)&&!submissionHasImei(x,oldImei);});
     var singleDuplicates=duplicateCandidates.filter(function(x){return submissionDeviceList(x).length===1;});
-    // Recovery for a partially completed repair: merged row was saved but duplicate deletion failed.
-    if(!baseCandidates.length&&mergedCandidates.length&&singleDuplicates.length){
-      var merged=mergedCandidates.find(function(x){return r.matched_submission_id&&String(x.id)===String(r.matched_submission_id);})||mergedCandidates[0];
-      var stale=singleDuplicates.find(function(x){return String(x.id)!==String(merged.id);});
-      if(stale){
-        if(!confirm('The main submission is already merged correctly:\n'+submissionDeviceSummary(merged)+'\n\nA leftover single-device duplicate still exists:\n'+submissionDeviceSummary(stale)+'\n\nDelete ONLY this leftover duplicate now?'))return;
-        var cleanup=await sb.from('submissions').delete().eq('id',stale.id).select('id');if(cleanup.error){alert('Could not remove leftover duplicate: '+cleanup.error.message);return;}
-        await logActivity('Removed leftover replacement duplicate','device_request',r.id,'Deleted duplicate submission '+stale.id+' after verified merged submission '+merged.id);
-        await Promise.all([loadSubmissions(),loadDeviceRequests()]);renderStats();renderReports();alert('Leftover duplicate removed. The merged employee submission was kept.');return;
+
+    // Prefer the request's recorded submission. This also handles a previous partial repair
+    // where the merge was saved but the duplicate row remained.
+    var base=null;
+    if(r.matched_submission_id){
+      base=rows.find(function(x){return String(x.id)===String(r.matched_submission_id) && (submissionHasImei(x,oldImei)||(submissionHasImei(x,newImei)&&submissionDeviceList(x).length>=2));})||null;
+    }
+    if(!base) base=baseCandidates[0]||mergedCandidates[0]||null;
+    if(!base){alert('Safe repair stopped: the original/merged employee submission could not be identified. No data was changed.');return;}
+
+    var dup=singleDuplicates.find(function(x){return String(x.id)!==String(base.id);})||null;
+    if(!dup){
+      if(submissionHasImei(base,newImei)&&submissionDeviceList(base).length>=2){alert('The employee record is already merged and no leftover single-device duplicate was found. Nothing needs repair.');return;}
+      alert('No safe single-device replacement duplicate was found. Nothing was changed.');return;
+    }
+
+    var isCleanupOnly=submissionHasImei(base,newImei)&&submissionDeviceList(base).length>=2&&!submissionHasImei(base,oldImei);
+    var resultDevices;
+    if(isCleanupOnly){
+      resultDevices=submissionDeviceList(base);
+    }else{
+      var replacement=pickReplacementDeviceFromDuplicate(dup,newImei,snap);
+      if(!replacement){alert('Safe repair stopped: replacement device details could not be found.');return;}
+      resultDevices=submissionDeviceList(base).map(function(d){return String(d.imei1)===String(oldImei)?replacement:d;});
+      if(!resultDevices.some(function(d){return String(d.imei1)===String(newImei);})){
+        alert('Safe repair stopped: the old IMEI could not be replaced in the original row.');return;
       }
     }
-    if(!baseCandidates.length&&mergedCandidates.length){alert('This replacement already looks merged correctly. No duplicate cleanup is required.');return;}
 
-    var base=null;
-    if(r.matched_submission_id) base=baseCandidates.find(function(x){return String(x.id)===String(r.matched_submission_id);})||null;
-    if(!base) base=baseCandidates[0]||null;
-    if(!base){alert('Safe repair stopped: the original submission containing replaced IMEI '+oldImei+' was not found. No data was changed.');return;}
-
-    var dup=duplicateCandidates.find(function(x){return String(x.id)!==String(base.id)&&submissionDeviceList(x).length===1;})||duplicateCandidates.find(function(x){return String(x.id)!==String(base.id);})||null;
-    if(!dup){
-      if(submissionHasImei(base,newImei)){alert('The original submission already contains the replacement device. No duplicate was found.');return;}
-      alert('No separate replacement duplicate submission was found. Nothing was changed.');return;
-    }
-    var newDevice=pickReplacementDeviceFromDuplicate(dup,newImei,snap);
-    if(!newDevice){alert('Safe repair stopped: replacement device details could not be found.');return;}
-    var b1=base.device1||null,b2=base.device2||null,replacedSlot=0;
-    if(b1&&String(b1.imei1)===String(oldImei)){b1=newDevice;replacedSlot=1;}
-    else if(b2&&String(b2.imei1)===String(oldImei)){b2=newDevice;replacedSlot=2;}
-    if(!replacedSlot){alert('Safe repair stopped: replaced IMEI is not in the selected original submission.');return;}
-    var mergedDevices=[b1,b2].filter(function(d){return d&&d.imei1;});
-    var preview='Repair Request #'+requestNumber(r)+'\n\nOriginal submission:\n'+submissionDeviceSummary(base)+'\n\nWrong duplicate:\n'+submissionDeviceSummary(dup)+'\n\nResult after repair:\n'+mergedDevices.map(function(d){return ((d.brand||'')+' '+(d.model||'')).trim()+' / '+d.imei1;}).join(' + ')+'\n\nThe original row will be updated and ONLY duplicate submission '+String(dup.id).slice(0,8)+'… will be deleted. Continue?';
+    var preview=(isCleanupOnly?'Finish previous partial repair':'Repair duplicate replacement')+' — Request #'+requestNumber(r)+'\n\n'+
+      'Keep this employee submission:\n'+submissionDeviceSummary(base)+'\n\n'+
+      'Delete this WRONG single-device duplicate:\n'+submissionDeviceSummary(dup)+'\n\n'+
+      'Final current devices:\n'+resultDevices.map(function(d){return ((d.brand||'')+' '+(d.model||'')).trim()+' / '+d.imei1;}).join(' + ')+'\n\n'+
+      'This operation is now atomic: merge/update and duplicate deletion either ALL succeed or ALL roll back. Continue?';
     if(!confirm(preview))return;
 
-    var payload={
-      employee_name:dup.employee_name||base.employee_name,
-      employee_id:dup.employee_id||base.employee_id,
-      company_email:dup.company_email||base.company_email,
-      personal_email:dup.personal_email||base.personal_email,
-      department:dup.department||base.department,
-      location:dup.location||base.location,
-      designation:dup.designation||base.designation,
-      contact:dup.contact||base.contact,
-      device_count:mergedDevices.length,
-      device1:b1,
-      device2:b2||null,
-      charger:dup.charger||base.charger,
-      cable:dup.cable||base.cable,
-      damage:dup.damage||base.damage,
-      damage_what:dup.damage_what||base.damage_what,
-      damage_how:dup.damage_how||base.damage_how,
-      phone_problem:dup.phone_problem||base.phone_problem,
-      phone_problem_details:dup.phone_problem_details||base.phone_problem_details
-    };
     try{
-      var up=await sb.from('submissions').update(payload).eq('id',base.id).select('id');if(up.error)throw up.error;if(!up.data||up.data.length!==1)throw new Error('Original submission update did not affect exactly one row.');
-      var rq=await sb.from('device_requests').update({matched_submission_id:base.id,updated_at:new Date().toISOString(),admin_note:((r.admin_note||'')+'\nDuplicate replacement repaired on '+new Date().toLocaleString()).trim()}).eq('id',r.id);if(rq.error)throw rq.error;
-      var del=await sb.from('submissions').delete().eq('id',dup.id).select('id');if(del.error)throw del.error;if(!del.data||del.data.length!==1)throw new Error('Duplicate submission was not deleted. Original merge was saved; verify manually before retrying.');
-      await logActivity('Repaired duplicate replacement','device_request',r.id,'Merged duplicate submission '+dup.id+' into '+base.id+' · replaced '+oldImei+' with '+newImei+' · preserved other device(s)');
-      await Promise.all([loadSubmissions(),loadDeviceRequests(),loadInventory()]);renderStats();renderReports();
-      alert('Repair completed. The employee now has one merged submission with the replacement phone and the other existing device preserved. The wrong single-device duplicate was removed.');
-    }catch(err){console.error(err);alert('Repair could not finish safely: '+(err.message||err)+'\nPlease refresh and verify the submissions before trying again.');}
+      var rpc=await sb.rpc('dncc_repair_duplicate_replacement',{
+        p_request_id:r.id,
+        p_base_submission_id:base.id,
+        p_duplicate_submission_id:dup.id,
+        p_admin_username:loggedInAdminUsername||'admin'
+      });
+      if(rpc.error)throw rpc.error;
+      await Promise.all([loadSubmissions(),loadDeviceRequests(),loadInventory()]);
+      renderStats();renderReports();
+      var mode=rpc.data&&rpc.data.mode;
+      alert(mode==='cleanup_only'
+        ? 'Repair completed. The already-merged employee record was kept and the leftover single-device duplicate was removed.'
+        : 'Repair completed atomically. The old device slot was replaced, the employee\'s other device was preserved, and the wrong duplicate submission was removed.');
+    }catch(err){
+      console.error(err);
+      alert('Repair was NOT applied. The database transaction rolled everything back safely.\n\n'+(err.message||err)+'\n\nMake sure the new atomic repair SQL migration has been run in Supabase, then refresh and try again.');
+    }
   }
 
   function candidateHtml(d,source){var email=resolveDeviceEmployeeEmail(d)||'';return '<div class="candidate-item"><label><input type="radio" name="fulfillDevice" value="'+esc(d.imei1)+'" data-source="'+source+'"><span><span class="name">'+esc((d.brand||'')+' '+(d.model||''))+'</span><span class="meta">'+esc(d.ram||'—')+' / '+esc(d.storage||'—')+' · IMEI '+esc(d.imei1)+' · '+esc(d.condition||'—')+(source==='Reassign'?'<br/>Current assignee: '+esc(d.assigned_to||'—')+(email?' · '+esc(email):''):'')+'<br/>SIM(s): '+esc((resolveDeviceSims(d).join(', '))||'None recorded')+'</span></span></label></div>';}
