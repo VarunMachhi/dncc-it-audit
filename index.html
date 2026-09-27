@@ -72,6 +72,10 @@
   .field.has-error .error-text{display:block;}
   .dup-warning{color:var(--amber, #b5691f); font-size:12.5px; margin-top:5px; display:none; font-weight:600;}
   .dup-warning.show{display:block;}
+  .dup-warning .dup-msg{display:block;margin-bottom:7px;}
+  .dup-warning .dup-it-btn{appearance:none;border:1px solid #b5691f;background:#fff7ed;color:#8a4d13;border-radius:7px;padding:7px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;min-height:34px;}
+  .dup-warning .dup-it-btn:hover{background:#ffedd5;}
+  .dup-warning .dup-it-btn:disabled{opacity:.6;cursor:not-allowed;}
   .submit-bar{display:flex; align-items:center; gap:14px; justify-content:space-between; flex-wrap:wrap;}
   button{font-family:var(--sans); font-weight:700; font-size:14.5px; border-radius:8px; border:none; padding:12px 22px; cursor:pointer; transition:transform .18s ease, box-shadow .18s ease, background-color .18s ease, border-color .18s ease;}
   button:hover{transform:translateY(-1px);}
@@ -691,6 +695,13 @@
   Object.assign(TRANSLATIONS.kok,{formSubtitle:'IT विभाग — IT मोबायल ऑडिट फॉर्म',draftRestoreConfirm:'पयलें अपुरें फॉर्म सेव आसा. तें परत हाडून फुडें चालू दवरपाचें?',draftRestored:'तुमचें अपुरें फॉर्म परत हाडलां.',imeiDuplicateLive:'ह्या IMEI खातीर पयलींच submission आसा ({name}). डिव्हाइस परत assign जाता जाल्यार योग्य IT request/temporary edit link वापरात.',fillRequired:'सबमिट करचे पयलीं दाखयल्ली गरजेची म्हायती भरात.',preparingReview:'Review तयार जाता…',prepareError:'म्हायती तयार करतना समस्या जाली. परत यत्न करात.',checkingDuplicates:'Duplicate तपासता…',duplicateFinal:'ह्या डिव्हाइस (IMEI {imei}) खातीर पयलींच submission आसा ({name}). Reassigned device खातीर IT-issued request/edit link वापरात.',saving:'सेव जाता…',emailingCopy:'तुमची प्रत ई-मेलान धाडता…',submitSuccessEmail:'Submission यशस्वी — handover PDF डाउनलोड जाता आनी ई-मेल प्रत धाडल्या.',submitSuccessNoEmail:'Submission यशस्वी आनी PDF डाउनलोड जाता. ई-मेल प्रत धाडूंक जमना; IT portal वरून परत धाडूंक शकता.',saveError:'तुमचो response सेव करतना समस्या जाली. परत यत्न करात.',corrValidation:'तुमचें नांव, योग्य ई-मेल आनी कितें बदलपाचें तें भरात.',corrSuccess:'Correction request धाडल्या. IT तपासून update जाल्यार ई-मेल करतली.',corrError:'Request धाडूंक जमना. परत यत्न करात.'});
   var currentLang = (function(){ try{ return localStorage.getItem('dncc_lang') || 'en'; }catch(e){ return 'en'; } })();
 
+
+  Object.assign(TRANSLATIONS.en,{imeiAlreadyExists:'This IMEI already exists in IT records. You cannot submit this form with the same IMEI.',imeiInformIT:'Inform IT',imeiInformingIT:'Informing IT…',imeiInformedIT:'IT has been informed',imeiReportSuccess:'IT has been informed about this duplicate IMEI. Your form is still blocked until IT resolves it.',imeiReportFailed:'Could not inform IT. Please contact IT directly.',imeiSameForm:'The same IMEI cannot be used twice in this form.',imeiCheckFailed:'Could not verify IMEI uniqueness. Please try again before submitting.'});
+  Object.assign(TRANSLATIONS.gu,{imeiAlreadyExists:'આ IMEI પહેલેથી IT રેકોર્ડમાં છે. એ જ IMEI સાથે આ ફોર્મ સબમિટ કરી શકાતું નથી.',imeiInformIT:'IT ને જાણ કરો',imeiInformingIT:'IT ને જાણ કરી રહ્યા છીએ…',imeiInformedIT:'IT ને જાણ કરવામાં આવી',imeiReportSuccess:'આ ડુપ્લિકેટ IMEI વિશે IT ને જાણ કરવામાં આવી છે. IT ઉકેલે ત્યાં સુધી ફોર્મ સબમિટ નહીં થાય.',imeiReportFailed:'IT ને જાણ કરી શકાઈ નથી. કૃપા કરીને IT નો સીધો સંપર્ક કરો.',imeiSameForm:'એક જ IMEI આ ફોર્મમાં બે વાર વાપરી શકાતો નથી.',imeiCheckFailed:'IMEI unique છે કે નહીં તે ચકાસી શકાયું નથી. સબમિટ કરતા પહેલાં ફરી પ્રયત્ન કરો.'});
+  Object.assign(TRANSLATIONS.hi,{imeiAlreadyExists:'यह IMEI पहले से IT रिकॉर्ड में मौजूद है. उसी IMEI के साथ यह फॉर्म सबमिट नहीं किया जा सकता.',imeiInformIT:'IT को सूचित करें',imeiInformingIT:'IT को सूचित किया जा रहा है…',imeiInformedIT:'IT को सूचित कर दिया गया',imeiReportSuccess:'इस duplicate IMEI के बारे में IT को सूचित कर दिया गया है. IT के resolve करने तक फॉर्म submit नहीं होगा.',imeiReportFailed:'IT को सूचित नहीं कर सके. कृपया IT से सीधे संपर्क करें.',imeiSameForm:'एक ही IMEI इस फॉर्म में दो बार उपयोग नहीं किया जा सकता.',imeiCheckFailed:'IMEI uniqueness verify नहीं हो सकी. Submit करने से पहले फिर कोशिश करें.'});
+  Object.assign(TRANSLATIONS.mr,{imeiAlreadyExists:'हा IMEI आधीपासून IT रेकॉर्डमध्ये आहे. त्याच IMEI सह हे फॉर्म सबमिट करता येणार नाही.',imeiInformIT:'IT ला कळवा',imeiInformingIT:'IT ला कळवत आहोत…',imeiInformedIT:'IT ला कळवले',imeiReportSuccess:'या duplicate IMEI बद्दल IT ला कळवले आहे. IT सोडवेपर्यंत फॉर्म सबमिट होणार नाही.',imeiReportFailed:'IT ला कळवता आले नाही. कृपया IT शी थेट संपर्क करा.',imeiSameForm:'एकच IMEI या फॉर्ममध्ये दोनदा वापरता येत नाही.',imeiCheckFailed:'IMEI unique आहे का ते तपासता आले नाही. सबमिट करण्यापूर्वी पुन्हा प्रयत्न करा.'});
+  Object.assign(TRANSLATIONS.kok,{imeiAlreadyExists:'हो IMEI पयलींच IT रेकॉर्डांत आसा. त्याच IMEI सयत हें फॉर्म सबमिट करूं येना.',imeiInformIT:'IT कळयात',imeiInformingIT:'IT कळयता…',imeiInformedIT:'IT कळयलां',imeiReportSuccess:'ह्या duplicate IMEI विशीं IT कळयलां. IT सोडय मेरेन फॉर्म सबमिट जावचो ना.',imeiReportFailed:'IT कळोवंक जमना. कृपया IT कडेन थेट संपर्क करात.',imeiSameForm:'एकूच IMEI ह्या फॉर्मांत दोन फावट वापरूं येना.',imeiCheckFailed:'IMEI unique आसा काय तें तपासूंक जमना. सबमिट करचे पयलीं परत यत्न करात.'});
+
   function t(key){ return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) || TRANSLATIONS.en[key] || key; }
 
   function applyLanguage(){
@@ -938,7 +949,7 @@
     + '</div></div>'
     + '<div class="row2">'
     + '<div class="field"><label for="d'+idx+'_imei1" data-i18n="imei1Label">IMEI number 1</label><input type="text" data-imei id="d'+idx+'_imei1" required /><div class="error-text" data-i18n="imei1Error">Enter IMEI 1 (dial *#06#).</div><div class="dup-warning" id="d'+idx+'_imei1DupWarning"></div></div>'
-    + '<div class="field"><label for="d'+idx+'_imei2" data-i18n="imei2Label">IMEI number 2</label><input type="text" data-imei id="d'+idx+'_imei2" placeholder="Leave blank if single-SIM device" data-i18n-ph="imei2Placeholder" /></div>'
+    + '<div class="field"><label for="d'+idx+'_imei2" data-i18n="imei2Label">IMEI number 2</label><input type="text" data-imei id="d'+idx+'_imei2" placeholder="Leave blank if single-SIM device" data-i18n-ph="imei2Placeholder" /><div class="dup-warning" id="d'+idx+'_imei2DupWarning"></div></div>'
     + '</div>'
     + '<div class="field"><label for="d'+idx+'_simCount" data-i18n="simCountLabel">How many SIMs does this phone have?</label>'
     + '<select id="d'+idx+'_simCount"><option value="1">1</option><option value="2">2</option></select>'
@@ -971,32 +982,133 @@
     };
   }
 
-  function wireLiveDuplicateCheck(idx){
-    var el = document.getElementById('d'+idx+'_imei1');
-    var warnEl = document.getElementById('d'+idx+'_imei1DupWarning');
-    var checkNow = debounce(async function(){
-      var v = el.value.trim();
-      warnEl.classList.remove('show'); warnEl.textContent = '';
-      if(!IMEI_PATTERN.test(v)) return; // only check once it's a well-formed 15-digit IMEI
-      try{
-        var { data: dupes } = await sb.from('submissions')
-          .select('id, employee_name')
-          .or('device1->>imei1.eq.' + v + ',device2->>imei1.eq.' + v);
-        if(dupes && dupes.length > 0){
-          var allowedRequestImei = REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot && REQUEST_CONTEXT.fulfillment_device_snapshot.imei1 === v;
-          var allowedRequestBase = REQUEST_BASE_SUBMISSION && dupes.every(function(x){ return String(x.id) === String(REQUEST_BASE_SUBMISSION.id); });
-          var onlyOwnEdit = EDIT_CONTEXT && dupes.every(function(x){ return String(x.id) === String(EDIT_CONTEXT.submission.id); });
-          if(!allowedRequestImei && !allowedRequestBase && !onlyOwnEdit){
-            warnEl.textContent = t('imeiDuplicateLive').replace('{name}',dupes[0].employee_name||'someone');
-            warnEl.classList.add('show');
-          }
-        }
-      }catch(err){ /* non-blocking — the real check still runs again at submit time */ }
-    }, 500);
-    el.addEventListener('input', checkNow);
+  var duplicateImeiState = {};
+
+  function normalizeImei(v){ return String(v||'').replace(/\D/g,''); }
+
+  async function findImeiConflict(imei){
+    imei=normalizeImei(imei);
+    if(!/^\d{15}$/.test(imei)) return {exists:false,imei:imei};
+    try{
+      var rpc=await sb.rpc('dncc_find_imei_conflict',{p_imei:imei,p_exclude_submission_id:null,p_exclude_device_id:null});
+      if(!rpc.error && rpc.data) return rpc.data;
+    }catch(e){}
+    // Compatibility fallback if the latest migration has not been applied yet.
+    var device=null,submission=null,deviceIds=[],submissionIds=[];
+    var dr=await sb.from('devices').select('id,brand,model,imei1,imei2,status,assigned_to,assigned_employee_id,assigned_employee_email,last_updated').or('imei1.eq.'+imei+',imei2.eq.'+imei).limit(5);
+    if(!dr.error && dr.data && dr.data.length){device=dr.data[0];deviceIds=dr.data.map(function(x){return x.id;});}
+    var sr=await sb.from('submissions').select('id,employee_name,employee_id,company_email,personal_email,location,created_at,device1,device2').or('device1->>imei1.eq.'+imei+',device1->>imei2.eq.'+imei+',device2->>imei1.eq.'+imei+',device2->>imei2.eq.'+imei).order('created_at',{ascending:false}).limit(5);
+    if(!sr.error && sr.data && sr.data.length){submission=sr.data[0];submissionIds=sr.data.map(function(x){return x.id;});}
+    return {exists:!!(device||submission),imei:imei,device:device,submission:submission,device_ids:deviceIds,submission_ids:submissionIds};
   }
-  wireLiveDuplicateCheck(1);
-  wireLiveDuplicateCheck(2);
+
+  function requestAuthorizedImeis(){
+    var out=[];
+    if(REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot){
+      out.push(REQUEST_CONTEXT.fulfillment_device_snapshot.imei1,REQUEST_CONTEXT.fulfillment_device_snapshot.imei2);
+    }
+    return out.filter(Boolean).map(String);
+  }
+
+  function isImeiConflictAuthorized(conflict,imei){
+    if(!conflict || !conflict.exists) return true;
+    imei=String(imei||'');
+    var submissionIds=(conflict.submission_ids||[]).map(String), deviceIds=(conflict.device_ids||[]).map(String);
+    if(EDIT_CONTEXT && EDIT_CONTEXT.submission){
+      var ownId=String(EDIT_CONTEXT.submission.id);
+      var ownDevice=[EDIT_CONTEXT.submission.device1,EDIT_CONTEXT.submission.device2].some(function(d){return d&&(String(d.imei1||'')===imei||String(d.imei2||'')===imei);});
+      if(ownDevice && submissionIds.every(function(id){return id===ownId;})) return true;
+    }
+    if(REQUEST_BASE_SUBMISSION){
+      var baseId=String(REQUEST_BASE_SUBMISSION.id);
+      var baseOwn=[REQUEST_BASE_SUBMISSION.device1,REQUEST_BASE_SUBMISSION.device2].some(function(d){return d&&(String(d.imei1||'')===imei||String(d.imei2||'')===imei);});
+      if(baseOwn && submissionIds.every(function(id){return id===baseId;})) return true;
+    }
+    if(requestAuthorizedImeis().indexOf(imei)!==-1){
+      var assignedOk=!conflict.device || !conflict.device.assigned_employee_id || !REQUEST_CONTEXT.employee_id || String(conflict.device.assigned_employee_id)===String(REQUEST_CONTEXT.employee_id);
+      if(assignedOk) return true;
+    }
+    return false;
+  }
+
+  function employeeDuplicateAlertPayload(imei,fieldId,conflict){
+    var company=(document.getElementById('companyEmail').value||'').trim(), personal=(document.getElementById('personalEmail').value||'').trim();
+    return {
+      attempted_imei:imei,
+      attempted_field:fieldId.indexOf('imei2')!==-1?'IMEI 2':'IMEI 1',
+      source:REQUEST_CONTEXT?'Employee handover/request form':(EDIT_CONTEXT?'Temporary employee edit form':'Employee audit form'),
+      employee_name:(document.getElementById('empName').value||'').trim(),
+      employee_id:(document.getElementById('empId').value||'').trim(),
+      company_email:company,
+      personal_email:personal,
+      location:document.getElementById('location').value||'',
+      designation:(document.getElementById('designation').value||'').trim(),
+      duplicate_device_id:conflict&&conflict.device&&conflict.device.id?String(conflict.device.id):'',
+      duplicate_submission_id:conflict&&conflict.submission&&conflict.submission.id?String(conflict.submission.id):'',
+      existing_device:conflict&&conflict.device?conflict.device:null,
+      existing_submission:conflict&&conflict.submission?conflict.submission:null,
+      request_context:REQUEST_CONTEXT?{id:REQUEST_CONTEXT.id,request_type:REQUEST_CONTEXT.request_type,employee_kind:REQUEST_CONTEXT.employee_kind}:null,
+      message:'Employee attempted to use an IMEI that already exists in DNCC IT records.'
+    };
+  }
+
+  async function informITDuplicateImei(fieldId){
+    var state=duplicateImeiState[fieldId];
+    if(!state||!state.conflict)return;
+    var btn=document.querySelector('[data-inform-imei="'+fieldId+'"]');
+    if(btn){btn.disabled=true;btn.textContent=t('imeiInformingIT');}
+    try{
+      var payload=employeeDuplicateAlertPayload(state.imei,fieldId,state.conflict);
+      var rr=await sb.rpc('dncc_report_duplicate_imei',{p_payload:payload});
+      if(rr.error) throw rr.error;
+      try{
+        var setRes=await sb.from('settings').select('it_request_email,smtp2go_sender_email,smtp_from_email').eq('id',1).single();
+        var settings=setRes.data||{},itEmail=settings.it_request_email||settings.smtp2go_sender_email||settings.smtp_from_email||'';
+        if(itEmail){
+          var ex=state.conflict.device||{}, es=state.conflict.submission||{};
+          var adminLink=location.origin+location.pathname.replace(/index\.html.*$/,'admin.html');
+          var html='<p><b>Duplicate IMEI attempt detected</b></p><p><b>Attempted IMEI:</b> '+state.imei+'<br/><b>Employee:</b> '+(payload.employee_name||'Not entered')+' ('+(payload.employee_id||'ID not entered')+')<br/><b>Email:</b> '+(payload.company_email||payload.personal_email||'Not entered')+'<br/><b>Location:</b> '+(payload.location||'Not entered')+'</p><p><b>Existing record:</b> '+((ex.brand||'')+' '+(ex.model||'')).trim()+' · '+(ex.status||'')+(ex.assigned_to?(' · assigned to '+ex.assigned_to):'')+'</p><p><a href="'+adminLink+'">Open DNCC IT Admin → IMEI Alerts</a></p>';
+          var sent=await sendSimpleEmail(itEmail,'Duplicate IMEI attempt — '+state.imei,html);
+          if(sent) await sb.from('duplicate_imei_alerts').update({notified_it_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',rr.data);
+        }
+      }catch(mailErr){console.error('Duplicate IMEI IT email notification failed',mailErr);}
+      if(btn){btn.textContent=t('imeiInformedIT');}
+      showToast(t('imeiReportSuccess'),'ok');
+    }catch(err){
+      console.error(err);
+      if(btn){btn.disabled=false;btn.textContent=t('imeiInformIT');}
+      showToast(t('imeiReportFailed'),'err');
+    }
+  }
+
+  function renderDuplicateWarning(fieldId,warnEl,imei,conflict){
+    duplicateImeiState[fieldId]={imei:imei,conflict:conflict};
+    warnEl.innerHTML='<span class="dup-msg">'+t('imeiAlreadyExists')+'</span><button type="button" class="dup-it-btn" data-inform-imei="'+fieldId+'">'+t('imeiInformIT')+'</button>';
+    warnEl.classList.add('show');
+    var btn=warnEl.querySelector('.dup-it-btn');
+    if(btn) btn.addEventListener('click',function(){informITDuplicateImei(fieldId);});
+  }
+
+  function wireLiveDuplicateCheck(idx,which){
+    var fieldId='d'+idx+'_'+which;
+    var el=document.getElementById(fieldId);
+    var warnEl=document.getElementById(fieldId+'DupWarning');
+    var checkNow=debounce(async function(){
+      var v=normalizeImei(el.value);
+      warnEl.classList.remove('show');warnEl.innerHTML='';delete duplicateImeiState[fieldId];
+      if(!IMEI_PATTERN.test(v))return;
+      try{
+        var conflict=await findImeiConflict(v);
+        if(conflict&&conflict.exists&&!isImeiConflictAuthorized(conflict,v))renderDuplicateWarning(fieldId,warnEl,v,conflict);
+      }catch(err){console.error('IMEI duplicate lookup failed',err);}
+    },450);
+    el.addEventListener('input',checkNow);
+    el.addEventListener('blur',checkNow);
+  }
+  wireLiveDuplicateCheck(1,'imei1');
+  wireLiveDuplicateCheck(1,'imei2');
+  wireLiveDuplicateCheck(2,'imei1');
+  wireLiveDuplicateCheck(2,'imei2');
 
   function wireSimNumbers(idx){
     var sel = document.getElementById('d'+idx+'_simCount');
@@ -1312,6 +1424,10 @@
       };
       record.device1 = await collectDevice(1);
       if(deviceCount === 2) record.device2 = await collectDevice(2);
+      var reviewImeis=[];[record.device1,record.device2].forEach(function(d){if(!d)return;[d.imei1,d.imei2].forEach(function(v){v=normalizeImei(v);if(v)reviewImeis.push(v);});});
+      var reviewSeen={};for(var ri=0;ri<reviewImeis.length;ri++){if(reviewSeen[reviewImeis[ri]]){showToast(t('imeiSameForm')+' ('+reviewImeis[ri]+')','err');return;}reviewSeen[reviewImeis[ri]]=true;}
+      var liveBlocked=Object.keys(duplicateImeiState).some(function(k){return duplicateImeiState[k]&&reviewImeis.indexOf(duplicateImeiState[k].imei)!==-1;});
+      if(liveBlocked){showToast(t('imeiAlreadyExists'),'err');return;}
       showReview(record);
     }catch(err){
       console.error(err);
@@ -1469,24 +1585,30 @@
       }
       var effectiveRecord = mergeRequestHandoverWithExisting(record);
 
-      // Duplicate check — has this IMEI already been submitted before?
-      var imeisToCheck = [effectiveRecord.device1 && effectiveRecord.device1.imei1];
-      if(effectiveRecord.device2) imeisToCheck.push(effectiveRecord.device2.imei1);
-      for(var ci=0; ci<imeisToCheck.length; ci++){
-        var checkImei = imeisToCheck[ci];
-        if(!checkImei) continue;
-        var { data: dupes } = await sb.from('submissions')
-          .select('id, employee_name, created_at')
-          .or('device1->>imei1.eq.' + checkImei + ',device2->>imei1.eq.' + checkImei);
-        if(dupes && dupes.length > 0){
-          var requestAuthorized = REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot && REQUEST_CONTEXT.fulfillment_device_snapshot.imei1 === checkImei;
-          var requestBaseAuthorized = REQUEST_BASE_SUBMISSION && dupes.every(function(x){ return String(x.id) === String(REQUEST_BASE_SUBMISSION.id); });
-          var editAuthorized = EDIT_CONTEXT && dupes.every(function(x){ return String(x.id) === String(EDIT_CONTEXT.submission.id); });
-          if(!requestAuthorized && !requestBaseAuthorized && !editAuthorized){
-            showToast(t('duplicateFinal').replace('{imei}',checkImei).replace('{name}',dupes[0].employee_name||'someone'), 'err');
-            submitBtn.disabled = false; submitBtn.textContent = t('submitBtn');
-            return;
+      // IMEI uniqueness check — covers IMEI 1 + IMEI 2 on both phones.
+      var imeisToCheck=[];
+      [effectiveRecord.device1,effectiveRecord.device2].forEach(function(d){if(!d)return;[d.imei1,d.imei2].forEach(function(v){v=normalizeImei(v);if(v)imeisToCheck.push(v);});});
+      var seenImeis={};
+      for(var si=0;si<imeisToCheck.length;si++){
+        if(seenImeis[imeisToCheck[si]]){
+          showToast(t('imeiSameForm')+' ('+imeisToCheck[si]+')','err');
+          submitBtn.disabled=false;submitBtn.textContent=t('submitBtn');return;
+        }
+        seenImeis[imeisToCheck[si]]=true;
+      }
+      for(var ci=0;ci<imeisToCheck.length;ci++){
+        var checkImei=imeisToCheck[ci];
+        try{
+          var conflict=await findImeiConflict(checkImei);
+          if(conflict&&conflict.exists&&!isImeiConflictAuthorized(conflict,checkImei)){
+            var fieldId='';
+            [1,2].some(function(di){return ['imei1','imei2'].some(function(w){var e=document.getElementById('d'+di+'_'+w);if(e&&normalizeImei(e.value)===checkImei){fieldId='d'+di+'_'+w;return true;}return false;});});
+            if(fieldId){var wEl=document.getElementById(fieldId+'DupWarning');if(wEl)renderDuplicateWarning(fieldId,wEl,checkImei,conflict);}
+            showToast(t('imeiAlreadyExists')+' ('+checkImei+')','err');
+            submitBtn.disabled=false;submitBtn.textContent=t('submitBtn');return;
           }
+        }catch(checkErr){
+          console.error(checkErr);showToast(t('imeiCheckFailed'),'err');submitBtn.disabled=false;submitBtn.textContent=t('submitBtn');return;
         }
       }
       submitBtn.textContent = t('saving');

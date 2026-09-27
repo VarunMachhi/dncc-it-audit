@@ -156,6 +156,10 @@
   .issue-kind{font-weight:700;color:var(--navy)}.issue-summary-cell{min-width:300px;max-width:430px;white-space:normal;line-height:1.45}.issue-resolution-cell{min-width:280px;max-width:420px;white-space:normal;line-height:1.45}.issue-table{min-width:1550px}
   .issue-meta{font-size:11px;color:var(--text-soft);margin-top:3px;line-height:1.35}.issue-resolved-box{margin-top:5px;padding:7px 8px;border-radius:7px;background:var(--ok-light);color:#245f44;font-size:11px}.issue-open-box{margin-top:5px;padding:7px 8px;border-radius:7px;background:#fff8ea;color:#8b5512;font-size:11px}
 
+  /* ---------- Duplicate IMEI Alerts ---------- */
+  #imeiAlertBadge{display:inline-block;min-width:16px;padding:1px 5px;border-radius:10px;background:var(--danger);color:#fff;font-size:10.5px;font-weight:700;vertical-align:middle;margin-left:2px}#imeiAlertBadge:empty{display:none}
+  .imei-alert-open{display:inline-block;padding:3px 8px;border-radius:14px;background:var(--danger-light);color:var(--danger);font-size:10.5px;font-weight:700}.imei-alert-ack{display:inline-block;padding:3px 8px;border-radius:14px;background:#fff3df;color:#9b5b13;font-size:10.5px;font-weight:700}.imei-alert-resolved{display:inline-block;padding:3px 8px;border-radius:14px;background:var(--ok-light);color:var(--ok);font-size:10.5px;font-weight:700}.imei-alert-detail{font-size:11px;color:var(--text-soft);margin-top:3px;line-height:1.4}.imei-alert-imei{font-family:var(--mono);font-weight:700;color:var(--navy)}
+
   /* ---------- Reports ---------- */
   .report-intro{margin:-4px 0 16px; color:var(--text-soft); font-size:12.5px;}
   .report-presets{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-bottom:16px;}
@@ -315,6 +319,7 @@
       <button class="tab-btn" data-tab="inventory">Inventory</button>
       <button class="tab-btn" data-tab="devicerequests">Device Requests <span id="requestBadge"></span></button>
       <button class="tab-btn" data-tab="issues">Issues &amp; Damage <span id="issueBadge"></span></button>
+      <button class="tab-btn" data-tab="imeialerts">IMEI Alerts <span id="imeiAlertBadge"></span></button>
       <button class="tab-btn" data-tab="reports">Reports</button>
       <button class="tab-btn" data-tab="changereqs">Change Requests <span id="pendingBadge"></span></button>
       <button class="tab-btn" data-tab="activitylog">Activity Log</button>
@@ -417,6 +422,20 @@
         <button class="btn btn-secondary" id="clearIssueFilters">Clear filters</button>
       </div>
       <div id="issuesArea"><p class="empty-state">Loading…</p></div>
+    </div>
+
+    <!-- DUPLICATE IMEI ALERTS -->
+    <div class="tab-panel" id="tab-imeialerts">
+      <div class="panel-bar">
+        <div><h2>Duplicate IMEI alerts</h2><p class="sub" style="margin:3px 0 0;">Employee attempts blocked because an IMEI already exists in IT records. Review the existing owner/device before correcting or authorizing anything.</p></div>
+        <button class="btn btn-secondary" id="refreshImeiAlertsBtn">Refresh</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="imeiAlertSearch" class="search-input" placeholder="Search IMEI, employee, email, existing owner/device…" />
+        <select id="imeiAlertStatus"><option value="Open">Open only</option><option value="Acknowledged">Acknowledged</option><option value="Resolved">Resolved</option><option value="">All statuses</option></select>
+        <button class="btn btn-secondary" id="clearImeiAlertFilters">Clear filters</button>
+      </div>
+      <div id="imeiAlertsArea"><p class="empty-state">Loading…</p></div>
     </div>
 
     <!-- REPORTS -->
@@ -702,6 +721,7 @@
       if(btn.dataset.tab === 'activitylog' && !loadedTabs.activity){ loadedTabs.activity=true; loadActivityLog(); }
       if(btn.dataset.tab === 'devicerequests'){ loadDeviceRequests(); }
       if(btn.dataset.tab === 'issues'){ Promise.all([loadIssueResolutions(), loadEmployeeIssueReports()]).then(function(){ renderIssues(); renderStats(); }); }
+      if(btn.dataset.tab === 'imeialerts'){ loadDuplicateImeiAlerts(); }
       if(btn.dataset.tab === 'reports'){ populateReportLocationFilter(); renderReports(); }
     });
   });
@@ -740,7 +760,7 @@
     document.getElementById('lightboxImg').src = '';
   });
 
-  var currentSubs = [], currentDevices = [], currentDeviceRequests = [], currentIssueResolutions = [], currentEmployeeIssueReports = [];
+  var currentSubs = [], currentDevices = [], currentDeviceRequests = [], currentIssueResolutions = [], currentEmployeeIssueReports = [], currentDuplicateImeiAlerts = [];
   var fullSubmissionCache = new Map();
   var loadedTabs = {activity:false};
 
@@ -798,7 +818,7 @@
   document.getElementById('refreshLogBtn').addEventListener('click', function(){ loadedTabs.activity=true; loadActivityLog(); });
 
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports()]); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts()]); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -808,6 +828,54 @@
       (data||[]).forEach(function(t){ currentTemplates[t.action] = t; });
     }catch(err){ console.error('Could not load email templates', err); }
   }
+
+  var imeiAlertFilter={search:'',status:'Open'};
+
+  async function findAdminImeiConflict(imei,excludeSubmissionId,excludeDeviceId){
+    imei=String(imei||'').replace(/\D/g,'');
+    if(!/^\d{15}$/.test(imei))return {exists:false,imei:imei};
+    var res=await sb.rpc('dncc_find_imei_conflict',{p_imei:imei,p_exclude_submission_id:excludeSubmissionId||null,p_exclude_device_id:excludeDeviceId||null});
+    if(res.error)throw res.error;
+    return res.data||{exists:false,imei:imei};
+  }
+
+  async function validateAdminImeis(imeis,excludeSubmissionId,excludeDeviceId){
+    var vals=(imeis||[]).map(function(v){return String(v||'').replace(/\D/g,'');}).filter(Boolean),seen={};
+    for(var i=0;i<vals.length;i++){
+      if(!/^\d{15}$/.test(vals[i]))return {ok:false,message:'Every entered IMEI must be exactly 15 digits.'};
+      if(seen[vals[i]])return {ok:false,message:'The same IMEI cannot be used twice: '+vals[i]};
+      seen[vals[i]]=true;
+      var c=await findAdminImeiConflict(vals[i],excludeSubmissionId,excludeDeviceId);
+      if(c&&c.exists){var d=c.device||{},sub=c.submission||{};return {ok:false,message:'IMEI already exists: '+vals[i]+'\nExisting device: '+(((d.brand||'')+' '+(d.model||'')).trim()||'—')+(d.status?(' · '+d.status):'')+(d.assigned_to?(' · '+d.assigned_to):'')+'\nExisting submission: '+(sub.employee_name||'—')+' '+(sub.employee_id||'')};}
+    }
+    return {ok:true};
+  }
+
+  async function loadDuplicateImeiAlerts(){
+    var area=document.getElementById('imeiAlertsArea');
+    try{var q=await sb.from('duplicate_imei_alerts').select('*').order('created_at',{ascending:false}).limit(500);if(q.error)throw q.error;currentDuplicateImeiAlerts=q.data||[];renderDuplicateImeiAlerts();renderStats();}
+    catch(err){console.error(err);if(area)area.innerHTML='<p class="empty-state">Could not load IMEI alerts. Run the latest IMEI migration first.</p>';}
+  }
+  function renderDuplicateImeiAlerts(){
+    var area=document.getElementById('imeiAlertsArea');if(!area)return;
+    var q=(imeiAlertFilter.search||'').trim().toLowerCase();
+    var list=currentDuplicateImeiAlerts.filter(function(a){if(imeiAlertFilter.status&&a.status!==imeiAlertFilter.status)return false;var d=a.existing_device||{},s=a.existing_submission||{};var hay=[a.attempted_imei,a.employee_name,a.employee_id,a.company_email,a.personal_email,a.location,d.brand,d.model,d.assigned_to,d.assigned_employee_id,s.employee_name,s.employee_id].filter(Boolean).join(' ').toLowerCase();return !q||hay.indexOf(q)!==-1;});
+    if(!list.length){area.innerHTML='<p class="empty-state">No IMEI alerts match this filter.</p>';return;}
+    var rows=list.map(function(a){var d=a.existing_device||{},sub=a.existing_submission||{},statusClass=a.status==='Resolved'?'imei-alert-resolved':(a.status==='Acknowledged'?'imei-alert-ack':'imei-alert-open');var existingDevice=(((d.brand||'')+' '+(d.model||'')).trim()||'—')+'<div class="imei-alert-detail">'+esc(d.status||'')+(d.assigned_to?(' · '+esc(d.assigned_to)):'')+(d.assigned_employee_id?(' ('+esc(d.assigned_employee_id)+')'):'')+'</div>';var existingSub=(sub.employee_name||sub.employee_id)?esc(sub.employee_name||'')+'<div class="imei-alert-detail">'+esc(sub.employee_id||'')+' · '+esc(sub.location||'')+'</div>':'—';var acts='<button class="btn-small edit" data-imei-alert-action="inventory" data-id="'+a.id+'">Inventory</button><button class="btn-small edit" data-imei-alert-action="submission" data-id="'+a.id+'">Submission</button>';if(a.status==='Open')acts+='<button class="btn-small spare" data-imei-alert-action="ack" data-id="'+a.id+'">Acknowledge</button>';if(a.status!=='Resolved')acts+='<button class="btn-small assign" data-imei-alert-action="resolve" data-id="'+a.id+'">Resolve</button>';acts+='<button class="btn-small edit" data-imei-alert-action="view" data-id="'+a.id+'">Details</button>';return '<tr><td>'+esc(new Date(a.created_at).toLocaleString())+'</td><td><span class="imei-alert-imei">'+esc(a.attempted_imei)+'</span><div class="imei-alert-detail">'+esc(a.attempted_field||'')+' · '+esc(a.source||'')+'</div></td><td>'+esc(a.employee_name||'—')+'<div class="imei-alert-detail">'+esc(a.employee_id||'')+' · '+esc(a.location||'')+'<br/>'+esc(a.company_email||a.personal_email||'')+'</div></td><td>'+existingDevice+'</td><td>'+existingSub+'</td><td><span class="'+statusClass+'">'+esc(a.status)+'</span>'+(a.resolution_note?'<div class="imei-alert-detail">'+esc(a.resolution_note)+'</div>':'')+'</td><td style="white-space:nowrap">'+acts+'</td></tr>';}).join('');
+    area.innerHTML='<div class="table-scroll-shell"><div class="table-top-scroll"><div class="table-top-scroll-inner"></div></div><div class="table-wrap"><table style="min-width:1250px"><thead><tr><th>Attempted</th><th>IMEI</th><th>Employee</th><th>Existing inventory record</th><th>Existing submission</th><th>Status</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';wireTableScrollSync(area);area.querySelectorAll('button[data-imei-alert-action]').forEach(function(b){b.addEventListener('click',function(){handleImeiAlertAction(b.dataset.imeiAlertAction,b.dataset.id);});});
+  }
+  async function handleImeiAlertAction(action,id){
+    var a=currentDuplicateImeiAlerts.find(function(x){return String(x.id)===String(id);});if(!a)return;
+    if(action==='inventory'){document.querySelector('.tab-btn[data-tab="inventory"]').click();invFilter.search=a.attempted_imei;document.getElementById('invSearch').value=a.attempted_imei;invPage=1;renderInventory();return;}
+    if(action==='submission'){document.querySelector('.tab-btn[data-tab="submissions"]').click();subsFilter.search=a.attempted_imei;document.getElementById('subsSearch').value=a.attempted_imei;subsPage=1;renderSubmissions();return;}
+    if(action==='view'){var d=a.existing_device||{},sub=a.existing_submission||{};openModal('Duplicate IMEI alert — '+a.attempted_imei,[{id:'employee',label:'Employee who attempted it',value:(a.employee_name||'')+' · '+(a.employee_id||'')+' · '+(a.company_email||a.personal_email||'')},{id:'source',label:'Source / field',value:(a.source||'')+' · '+(a.attempted_field||'')},{id:'existing_device',label:'Existing inventory record',value:((d.brand||'')+' '+(d.model||'')+' · '+(d.status||'')+' · '+(d.assigned_to||'')),type:'textarea'},{id:'existing_submission',label:'Existing submission',value:(sub.employee_name||'')+' · '+(sub.employee_id||'')+' · '+(sub.location||''),type:'textarea'},{id:'message',label:'Alert message',value:a.message||'',type:'textarea'},{id:'resolution',label:'Resolution',value:a.resolution_note||'',type:'textarea'}],function(){closeModal();});return;}
+    if(action==='ack'){var up=await sb.from('duplicate_imei_alerts').update({status:'Acknowledged',acknowledged_at:new Date().toISOString(),acknowledged_by:loggedInAdminUsername||'IT Admin',updated_at:new Date().toISOString()}).eq('id',id);if(up.error){alert(up.error.message);return;}await logActivity('Acknowledged duplicate IMEI alert','duplicate_imei_alert',id,a.attempted_imei);await loadDuplicateImeiAlerts();return;}
+    if(action==='resolve'){openModal('Resolve duplicate IMEI alert — '+a.attempted_imei,[{id:'note',label:'What was checked / resolved? *',value:a.resolution_note||'',type:'textarea'},{id:'by',label:'Resolved by',value:loggedInAdminUsername||'IT Admin'}],async function(v){if(!v.note.trim()){alert('Enter the resolution/check details.');return;}var up=await sb.from('duplicate_imei_alerts').update({status:'Resolved',resolution_note:v.note.trim(),resolved_by:v.by.trim()||loggedInAdminUsername||'IT Admin',resolved_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id);if(up.error){alert(up.error.message);return;}await logActivity('Resolved duplicate IMEI alert','duplicate_imei_alert',id,a.attempted_imei+' · '+v.note.trim());closeModal();await loadDuplicateImeiAlerts();});}
+  }
+  document.getElementById('refreshImeiAlertsBtn').addEventListener('click',loadDuplicateImeiAlerts);
+  document.getElementById('imeiAlertSearch').addEventListener('input',debounce(function(){imeiAlertFilter.search=this.value;renderDuplicateImeiAlerts();},250));
+  document.getElementById('imeiAlertStatus').addEventListener('change',function(){imeiAlertFilter.status=this.value;renderDuplicateImeiAlerts();});
+  document.getElementById('clearImeiAlertFilters').addEventListener('click',function(){imeiAlertFilter={search:'',status:'Open'};document.getElementById('imeiAlertSearch').value='';document.getElementById('imeiAlertStatus').value='Open';renderDuplicateImeiAlerts();});
 
   var currentChangeReqs = [];
   async function loadChangeRequests(){
@@ -832,6 +900,7 @@
     var emailed = currentSubs.filter(function(s){ return !!s.email_sent_at; }).length;
     var pendingReqs = currentChangeReqs.filter(function(c){ return c.status==='Pending'; }).length;
     var unresolvedIssues = buildIssueTickets().filter(function(i){ return i.status!=='Resolved'; }).length;
+    var openImeiAlerts = currentDuplicateImeiAlerts.filter(function(a){ return a.status!=='Resolved'; }).length;
     // [label, value, tab, invStatusFilterValue, subsDamageFilterValue]
     var cards = [
       ['Forms submitted', total, 'submissions', null, ''],
@@ -843,13 +912,15 @@
       ['Handover emails sent', emailed, 'submissions', null, ''],
       ['Pending change requests', pendingReqs, 'changereqs', null, null],
       ['Device requests pending', currentDeviceRequests.filter(function(r){ return r.status==='Pending Review' || r.status==='Approved - Preparing Device' || r.status==='Awaiting Availability' || r.status==='Device Assigned - Form Pending'; }).length, 'devicerequests', null, null],
-      ['Open issues / damage', unresolvedIssues, 'issues', null, null]
+      ['Open issues / damage', unresolvedIssues, 'issues', null, null],
+      ['Duplicate IMEI alerts', openImeiAlerts, 'imeialerts', null, null]
     ];
     document.getElementById('statsRow').innerHTML = cards.map(function(c){
       return '<div class="stat-card" data-jump-tab="'+c[2]+'" data-jump-inv="'+(c[3]===null?'':c[3])+'" data-jump-damage="'+(c[4]===null?'':c[4])+'"><div class="num">'+c[1]+'</div><div class="label">'+c[0]+'</div></div>';
     }).join('');
     document.getElementById('pendingBadge').textContent = pendingReqs > 0 ? pendingReqs : '';
     document.getElementById('issueBadge').textContent = unresolvedIssues > 0 ? unresolvedIssues : '';
+    document.getElementById('imeiAlertBadge').textContent = openImeiAlerts > 0 ? openImeiAlerts : '';
 
     document.querySelectorAll('.stat-card[data-jump-tab]').forEach(function(card){
       card.addEventListener('click', function(){
@@ -1340,6 +1411,7 @@
     openModal('Add submission manually', subEditFields({}), async function(values){
       try{
         var row = valuesToSubmissionRow(values, {}, {});
+        var imeiCheck=await validateAdminImeis([row.device1&&row.device1.imei1,row.device1&&row.device1.imei2,row.device2&&row.device2.imei1,row.device2&&row.device2.imei2],null,null);if(!imeiCheck.ok){alert(imeiCheck.message);return;}
         var { error } = await sb.from('submissions').insert([row]);
         if(error) throw error;
         closeModal(); await loadSubmissions(); renderStats();
@@ -1355,6 +1427,7 @@
       openModal('Edit submission — ' + (r.employee_name||''), subEditFields(r), async function(values){
         try{
           var row = valuesToSubmissionRow(values, r.device1, r.device2);
+          var imeiCheck=await validateAdminImeis([row.device1&&row.device1.imei1,row.device1&&row.device1.imei2,row.device2&&row.device2.imei1,row.device2&&row.device2.imei2],id,null);if(!imeiCheck.ok){alert(imeiCheck.message);return;}
           var { error } = await sb.from('submissions').update(row).eq('id', id);
           if(error) throw error;
           await logActivity('Edited submission', 'submission', id, 'Updated details for ' + (row.employee_name||r.employee_name||'employee'));
@@ -2161,6 +2234,7 @@
             if(values.sim1 && !/^\d{10}$/.test(values.sim1)){ alert('SIM 1 must be 10 digits or blank.'); return; }
             if(values.sim2 && !/^\d{10}$/.test(values.sim2)){ alert('SIM 2 must be 10 digits or blank.'); return; }
             var editedSims=[values.sim1,values.sim2].filter(Boolean);
+            var imeiCheck=await validateAdminImeis([values.imei1,values.imei2],null,d.id);if(!imeiCheck.ok){alert(imeiCheck.message);return;}
             var detailsChanged = values.brand !== (d.brand||'') || values.model !== (d.model||'')
               || values.ram !== (d.ram||'') || values.storage !== (d.storage||'')
               || values.imei1 !== (d.imei1||'') || values.imei2 !== (d.imei2||'')
@@ -2332,8 +2406,9 @@
     var condition=document.getElementById('newCondition').value,simSlots=parseInt(document.getElementById('newSimSlots').value,10)||2,sim1=document.getElementById('newSim1').value.trim(),sim2=document.getElementById('newSim2').value.trim(),stockSource=document.getElementById('newStockSource').value,charger=document.getElementById('newCharger').value,cable=document.getElementById('newCable').value,notes=document.getElementById('newDeviceNotes').value.trim();
     if(!brand||!model||!/^\d{15}$/.test(imei1)){alert('Brand, model and a valid 15-digit IMEI 1 are required.');return;}if(imei2&&!/^\d{15}$/.test(imei2)){alert('IMEI 2 must be 15 digits or blank.');return;}if(sim1&&!/^\d{10}$/.test(sim1)){alert('SIM 1 must be 10 digits or blank.');return;}if(sim2&&!/^\d{10}$/.test(sim2)){alert('SIM 2 must be 10 digits or blank.');return;}
     try{
+      var imeiCheck=await validateAdminImeis([imei1,imei2],null,null);if(!imeiCheck.ok){alert(imeiCheck.message);return;}
       var payload={brand:brand,model:model,ram:ram,storage:storage,imei1:imei1,imei2:imei2,status:'Spare',assigned_to:null,assigned_employee_id:null,assigned_employee_email:null,condition:condition,sim_slots:simSlots,sim_numbers:[sim1,sim2].filter(Boolean),sim_assignment_mode:(sim1||sim2)?'Pre-installed stock SIM':'No SIM assigned',stock_source:stockSource,charger_available:charger,cable_available:cable,notes:notes,last_updated:new Date().toISOString()};
-      var res=await sb.from('devices').upsert([payload],{onConflict:'imei1'});if(res.error)throw res.error;await sb.from('device_history').insert([{imei1:imei1,action:'Added to inventory',employee_name:'',notes:'Added as spare via admin panel · '+condition+' · '+stockSource}]);
+      var res=await sb.from('devices').insert([payload]);if(res.error)throw res.error;await sb.from('device_history').insert([{imei1:imei1,action:'Added to inventory',employee_name:'',notes:'Added as spare via admin panel · '+condition+' · '+stockSource}]);
       ['newBrand','newModel','newRam','newStorage','newImei1','newImei2','newSim1','newSim2','newDeviceNotes'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('newCondition').value='Good';document.getElementById('newSimSlots').value='2';document.getElementById('newStockSource').value='New purchase';document.getElementById('newCharger').value='Unknown';document.getElementById('newCable').value='Unknown';await loadInventory();renderStats();
     }catch(err){console.error(err);alert('Could not add device: '+(err.message||err));}
   });
