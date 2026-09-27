@@ -479,6 +479,7 @@
   var sb = window.supabase.createClient(window.DNCC_CONFIG.SUPABASE_URL, window.DNCC_CONFIG.SUPABASE_ANON_KEY);
   var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL + '/functions/v1';
   var REQUEST_CONTEXT = null;
+  var REQUEST_BASE_SUBMISSION = null;
   var EDIT_CONTEXT = null;
 
   function fillTemplate(str, vars){
@@ -983,8 +984,9 @@
           .or('device1->>imei1.eq.' + v + ',device2->>imei1.eq.' + v);
         if(dupes && dupes.length > 0){
           var allowedRequestImei = REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot && REQUEST_CONTEXT.fulfillment_device_snapshot.imei1 === v;
+          var allowedRequestBase = REQUEST_BASE_SUBMISSION && dupes.every(function(x){ return String(x.id) === String(REQUEST_BASE_SUBMISSION.id); });
           var onlyOwnEdit = EDIT_CONTEXT && dupes.every(function(x){ return String(x.id) === String(EDIT_CONTEXT.submission.id); });
-          if(!allowedRequestImei && !onlyOwnEdit){
+          if(!allowedRequestImei && !allowedRequestBase && !onlyOwnEdit){
             warnEl.textContent = t('imeiDuplicateLive').replace('{name}',dupes[0].employee_name||'someone');
             warnEl.classList.add('show');
           }
@@ -1413,6 +1415,48 @@
     }catch(err){console.error('Could not notify IT about employee edit',err);}
   }
 
+  function cloneDeviceForRequest(d){
+    if(!d) return null;
+    try{return JSON.parse(JSON.stringify(d));}catch(e){return Object.assign({},d);}
+  }
+
+  function mergeRequestHandoverWithExisting(record){
+    if(!REQUEST_CONTEXT || !REQUEST_BASE_SUBMISSION || REQUEST_CONTEXT.employee_kind !== 'Existing') return record;
+    var base = REQUEST_BASE_SUBMISSION;
+    var out = Object.assign({}, record);
+    var incoming = cloneDeviceForRequest(record.device1);
+
+    // Replacement must update the employee's existing current-state submission,
+    // not create a second single-device submission. The non-replaced device is preserved.
+    if(REQUEST_CONTEXT.request_type === 'Replace'){
+      var replaceImei = REQUEST_CONTEXT.replace_imei1 || ((REQUEST_CONTEXT.replace_device||{}).imei1) || '';
+      var d1 = cloneDeviceForRequest(base.device1);
+      var d2 = cloneDeviceForRequest(base.device2);
+      var replaced = false;
+      if(d1 && d1.imei1 === replaceImei){ d1 = incoming; replaced = true; }
+      else if(d2 && d2.imei1 === replaceImei){ d2 = incoming; replaced = true; }
+
+      // Defensive fallback for older requests where the original IMEI was not captured correctly.
+      if(!replaced){
+        if(!d1) d1 = incoming;
+        else if(!d2) d2 = incoming;
+        else d1 = incoming;
+      }
+      out.device1 = d1;
+      out.device2 = d2 || null;
+      out.deviceCount = d2 ? 2 : 1;
+      return out;
+    }
+
+    // Existing employee requesting an additional phone: merge when the schema still has a free slot.
+    if((REQUEST_CONTEXT.request_choice === 'Additional' || REQUEST_CONTEXT.request_type === 'New') && parseInt(base.device_count||1,10) < 2){
+      out.device1 = cloneDeviceForRequest(base.device1) || incoming;
+      out.device2 = base.device1 ? incoming : cloneDeviceForRequest(base.device2);
+      out.deviceCount = out.device2 ? 2 : 1;
+    }
+    return out;
+  }
+
   async function finalizeSubmission(record){
     var submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = true; submitBtn.textContent = t('checkingDuplicates');
@@ -1423,9 +1467,11 @@
         var liveAccess=await sb.from('form_access_tokens').select('active,expires_at').eq('id',EDIT_CONTEXT.access.id).single();
         if(liveAccess.error || !liveAccess.data || !liveAccess.data.active || new Date(liveAccess.data.expires_at)<=new Date()){showToast(t('linkExpired'),'err');submitBtn.disabled=false;submitBtn.textContent=t('submitBtn');return;}
       }
+      var effectiveRecord = mergeRequestHandoverWithExisting(record);
+
       // Duplicate check — has this IMEI already been submitted before?
-      var imeisToCheck = [record.device1.imei1];
-      if(record.device2) imeisToCheck.push(record.device2.imei1);
+      var imeisToCheck = [effectiveRecord.device1 && effectiveRecord.device1.imei1];
+      if(effectiveRecord.device2) imeisToCheck.push(effectiveRecord.device2.imei1);
       for(var ci=0; ci<imeisToCheck.length; ci++){
         var checkImei = imeisToCheck[ci];
         if(!checkImei) continue;
@@ -1434,8 +1480,9 @@
           .or('device1->>imei1.eq.' + checkImei + ',device2->>imei1.eq.' + checkImei);
         if(dupes && dupes.length > 0){
           var requestAuthorized = REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot && REQUEST_CONTEXT.fulfillment_device_snapshot.imei1 === checkImei;
+          var requestBaseAuthorized = REQUEST_BASE_SUBMISSION && dupes.every(function(x){ return String(x.id) === String(REQUEST_BASE_SUBMISSION.id); });
           var editAuthorized = EDIT_CONTEXT && dupes.every(function(x){ return String(x.id) === String(EDIT_CONTEXT.submission.id); });
-          if(!requestAuthorized && !editAuthorized){
+          if(!requestAuthorized && !requestBaseAuthorized && !editAuthorized){
             showToast(t('duplicateFinal').replace('{imei}',checkImei).replace('{name}',dupes[0].employee_name||'someone'), 'err');
             submitBtn.disabled = false; submitBtn.textContent = t('submitBtn');
             return;
@@ -1445,43 +1492,61 @@
       submitBtn.textContent = t('saving');
 
       var submissionPayload = {
-        employee_name: record.employeeName, employee_id: record.employeeId,
-        company_email: record.companyEmail, personal_email: record.personalEmail,
-        department: record.department,
-        location: record.location, designation: record.designation, contact: record.contact,
-        device_count: record.deviceCount, charger: record.charger, cable: record.cable,
-        damage: record.damage, damage_what: record.damageWhat, damage_how: record.damageHow,
-        phone_problem: record.phoneProblem, phone_problem_details: record.phoneProblemDetails,
-        device1: record.device1, device2: record.device2 || null
+        employee_name: effectiveRecord.employeeName, employee_id: effectiveRecord.employeeId,
+        company_email: effectiveRecord.companyEmail, personal_email: effectiveRecord.personalEmail,
+        department: effectiveRecord.department,
+        location: effectiveRecord.location, designation: effectiveRecord.designation, contact: effectiveRecord.contact,
+        device_count: effectiveRecord.deviceCount, charger: effectiveRecord.charger, cable: effectiveRecord.cable,
+        damage: effectiveRecord.damage, damage_what: effectiveRecord.damageWhat, damage_how: effectiveRecord.damageHow,
+        phone_problem: effectiveRecord.phoneProblem, phone_problem_details: effectiveRecord.phoneProblemDetails,
+        device1: effectiveRecord.device1, device2: effectiveRecord.device2 || null
       };
       var inserted, error;
       if(EDIT_CONTEXT && EDIT_CONTEXT.submission){
         var editResult = await sb.from('submissions').update(submissionPayload).eq('id', EDIT_CONTEXT.submission.id).select();
         inserted = editResult.data; error = editResult.error;
+      } else if(REQUEST_CONTEXT && REQUEST_CONTEXT.employee_kind === 'Existing' && REQUEST_CONTEXT.request_type === 'Replace'){
+        // Hard safety guard: a replacement for an existing employee may NEVER create a new
+        // submission. It must update the verified submission containing the replaced IMEI.
+        if(!REQUEST_BASE_SUBMISSION) throw new Error('Replacement safety check failed: original employee submission not found. No duplicate submission was created.');
+        var replaceGuardImei=REQUEST_CONTEXT.replace_imei1||((REQUEST_CONTEXT.replace_device||{}).imei1)||'';
+        if(replaceGuardImei && ![REQUEST_BASE_SUBMISSION.device1,REQUEST_BASE_SUBMISSION.device2].some(function(d){return d&&String(d.imei1)===String(replaceGuardImei);})) throw new Error('Replacement safety check failed: selected original submission does not contain the device being replaced. No duplicate submission was created.');
+        var requestUpdateResult = await sb.from('submissions').update(submissionPayload).eq('id', REQUEST_BASE_SUBMISSION.id).select();
+        inserted = requestUpdateResult.data; error = requestUpdateResult.error;
+        if(!error && (!inserted || inserted.length!==1)) throw new Error('Replacement safety check failed: original submission was not updated exactly once.');
+      } else if(REQUEST_CONTEXT && REQUEST_BASE_SUBMISSION && REQUEST_CONTEXT.employee_kind === 'Existing' && parseInt(REQUEST_BASE_SUBMISSION.device_count||1,10) < 2){
+        var requestUpdateResult2 = await sb.from('submissions').update(submissionPayload).eq('id', REQUEST_BASE_SUBMISSION.id).select();
+        inserted = requestUpdateResult2.data; error = requestUpdateResult2.error;
       } else {
         var insertResult = await sb.from('submissions').insert([submissionPayload]).select();
         inserted = insertResult.data; error = insertResult.error;
       }
       if(error) throw error;
-      var submissionId = inserted && inserted[0] ? inserted[0].id : (EDIT_CONTEXT && EDIT_CONTEXT.submission ? EDIT_CONTEXT.submission.id : null);
+      var submissionId = inserted && inserted[0] ? inserted[0].id : (EDIT_CONTEXT && EDIT_CONTEXT.submission ? EDIT_CONTEXT.submission.id : (REQUEST_BASE_SUBMISSION ? REQUEST_BASE_SUBMISSION.id : null));
       if(EDIT_CONTEXT && EDIT_CONTEXT.submission && submissionId){
         await saveAndNotifyEmployeeEdit(submissionId, EDIT_CONTEXT.submission, submissionPayload, EDIT_CONTEXT.access);
       }
 
-      var inventoryEmail = [record.companyEmail, record.personalEmail].filter(isRealEmail)[0] || '';
-      await upsertDevice(record.device1, record.employeeName, record.employeeId, inventoryEmail);
-      if(record.device2) await upsertDevice(record.device2, record.employeeName, record.employeeId, inventoryEmail);
+      var inventoryEmail = [effectiveRecord.companyEmail, effectiveRecord.personalEmail].filter(isRealEmail)[0] || '';
+      if(REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot){
+        // Admin already moved the inventory ownership during fulfillment. Sync only the newly issued phone.
+        await upsertDevice(record.device1, effectiveRecord.employeeName, effectiveRecord.employeeId, inventoryEmail);
+      }else{
+        await upsertDevice(effectiveRecord.device1, effectiveRecord.employeeName, effectiveRecord.employeeId, inventoryEmail);
+        if(effectiveRecord.device2) await upsertDevice(effectiveRecord.device2, effectiveRecord.employeeName, effectiveRecord.employeeId, inventoryEmail);
+      }
 
       if(REQUEST_CONTEXT && REQUEST_CONTEXT.id){
-        await sb.from('device_requests').update({ status:'Completed', employee_id:record.employeeId, company_email:record.companyEmail, personal_email:record.personalEmail, form_completed_at:new Date().toISOString(), updated_at:new Date().toISOString() }).eq('id', REQUEST_CONTEXT.id);
+        var completedAt = new Date().toISOString();
+        await sb.from('device_requests').update({ status:'Completed', employee_id:effectiveRecord.employeeId, company_email:effectiveRecord.companyEmail, personal_email:effectiveRecord.personalEmail, form_completed_at:completedAt, form_token:null, form_token_expires_at:completedAt, updated_at:completedAt }).eq('id', REQUEST_CONTEXT.id);
       }
       if(EDIT_CONTEXT && EDIT_CONTEXT.access && EDIT_CONTEXT.access.id){
         await sb.from('form_access_tokens').update({ active:false, used_at:new Date().toISOString() }).eq('id', EDIT_CONTEXT.access.id);
       }
 
-      buildHandoverPDF(record);
+      buildHandoverPDF(effectiveRecord);
       submitBtn.textContent = t('emailingCopy');
-      var emailed = await autoSendHandoverEmail(record, submissionId);
+      var emailed = await autoSendHandoverEmail(effectiveRecord, submissionId);
       showToast(emailed
         ? t('submitSuccessEmail')
         : t('submitSuccessNoEmail'), 'ok');
@@ -1812,7 +1877,30 @@
       }
       if(requestId&&requestToken){
         var rr=await sb.from('device_requests').select('*').eq('id',requestId).eq('form_token',requestToken).single();if(rr.error||!rr.data)throw new Error(t('requestLinkInvalid'));if(!rr.data.form_token_expires_at||new Date(rr.data.form_token_expires_at)<=new Date())throw new Error(t('requestLinkExpired'));REQUEST_CONTEXT=rr.data;
-        var d=rr.data.fulfillment_device_snapshot||{}; var formSub={employee_name:rr.data.employee_name,employee_id:rr.data.employee_id,location:rr.data.location,designation:rr.data.designation,department:rr.data.department,company_email:rr.data.company_email||((rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:'NOT'),personal_email:rr.data.personal_email||(!(rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:rr.data.fulfillment_sim_numbers||[]})};prefillEmployeeForm(formSub);var assignedText=t('assignedFormText').replace('{device}',((d.brand||'')+' '+(d.model||'')).trim()).replace('{request}',rr.data.request_no||'');banner.innerHTML='<strong>'+h(t('assignedFormTitle'))+'</strong>'+h(assignedText);banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});
+        REQUEST_BASE_SUBMISSION=null;
+        if(rr.data.employee_kind==='Existing'){
+          var replaceImeiForBase=rr.data.replace_imei1||((rr.data.replace_device||{}).imei1)||'';
+          // For replacement requests, the safest source of truth is the submission that actually
+          // contains the phone being replaced. This prevents a newer accidental single-device
+          // submission from becoming the merge base.
+          if(rr.data.request_type==='Replace'&&replaceImeiForBase){
+            var replaceBaseQ=sb.from('submissions').select('*');
+            if(rr.data.employee_id) replaceBaseQ=replaceBaseQ.eq('employee_id',rr.data.employee_id);
+            replaceBaseQ=replaceBaseQ.or('device1->>imei1.eq.'+replaceImeiForBase+',device2->>imei1.eq.'+replaceImeiForBase).order('created_at',{ascending:false}).limit(10);
+            var replaceBaseRes=await replaceBaseQ;
+            if(!replaceBaseRes.error&&replaceBaseRes.data&&replaceBaseRes.data[0])REQUEST_BASE_SUBMISSION=replaceBaseRes.data[0];
+          }
+          if(!REQUEST_BASE_SUBMISSION&&rr.data.matched_submission_id){
+            var baseRes=await sb.from('submissions').select('*').eq('id',rr.data.matched_submission_id).single();
+            if(!baseRes.error&&baseRes.data)REQUEST_BASE_SUBMISSION=baseRes.data;
+          }
+          if(!REQUEST_BASE_SUBMISSION&&rr.data.employee_id&&rr.data.request_type!=='Replace'){
+            var latestRes=await sb.from('submissions').select('*').eq('employee_id',rr.data.employee_id).order('created_at',{ascending:false}).limit(1);
+            if(!latestRes.error&&latestRes.data&&latestRes.data[0])REQUEST_BASE_SUBMISSION=latestRes.data[0];
+          }
+          if(rr.data.request_type==='Replace'&&!REQUEST_BASE_SUBMISSION) throw new Error('The original handover record containing the phone being replaced could not be found. IT must repair/select the employee record before this replacement form can be submitted.');
+        }
+        var base=REQUEST_BASE_SUBMISSION||{};var d=rr.data.fulfillment_device_snapshot||{}; var formSub={employee_name:base.employee_name||rr.data.employee_name,employee_id:base.employee_id||rr.data.employee_id,location:base.location||rr.data.location,designation:base.designation||rr.data.designation,department:base.department||rr.data.department,contact:base.contact||'',company_email:base.company_email||rr.data.company_email||((rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:'NOT'),personal_email:base.personal_email||rr.data.personal_email||(!(rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:rr.data.fulfillment_sim_numbers||[]}),charger:'',cable:'',damage:'',phone_problem:''};prefillEmployeeForm(formSub);var assignedText=t('assignedFormText').replace('{device}',((d.brand||'')+' '+(d.model||'')).trim()).replace('{request}',rr.data.request_no||'');if(rr.data.request_type==='Replace'&&REQUEST_BASE_SUBMISSION){assignedText+=' Your other currently assigned device will be preserved automatically; this form updates the replacement slot instead of creating a second employee submission.';}banner.innerHTML='<strong>'+h(t('assignedFormTitle'))+'</strong>'+h(assignedText);banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});
       }
     }catch(err){banner.innerHTML='<strong>'+h(t('linkCannotUse'))+'</strong>'+h(err.message||err);banner.classList.add('show');}
   }
