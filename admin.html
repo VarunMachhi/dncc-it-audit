@@ -286,15 +286,42 @@
     .table-wrap tbody td{grid-template-columns:minmax(86px,34%) minmax(0,1fr);padding:8px!important;gap:8px;}
   }
 
-  .settings-lock{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;margin:10px 0 14px;}
-  .settings-lock strong{color:var(--navy);}
-  .settings-lock input{max-width:300px;min-width:220px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:7px;}
-  .lock-state{font-size:12.5px;color:var(--muted);}
-  .lock-state.unlocked{color:var(--success);font-weight:700;}
-  .admin-user-grid{display:grid;grid-template-columns:1.1fr 1fr 1.2fr .8fr auto;gap:10px;align-items:end;}
+  .settings-lock{display:grid;grid-template-columns:minmax(210px,.85fr) minmax(260px,1.2fr) auto;align-items:center;gap:12px;padding:13px 14px;border:1px solid #d7e0e7;border-radius:10px;background:#f8fafc;margin:10px 0 14px;transition:border-color .18s ease,background .18s ease,box-shadow .18s ease;}
+  .settings-lock.unlocked{border-color:#9fd6bd;background:#f1fbf6;box-shadow:0 0 0 2px rgba(25,135,84,.045);}
+  .settings-lock-main{display:flex;align-items:center;gap:9px;min-width:0;}
+  .settings-lock-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:8px;background:#edf2f6;flex:0 0 auto;}
+  .settings-lock.unlocked .settings-lock-icon{background:#ddf4e7;}
+  .settings-lock strong{display:block;color:var(--navy);font-size:13.5px;line-height:1.2;}
+  .settings-lock-note{display:block;color:var(--muted);font-size:11.5px;margin-top:3px;line-height:1.35;}
+  .settings-unlock-controls{display:flex;align-items:center;gap:8px;min-width:0;}
+  .settings-unlock-controls input{width:100%;min-width:0;padding:9px 11px;border:1px solid var(--line-strong);border-radius:7px;background:#fff;}
+  .lock-state{display:flex;justify-content:flex-end;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);white-space:nowrap;}
+  .lock-state.unlocked{color:var(--success);font-weight:800;}
+  .lock-countdown{font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;background:#e2f5ea;color:#157347;font-weight:800;letter-spacing:.02em;}
+  .admin-user-create{margin-top:14px;padding:15px;border:1px solid var(--line);border-radius:10px;background:#fbfcfd;}
+  .admin-user-create-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px;}
+  .admin-user-create-head h4{margin:0;color:var(--navy);font-size:14px;}
+  .admin-user-create-head p{margin:3px 0 0;color:var(--muted);font-size:12px;}
+  .admin-user-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px;align-items:end;}
+  .admin-user-grid .field{margin:0;min-width:0;}
+  .admin-user-grid input,.admin-user-grid select{width:100%;min-height:40px;}
+  .admin-user-create-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:13px;padding-top:12px;border-top:1px solid #e9edf0;}
+  .admin-user-create-actions .sub{margin-right:auto;}
   .user-role{display:inline-flex;padding:3px 8px;border-radius:999px;background:#eef4f8;font-size:11px;font-weight:700;}
   .admin-identity{font-size:12px;color:var(--muted);white-space:nowrap;}
-  @media(max-width:800px){.admin-user-grid{grid-template-columns:1fr;}.settings-lock input{max-width:none;width:100%;}.admin-identity{display:none;}}
+  .btn.is-loading{position:relative;pointer-events:none;opacity:.8;padding-left:34px!important;}
+  .btn.is-loading::before{content:'';position:absolute;left:12px;top:50%;width:13px;height:13px;margin-top:-7px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:dnccSpin .7s linear infinite;}
+  @keyframes dnccSpin{to{transform:rotate(360deg)}}
+  #globalBusy{position:fixed;right:18px;bottom:18px;z-index:10050;display:none;align-items:center;gap:9px;padding:10px 13px;border:1px solid #d9e1e7;border-radius:10px;background:rgba(255,255,255,.96);box-shadow:0 10px 30px rgba(18,38,52,.14);font-size:12.5px;font-weight:700;color:var(--navy);backdrop-filter:blur(8px);}
+  #globalBusy.show{display:flex;}
+  #globalBusy .busy-spinner{width:15px;height:15px;border:2px solid #b8c6d0;border-top-color:var(--navy);border-radius:50%;animation:dnccSpin .7s linear infinite;}
+  #globalProgress{position:fixed;left:0;top:0;height:3px;width:0;background:var(--navy);z-index:10060;opacity:0;transition:width .18s ease,opacity .18s ease;}
+  #globalProgress.show{opacity:1;}
+  #toastStack{position:fixed;right:18px;top:18px;z-index:10070;display:grid;gap:8px;width:min(360px,calc(100vw - 28px));pointer-events:none;}
+  .app-toast{pointer-events:auto;padding:11px 13px;border-radius:9px;background:#fff;border:1px solid var(--line);box-shadow:0 10px 28px rgba(18,38,52,.14);font-size:12.5px;line-height:1.4;animation:toastIn .2s ease;}
+  .app-toast.ok{border-left:4px solid var(--success);}.app-toast.err{border-left:4px solid #c73c3c;}.app-toast.info{border-left:4px solid var(--navy);}
+  @keyframes toastIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+  @media(max-width:800px){.admin-user-grid{grid-template-columns:1fr;}.admin-user-create-actions{align-items:stretch;flex-direction:column;}.admin-user-create-actions .sub{margin-right:0;width:100%;}.admin-user-create-actions .btn{width:100%;}.settings-lock{grid-template-columns:1fr;}.settings-unlock-controls{flex-direction:column;align-items:stretch;}.settings-unlock-controls .btn{width:100%;}.lock-state{justify-content:flex-start;}.admin-identity{display:none;}#globalBusy{right:10px;bottom:10px;}#toastStack{right:10px;top:10px;width:calc(100vw - 20px);}}
 
 </style>
 </head>
@@ -531,11 +558,16 @@
         <h3>Email sending (SMTP2GO)</h3>
         <p class="sub">Sensitive email settings are locked by a separate admin secret. Viewing this page does not allow anyone to change the sender/API configuration.</p>
         <div id="smtpMsg" class="msg"></div>
-        <div class="settings-lock">
-          <strong>🔒 SMTP settings locked</strong>
-          <input type="password" id="smtpSecretInput" placeholder="Enter admin secret to unlock" autocomplete="off" />
-          <button class="btn btn-secondary" id="unlockSmtpBtn">Unlock for 5 minutes</button>
-          <span class="lock-state" id="smtpLockState">Locked</span>
+        <div class="settings-lock" id="smtpLockPanel">
+          <div class="settings-lock-main">
+            <span class="settings-lock-icon" id="smtpLockIcon">🔒</span>
+            <div><strong id="smtpLockTitle">SMTP settings locked</strong><span class="settings-lock-note" id="smtpLockNote">Unlock only when you need to change email configuration.</span></div>
+          </div>
+          <div class="settings-unlock-controls" id="smtpUnlockControls">
+            <input type="password" id="smtpSecretInput" placeholder="Enter admin secret" autocomplete="off" />
+            <button class="btn btn-secondary" id="unlockSmtpBtn">Unlock</button>
+          </div>
+          <div class="lock-state" id="smtpLockState"><span id="smtpLockStateText">Locked</span><button class="btn btn-secondary" id="lockSmtpBtn" style="display:none;">Lock now</button></div>
         </div>
         <div class="grid">
           <div class="field"><label>SMTP2GO API key</label><input type="password" id="smtp2goApiKey" placeholder="Saved key — leave blank to keep current" disabled /></div>
@@ -546,7 +578,6 @@
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <button class="btn btn-primary" id="saveSmtpBtn" disabled>Save SMTP2GO settings</button>
           <button class="btn btn-secondary" id="testEmailBtn">Send test email</button>
-          <button class="btn btn-secondary" id="lockSmtpBtn" style="display:none;">Lock now</button>
         </div>
       </div>
 
@@ -577,18 +608,30 @@
         <h3>Admin users &amp; access</h3>
         <p class="sub">Owner can create separate logins. <b>Full Admin</b> can use all operational areas and Settings; <b>IT Staff</b> can use daily operational tabs but cannot open Settings or Activity Log.</p>
         <div id="adminUsersMsg" class="msg"></div>
-        <div class="admin-user-grid">
-          <div class="field"><label>Display name</label><input id="createAdminDisplayName" placeholder="e.g. Raj IT" /></div>
-          <div class="field"><label>Username *</label><input id="createAdminUsername" autocomplete="off" placeholder="e.g. raj.it" /></div>
-          <div class="field"><label>Temporary password *</label><input type="password" id="createAdminPassword" autocomplete="new-password" placeholder="Minimum 8 characters" /></div>
-          <div class="field"><label>Access level</label><select id="createAdminRole"><option value="staff">IT Staff</option><option value="admin">Full Admin</option></select></div>
-          <button class="btn btn-primary" id="createAdminUserBtn">Create user</button>
+        <div class="admin-user-create">
+          <div class="admin-user-create-head">
+            <div><h4>Create a new admin login</h4><p>Create a separate account instead of sharing the Owner password.</p></div>
+          </div>
+          <div class="admin-user-grid">
+            <div class="field"><label>Display name</label><input id="createAdminDisplayName" placeholder="e.g. Raj IT" /></div>
+            <div class="field"><label>Username *</label><input id="createAdminUsername" autocomplete="off" placeholder="e.g. raj.it" /></div>
+            <div class="field"><label>Temporary password *</label><input type="password" id="createAdminPassword" autocomplete="new-password" placeholder="Minimum 8 characters" /></div>
+            <div class="field"><label>Access level</label><select id="createAdminRole"><option value="staff">IT Staff — daily operations</option><option value="admin">Full Admin — includes Settings</option></select></div>
+          </div>
+          <div class="admin-user-create-actions">
+            <span class="sub">The new user can log in immediately after creation.</span>
+            <button class="btn btn-primary" id="createAdminUserBtn">Create user</button>
+          </div>
         </div>
         <div id="adminUsersArea" style="margin-top:16px;"></div>
       </div>
     </div>
   </div>
 </div>
+
+<div id="globalProgress"></div>
+<div id="globalBusy"><span class="busy-spinner"></span><span id="globalBusyText">Working…</span></div>
+<div id="toastStack" aria-live="polite" aria-atomic="true"></div>
 
 <div id="modalOverlay">
   <div id="modalBox">
@@ -649,6 +692,36 @@
   document.getElementById('companySub').textContent = window.DNCC_CONFIG.DEPARTMENT + ' — Mobile audit & inventory';
   document.title = window.DNCC_CONFIG.COMPANY_NAME + ' — IT Admin Panel';
 
+  // Global request feedback: keeps the admin UI feeling responsive during network/database work.
+  var _nativeFetch = window.fetch.bind(window);
+  var _pendingRequests = 0, _busyDelay = null, _progressTimer = null, _lastActionLabel = 'Working';
+  function _showGlobalBusy(){
+    var box=document.getElementById('globalBusy'),txt=document.getElementById('globalBusyText'),bar=document.getElementById('globalProgress');
+    if(txt) txt.textContent=(_lastActionLabel||'Working').replace(/\s+…?$/,'')+'…';
+    if(box) box.classList.add('show');
+    if(bar){bar.classList.add('show');bar.style.width='38%';clearTimeout(_progressTimer);_progressTimer=setTimeout(function(){if(_pendingRequests>0)bar.style.width='72%';},650);}
+  }
+  function _hideGlobalBusy(){
+    var box=document.getElementById('globalBusy'),bar=document.getElementById('globalProgress');
+    if(box) box.classList.remove('show');
+    if(bar){bar.style.width='100%';setTimeout(function(){bar.classList.remove('show');bar.style.width='0';},180);}
+  }
+  function _networkStart(){_pendingRequests++;if(_pendingRequests===1){clearTimeout(_busyDelay);_busyDelay=setTimeout(_showGlobalBusy,140);}}
+  function _networkEnd(){_pendingRequests=Math.max(0,_pendingRequests-1);if(_pendingRequests===0){clearTimeout(_busyDelay);clearTimeout(_progressTimer);_hideGlobalBusy();}}
+  window.fetch=function(){_networkStart();return _nativeFetch.apply(window,arguments).finally(_networkEnd);};
+  document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('button');if(!b)return;var t=(b.textContent||'').trim();if(t&&!/^(Cancel|Close|Previous|Next|1|2|3|4|5)$/i.test(t))_lastActionLabel=t;},true);
+  function setButtonBusy(btn,busy,label){
+    if(!btn)return;
+    if(busy){if(!btn.dataset.originalText)btn.dataset.originalText=btn.textContent;btn.classList.add('is-loading');btn.disabled=true;if(label)btn.textContent=label;}
+    else{btn.classList.remove('is-loading');btn.disabled=false;if(btn.dataset.originalText){btn.textContent=btn.dataset.originalText;delete btn.dataset.originalText;}}
+  }
+  async function withButtonBusy(btn,label,work){setButtonBusy(btn,true,label);try{return await work();}finally{setButtonBusy(btn,false);}}
+  function showToast(text,type){
+    var stack=document.getElementById('toastStack');if(!stack||!text)return;
+    var el=document.createElement('div');el.className='app-toast '+(type||'info');el.textContent=text;stack.appendChild(el);
+    setTimeout(function(){el.style.opacity='0';el.style.transform='translateY(-4px)';setTimeout(function(){el.remove();},180);},3200);
+  }
+
   var sb = window.supabase.createClient(window.DNCC_CONFIG.SUPABASE_URL, window.DNCC_CONFIG.SUPABASE_ANON_KEY);
   var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL + '/functions/v1';
   var currentSettings = null;
@@ -658,6 +731,8 @@
   var adminSessionToken = '';
   var smtpUnlockSecret = '';
   var smtpUnlockTimer = null;
+  var smtpCountdownTimer = null;
+  var smtpUnlockDeadline = 0;
   var currentTemplates = {};
   var DEFAULT_TEMPLATES = {
     handover: {
@@ -796,10 +871,10 @@
       return '<div class="field"><label>'+esc(f.label)+'</label><input type="'+esc(f.type||'text')+'" id="mf_'+f.id+'" value="'+esc(val)+'" /></div>';
     }).join('');
     document.getElementById('modalOverlay').classList.add('open');
-    document.getElementById('modalSave').onclick = function(){
-      var values = {};
+    document.getElementById('modalSave').onclick = async function(){
+      var btn=this, values = {};
       fields.forEach(function(f){ if(f.section) return; values[f.id] = document.getElementById('mf_'+f.id).value.trim(); });
-      onSave(values);
+      await withButtonBusy(btn,'Saving…',async function(){ await Promise.resolve(onSave(values)); });
     };
     document.getElementById('modalCancel').onclick = closeModal;
   }
@@ -2479,30 +2554,34 @@
   document.getElementById('tmplAction').addEventListener('change', populateTemplateForm);
 
   document.getElementById('saveTmplBtn').addEventListener('click', async function(){
-    var action = document.getElementById('tmplAction').value;
+    var btn=this, action = document.getElementById('tmplAction').value;
     var subject = document.getElementById('tmplSubject').value;
     var body = document.getElementById('tmplBody').value;
     var closing = document.getElementById('tmplClosing').value;
-    try{
-      var { error } = await sb.from('email_templates').upsert([{ action:action, subject:subject, body:body, closing:closing }], { onConflict:'action' });
-      if(error) throw error;
-      currentTemplates[action] = { action:action, subject:subject, body:body, closing:closing };
-      showMsg('tmplMsg', 'Template saved.', 'ok');
-    }catch(err){ showMsg('tmplMsg', 'Could not save: ' + (err.message||err), 'err'); }
+    await withButtonBusy(btn,'Saving…',async function(){
+      try{
+        var { error } = await sb.from('email_templates').upsert([{ action:action, subject:subject, body:body, closing:closing }], { onConflict:'action' });
+        if(error) throw error;
+        currentTemplates[action] = { action:action, subject:subject, body:body, closing:closing };
+        showMsg('tmplMsg', 'Template saved.', 'ok');
+      }catch(err){ showMsg('tmplMsg', 'Could not save: ' + (err.message||err), 'err'); }
+    });
   });
 
   document.getElementById('resetTmplBtn').addEventListener('click', async function(){
-    var action = document.getElementById('tmplAction').value;
+    var btn=this, action = document.getElementById('tmplAction').value;
     var def = DEFAULT_TEMPLATES[action];
     if(!def) return;
     if(!confirm('Reset the "' + action + '" template to its default wording?')) return;
-    try{
-      var { error } = await sb.from('email_templates').upsert([{ action:action, subject:def.subject, body:def.body, closing:def.closing }], { onConflict:'action' });
-      if(error) throw error;
-      currentTemplates[action] = Object.assign({ action:action }, def);
-      populateTemplateForm();
-      showMsg('tmplMsg', 'Reset to default.', 'ok');
-    }catch(err){ showMsg('tmplMsg', 'Could not reset: ' + (err.message||err), 'err'); }
+    await withButtonBusy(btn,'Resetting…',async function(){
+      try{
+        var { error } = await sb.from('email_templates').upsert([{ action:action, subject:def.subject, body:def.body, closing:def.closing }], { onConflict:'action' });
+        if(error) throw error;
+        currentTemplates[action] = Object.assign({ action:action }, def);
+        populateTemplateForm();
+        showMsg('tmplMsg', 'Reset to default.', 'ok');
+      }catch(err){ showMsg('tmplMsg', 'Could not reset: ' + (err.message||err), 'err'); }
+    });
   });
 
   function fillTemplate(str, vars){
@@ -2782,13 +2861,47 @@
   async function resendRequestFormLink(r){var needsNew=!r.form_token||!r.form_token_expires_at||new Date(r.form_token_expires_at)<=new Date();if(needsNew){if(!r.fulfillment_device_snapshot||!r.fulfillment_device_snapshot.imei1){alert('No assigned device exists for this request. Assign the device first.');return;}var promptText=r.status==='Completed'?'Generate a new 72-hour handover link to repair/update this completed replacement record?':'The old link expired. Generate a new 72-hour link?';if(!confirm(promptText))return;var token=crypto.randomUUID(),expires=new Date(Date.now()+72*3600000).toISOString();var up=await sb.from('device_requests').update({form_token:token,form_token_expires_at:expires,updated_at:new Date().toISOString()}).eq('id',r.id);if(up.error){alert(up.error.message);return;}r.form_token=token;r.form_token_expires_at=expires;}var link=location.origin+location.pathname.replace(/admin\.html.*$/,'index.html')+'?request_id='+encodeURIComponent(r.id)+'&token='+encodeURIComponent(r.form_token),email=requestEmployeeEmail(r),d=r.fulfillment_device_snapshot||{};var repair=r.status==='Completed';var sent=await sendSimpleEmail(email,(repair?'Update replacement handover form':'Reminder: complete device handover form')+' — Request #'+requestNumber(r),'<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>'+(repair?'IT has reopened your replacement handover form so the current device record can be updated correctly.':'Your assigned '+esc((d.brand||'')+' '+(d.model||''))+' is still waiting for the compulsory handover form.')+'</p><p><a href="'+link+'">'+(repair?'Open replacement handover form':'Complete the handover form')+'</a></p><p>Link valid until '+esc(new Date(r.form_token_expires_at).toLocaleString())+'.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>');alert(sent?(repair?'Replacement handover link reopened and emailed.':'Form link resent.'):'Could not send the email.');}
 
   // ---------- Settings ----------
+  function formatCountdown(ms){
+    var total=Math.max(0,Math.ceil(ms/1000)),m=Math.floor(total/60),sec=total%60;
+    return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  }
+  function stopSmtpCountdown(){
+    if(smtpCountdownTimer){clearInterval(smtpCountdownTimer);smtpCountdownTimer=null;}
+    smtpUnlockDeadline=0;
+  }
+  function updateSmtpCountdown(){
+    if(!smtpUnlockDeadline)return;
+    var left=smtpUnlockDeadline-Date.now();
+    if(left<=0){setSmtpLocked(true);showMsg('smtpMsg','SMTP settings locked automatically after 5 minutes.','ok');showToast('SMTP settings auto-locked.','info');return;}
+    var text=document.getElementById('smtpLockStateText');
+    if(text) text.innerHTML='Auto-lock in <span class="lock-countdown">'+formatCountdown(left)+'</span>';
+  }
+  function startSmtpCountdown(){
+    stopSmtpCountdown();
+    smtpUnlockDeadline=Date.now()+(5*60*1000);
+    updateSmtpCountdown();
+    smtpCountdownTimer=setInterval(updateSmtpCountdown,1000);
+    if(smtpUnlockTimer)clearTimeout(smtpUnlockTimer);
+    smtpUnlockTimer=setTimeout(function(){setSmtpLocked(true);showMsg('smtpMsg','SMTP settings locked automatically after 5 minutes.','ok');showToast('SMTP settings auto-locked.','info');},5*60*1000+250);
+  }
   function setSmtpLocked(locked){
     ['smtp2goApiKey','smtp2goSenderName','smtp2goSenderEmail','itRequestEmail'].forEach(function(id){var el=document.getElementById(id); if(el) el.disabled=locked;});
     document.getElementById('saveSmtpBtn').disabled=locked;
-    document.getElementById('lockSmtpBtn').style.display=locked?'none':'';
-    var st=document.getElementById('smtpLockState');
-    st.textContent=locked?'Locked':'Unlocked for 5 minutes'; st.className='lock-state'+(locked?'':' unlocked');
-    if(locked){ smtpUnlockSecret=''; document.getElementById('smtpSecretInput').value=''; if(smtpUnlockTimer){clearTimeout(smtpUnlockTimer);smtpUnlockTimer=null;} }
+    var panel=document.getElementById('smtpLockPanel'),title=document.getElementById('smtpLockTitle'),note=document.getElementById('smtpLockNote'),icon=document.getElementById('smtpLockIcon'),controls=document.getElementById('smtpUnlockControls'),lockBtn=document.getElementById('lockSmtpBtn'),st=document.getElementById('smtpLockState'),stText=document.getElementById('smtpLockStateText');
+    if(panel)panel.classList.toggle('unlocked',!locked);
+    if(title)title.textContent=locked?'SMTP settings locked':'SMTP settings unlocked';
+    if(note)note.textContent=locked?'Unlock only when you need to change email configuration.':'Changes are enabled temporarily. Settings will lock automatically.';
+    if(icon)icon.textContent=locked?'🔒':'🔓';
+    if(controls)controls.style.display=locked?'flex':'none';
+    if(lockBtn)lockBtn.style.display=locked?'none':'';
+    if(st)st.className='lock-state'+(locked?'':' unlocked');
+    if(stText&&locked)stText.textContent='Locked';
+    if(locked){
+      smtpUnlockSecret='';
+      document.getElementById('smtpSecretInput').value='';
+      if(smtpUnlockTimer){clearTimeout(smtpUnlockTimer);smtpUnlockTimer=null;}
+      stopSmtpCountdown();
+    }
   }
   function populateSettingsForm(){
     if(!currentSettings) return;
@@ -2798,49 +2911,56 @@
     document.getElementById('itRequestEmail').value=currentSettings.it_request_email||currentSettings.smtp2go_sender_email||currentSettings.smtp_from_email||'';
     setSmtpLocked(true);
   }
-  function showMsg(id,text,type){var el=document.getElementById(id);el.textContent=text;el.className='msg '+type;}
+  function showMsg(id,text,type){var el=document.getElementById(id);el.textContent=text;el.className='msg '+type;if(text)showToast(text,type==='err'?'err':type==='ok'?'ok':'info');}
 
   document.getElementById('unlockSmtpBtn').addEventListener('click',async function(){
-    var secret=document.getElementById('smtpSecretInput').value;
+    var btn=this,secret=document.getElementById('smtpSecretInput').value;
     if(!secret){showMsg('smtpMsg','Enter the admin secret first.','err');return;}
-    try{
-      var r=await sb.rpc('admin_verify_settings_secret',{p_token:adminSessionToken,p_secret:secret});
-      if(r.error) throw r.error;
-      if(r.data!==true){showMsg('smtpMsg','Incorrect admin secret.','err');return;}
-      smtpUnlockSecret=secret;
-      setSmtpLocked(false);
-      smtpUnlockSecret=secret; // setSmtpLocked(false) intentionally preserves it
-      smtpUnlockTimer=setTimeout(function(){setSmtpLocked(true);showMsg('smtpMsg','SMTP settings locked automatically.','ok');},5*60*1000);
-      document.getElementById('smtpSecretInput').value='';
-      showMsg('smtpMsg','SMTP settings unlocked for 5 minutes.','ok');
-    }catch(err){showMsg('smtpMsg','Could not unlock settings: '+(err.message||err),'err');}
+    await withButtonBusy(btn,'Checking…',async function(){
+      try{
+        var r=await sb.rpc('admin_verify_settings_secret',{p_token:adminSessionToken,p_secret:secret});
+        if(r.error) throw r.error;
+        if(r.data!==true){showMsg('smtpMsg','Incorrect admin secret.','err');return;}
+        smtpUnlockSecret=secret;
+        setSmtpLocked(false);
+        smtpUnlockSecret=secret;
+        startSmtpCountdown();
+        document.getElementById('smtpSecretInput').value='';
+        showMsg('smtpMsg','SMTP settings unlocked. Auto-lock timer started.','ok');
+      }catch(err){showMsg('smtpMsg','Could not unlock settings: '+(err.message||err),'err');}
+    });
   });
   document.getElementById('lockSmtpBtn').addEventListener('click',function(){setSmtpLocked(true);showMsg('smtpMsg','SMTP settings locked.','ok');});
 
   document.getElementById('saveSmtpBtn').addEventListener('click',async function(){
+    var btn=this;
     if(!smtpUnlockSecret){showMsg('smtpMsg','Unlock SMTP settings first.','err');return;}
-    try{
-      var r=await sb.rpc('admin_update_smtp_settings',{
-        p_token:adminSessionToken,p_secret:smtpUnlockSecret,
-        p_api_key:document.getElementById('smtp2goApiKey').value.trim(),
-        p_sender_name:document.getElementById('smtp2goSenderName').value.trim(),
-        p_sender_email:document.getElementById('smtp2goSenderEmail').value.trim(),
-        p_it_request_email:document.getElementById('itRequestEmail').value.trim()
-      });
-      if(r.error) throw r.error;
-      currentSettings=await fetchSettings(); populateSettingsForm();
-      showMsg('smtpMsg','SMTP2GO settings saved and locked again.','ok');
-      await logActivity('Updated locked SMTP settings','settings','1','Email sender configuration updated');
-    }catch(err){showMsg('smtpMsg','Could not save: '+(err.message||err),'err');}
+    await withButtonBusy(btn,'Saving…',async function(){
+      try{
+        var r=await sb.rpc('admin_update_smtp_settings',{
+          p_token:adminSessionToken,p_secret:smtpUnlockSecret,
+          p_api_key:document.getElementById('smtp2goApiKey').value.trim(),
+          p_sender_name:document.getElementById('smtp2goSenderName').value.trim(),
+          p_sender_email:document.getElementById('smtp2goSenderEmail').value.trim(),
+          p_it_request_email:document.getElementById('itRequestEmail').value.trim()
+        });
+        if(r.error) throw r.error;
+        currentSettings=await fetchSettings(); populateSettingsForm();
+        showMsg('smtpMsg','SMTP2GO settings saved and locked again.','ok');
+        await logActivity('Updated locked SMTP settings','settings','1','Email sender configuration updated');
+      }catch(err){showMsg('smtpMsg','Could not save: '+(err.message||err),'err');}
+    });
   });
 
   document.getElementById('testEmailBtn').addEventListener('click', async function(){
-    var to=prompt('Send a test email to (any address — Gmail, dncc.in, etc.):'); if(!to)return;
-    try{
-      var res=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:to,subject:'DNCC IT — Test email (SMTP2GO)',html:'<p>This is a test email from the DNCC IT Mobile Audit portal, sent via SMTP2GO. If you received this, it is working.</p>'})});
-      var json=await res.json(); if(!res.ok||!json.ok)throw new Error(json.error||'Send failed');
-      showMsg('smtpMsg','Test email sent to '+to+'.','ok');
-    }catch(err){showMsg('smtpMsg','Test failed: '+(err.message||err),'err');}
+    var btn=this,to=prompt('Send a test email to (any address — Gmail, dncc.in, etc.):'); if(!to)return;
+    await withButtonBusy(btn,'Sending…',async function(){
+      try{
+        var res=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:to,subject:'DNCC IT — Test email (SMTP2GO)',html:'<p>This is a test email from the DNCC IT Mobile Audit portal, sent via SMTP2GO. If you received this, it is working.</p>'})});
+        var json=await res.json(); if(!res.ok||!json.ok)throw new Error(json.error||'Send failed');
+        showMsg('smtpMsg','Test email sent to '+to+'.','ok');
+      }catch(err){showMsg('smtpMsg','Test failed: '+(err.message||err),'err');}
+    });
   });
 
   function roleLabel(role){return role==='owner'?'Owner':role==='admin'?'Full Admin':'IT Staff';}
@@ -2860,16 +2980,20 @@
     }catch(err){console.error(err);area.innerHTML='<p class="empty-state">Could not load admin users.</p>';}
   }
   document.getElementById('createAdminUserBtn').addEventListener('click',async function(){
+    var btn=this;
     if(currentAdminRole!=='owner'){showMsg('adminUsersMsg','Only the owner can create users.','err');return;}
     var dn=document.getElementById('createAdminDisplayName').value.trim(),u=document.getElementById('createAdminUsername').value.trim(),p=document.getElementById('createAdminPassword').value,r=document.getElementById('createAdminRole').value;
     if(!u||!p){showMsg('adminUsersMsg','Username and password are required.','err');return;}
-    try{
-      var x=await sb.rpc('admin_create_user',{p_token:adminSessionToken,p_username:u,p_password:p,p_display_name:dn,p_role:r}); if(x.error)throw x.error;
-      document.getElementById('createAdminDisplayName').value='';document.getElementById('createAdminUsername').value='';document.getElementById('createAdminPassword').value='';
-      showMsg('adminUsersMsg','New '+roleLabel(r)+' user created.','ok');
-      await logActivity('Created admin user','admin_user',String(x.data||''),u+' · '+roleLabel(r));
-      loadAdminUsers();
-    }catch(err){showMsg('adminUsersMsg','Could not create user: '+(err.message||err),'err');}
+    if(p.length<8){showMsg('adminUsersMsg','Temporary password must be at least 8 characters.','err');return;}
+    await withButtonBusy(btn,'Creating…',async function(){
+      try{
+        var x=await sb.rpc('admin_create_user',{p_token:adminSessionToken,p_username:u,p_password:p,p_display_name:dn,p_role:r}); if(x.error)throw x.error;
+        document.getElementById('createAdminDisplayName').value='';document.getElementById('createAdminUsername').value='';document.getElementById('createAdminPassword').value='';
+        showMsg('adminUsersMsg','New '+roleLabel(r)+' user created successfully.','ok');
+        await logActivity('Created admin user','admin_user',String(x.data||''),u+' · '+roleLabel(r));
+        await loadAdminUsers();
+      }catch(err){showMsg('adminUsersMsg','Could not create user: '+(err.message||err),'err');}
+    });
   });
 
 })();
