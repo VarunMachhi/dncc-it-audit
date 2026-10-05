@@ -286,6 +286,15 @@
     .table-wrap tbody td{grid-template-columns:minmax(86px,34%) minmax(0,1fr);padding:8px!important;gap:8px;}
   }
 
+  .settings-lock{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:#f8fafc;margin:10px 0 14px;}
+  .settings-lock strong{color:var(--navy);}
+  .settings-lock input{max-width:300px;min-width:220px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:7px;}
+  .lock-state{font-size:12.5px;color:var(--muted);}
+  .lock-state.unlocked{color:var(--success);font-weight:700;}
+  .admin-user-grid{display:grid;grid-template-columns:1.1fr 1fr 1.2fr .8fr auto;gap:10px;align-items:end;}
+  .user-role{display:inline-flex;padding:3px 8px;border-radius:999px;background:#eef4f8;font-size:11px;font-weight:700;}
+  .admin-identity{font-size:12px;color:var(--muted);white-space:nowrap;}
+  @media(max-width:800px){.admin-user-grid{grid-template-columns:1fr;}.settings-lock input{max-width:none;width:100%;}.admin-identity{display:none;}}
 
 </style>
 </head>
@@ -308,6 +317,7 @@
       </div>
       <div style="display:flex; gap:16px; align-items:center;">
         <a class="formlink" href="index.html">← Open employee form</a>
+        <span class="admin-identity" id="adminIdentity"></span>
         <button class="logout-link" id="logoutBtn">Log out</button>
       </div>
     </div>
@@ -519,17 +529,24 @@
     <div class="tab-panel" id="tab-settings">
       <div class="card-form">
         <h3>Email sending (SMTP2GO)</h3>
-        <p class="sub">Used to send handover confirmation emails to employees. Changes here take effect immediately — no redeploy needed. Requires a verified sender in your SMTP2GO account (Settings → Sender Domains/Senders → verify one inbox you own — no DNS access needed). Once verified, you can send to any recipient, Gmail or dncc.in alike.</p>
+        <p class="sub">Sensitive email settings are locked by a separate admin secret. Viewing this page does not allow anyone to change the sender/API configuration.</p>
         <div id="smtpMsg" class="msg"></div>
+        <div class="settings-lock">
+          <strong>🔒 SMTP settings locked</strong>
+          <input type="password" id="smtpSecretInput" placeholder="Enter admin secret to unlock" autocomplete="off" />
+          <button class="btn btn-secondary" id="unlockSmtpBtn">Unlock for 5 minutes</button>
+          <span class="lock-state" id="smtpLockState">Locked</span>
+        </div>
         <div class="grid">
-          <div class="field"><label>SMTP2GO API key</label><input type="password" id="smtp2goApiKey" placeholder="api-xxxxxxxxxxxx" /></div>
-          <div class="field"><label>Sender name</label><input type="text" id="smtp2goSenderName" placeholder="DNCC IT Department" /></div>
-          <div class="field"><label>Verified sender email</label><input type="text" id="smtp2goSenderEmail" placeholder="varun.machhi@dncc.in" /></div>
-          <div class="field"><label>IT request notification email</label><input type="text" id="itRequestEmail" placeholder="it@dncc.in — receives new device requests" /></div>
+          <div class="field"><label>SMTP2GO API key</label><input type="password" id="smtp2goApiKey" placeholder="Saved key — leave blank to keep current" disabled /></div>
+          <div class="field"><label>Sender name</label><input type="text" id="smtp2goSenderName" placeholder="DNCC IT Department" disabled /></div>
+          <div class="field"><label>Verified sender email</label><input type="text" id="smtp2goSenderEmail" placeholder="verified sender email" disabled /></div>
+          <div class="field"><label>IT request notification email</label><input type="text" id="itRequestEmail" placeholder="receives new device requests" disabled /></div>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-primary" id="saveSmtpBtn">Save SMTP2GO settings</button>
+          <button class="btn btn-primary" id="saveSmtpBtn" disabled>Save SMTP2GO settings</button>
           <button class="btn btn-secondary" id="testEmailBtn">Send test email</button>
+          <button class="btn btn-secondary" id="lockSmtpBtn" style="display:none;">Lock now</button>
         </div>
       </div>
 
@@ -556,19 +573,18 @@
         </div>
       </div>
 
-      <div class="card-form">
-        <h3>Admin login credentials</h3>
-        <p class="sub">Change your admin username/password, or reset to the default.</p>
-        <div id="credMsg" class="msg"></div>
-        <div class="grid">
-          <div class="field"><label>New username</label><input type="text" id="newUsername" /></div>
-          <div class="field"><label>New password</label><input type="password" id="newPassword" /></div>
-          <div class="field"><label>Confirm new password</label><input type="password" id="confirmPassword" /></div>
+      <div class="card-form" id="adminUsersCard">
+        <h3>Admin users &amp; access</h3>
+        <p class="sub">Owner can create separate logins. <b>Full Admin</b> can use all operational areas and Settings; <b>IT Staff</b> can use daily operational tabs but cannot open Settings or Activity Log.</p>
+        <div id="adminUsersMsg" class="msg"></div>
+        <div class="admin-user-grid">
+          <div class="field"><label>Display name</label><input id="createAdminDisplayName" placeholder="e.g. Raj IT" /></div>
+          <div class="field"><label>Username *</label><input id="createAdminUsername" autocomplete="off" placeholder="e.g. raj.it" /></div>
+          <div class="field"><label>Temporary password *</label><input type="password" id="createAdminPassword" autocomplete="new-password" placeholder="Minimum 8 characters" /></div>
+          <div class="field"><label>Access level</label><select id="createAdminRole"><option value="staff">IT Staff</option><option value="admin">Full Admin</option></select></div>
+          <button class="btn btn-primary" id="createAdminUserBtn">Create user</button>
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-primary" id="saveCredsBtn">Update credentials</button>
-          <button class="btn btn-secondary" id="resetCredsBtn">Reset to default (Varunit)</button>
-        </div>
+        <div id="adminUsersArea" style="margin-top:16px;"></div>
       </div>
     </div>
   </div>
@@ -637,6 +653,11 @@
   var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL + '/functions/v1';
   var currentSettings = null;
   var loggedInAdminUsername = '';
+  var currentAdminRole = '';
+  var currentAdminDisplayName = '';
+  var adminSessionToken = '';
+  var smtpUnlockSecret = '';
+  var smtpUnlockTimer = null;
   var currentTemplates = {};
   var DEFAULT_TEMPLATES = {
     handover: {
@@ -669,41 +690,74 @@
   function esc(s){ if(s===undefined||s===null) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   async function fetchSettings(){
-    var { data, error } = await sb.from('settings').select('*').eq('id',1).single();
+    var { data, error } = await sb.from('settings').select('id,smtp2go_sender_name,smtp2go_sender_email,it_request_email,smtp_from_email').eq('id',1).single();
     if(error){ console.error(error); return null; }
     return data;
   }
 
+  function sessionRow(data){ return Array.isArray(data) ? (data[0] || null) : data; }
+  function applyAdminRoleAccess(){
+    var settingsBtn=document.querySelector('.tab-btn[data-tab="settings"]');
+    var activityBtn=document.querySelector('.tab-btn[data-tab="activitylog"]');
+    var usersCard=document.getElementById('adminUsersCard');
+    var isOwner=currentAdminRole==='owner', isAdmin=currentAdminRole==='admin';
+    if(settingsBtn) settingsBtn.style.display=(isOwner||isAdmin)?'':'none';
+    if(activityBtn) activityBtn.style.display=(currentAdminRole==='staff')?'none':'';
+    if(usersCard) usersCard.style.display=isOwner?'':'none';
+    var id=document.getElementById('adminIdentity');
+    if(id) id.textContent=(currentAdminDisplayName||loggedInAdminUsername)+' · '+(isOwner?'Owner':isAdmin?'Full Admin':'IT Staff');
+    if(currentAdminRole==='staff' && document.querySelector('.tab-btn.active[data-tab="settings"],.tab-btn.active[data-tab="activitylog"]')){
+      document.querySelector('.tab-btn[data-tab="submissions"]').click();
+    }
+  }
+  async function establishAdminSession(row){
+    if(!row) return false;
+    adminSessionToken=row.session_token||adminSessionToken;
+    loggedInAdminUsername=row.username||'';
+    currentAdminDisplayName=row.display_name||row.username||'';
+    currentAdminRole=row.role||'staff';
+    if(adminSessionToken) sessionStorage.setItem('dncc_admin_session',adminSessionToken);
+    document.getElementById('loginGate').style.display='none';
+    document.getElementById('dashboard').style.display='block';
+    applyAdminRoleAccess();
+    currentSettings=await fetchSettings();
+    await loadAll();
+    return true;
+  }
+
   // ---------- Login ----------
   document.getElementById('loginBtn').addEventListener('click', async function(){
-    var u = document.getElementById('usernameInput').value.trim();
-    var p = document.getElementById('passwordInput').value;
-    var settings = await fetchSettings();
-    currentSettings = settings;
-    var okUser = settings ? (settings.admin_username || 'Varunit') : 'Varunit';
-    var okPass = settings ? (settings.admin_password || 'Shinchan@1121') : 'Shinchan@1121';
-    if(u === okUser && p === okPass){
-      loggedInAdminUsername = okUser;
-      document.getElementById('loginGate').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-      sessionStorage.setItem('dncc_admin_ok','1');
-      sessionStorage.setItem('dncc_admin_username', okUser);
-      loadAll();
-    } else {
-      document.getElementById('loginErr').style.display = 'block';
-    }
+    var btn=this, u=document.getElementById('usernameInput').value.trim(), p=document.getElementById('passwordInput').value;
+    document.getElementById('loginErr').style.display='none';
+    if(!u||!p){ document.getElementById('loginErr').style.display='block'; return; }
+    btn.disabled=true; btn.textContent='Logging in…';
+    try{
+      var res=await sb.rpc('admin_login_v2',{p_username:u,p_password:p});
+      if(res.error) throw res.error;
+      var row=sessionRow(res.data);
+      if(!row||!row.session_token) throw new Error('Invalid login');
+      await establishAdminSession(row);
+    }catch(err){ console.error(err); document.getElementById('loginErr').style.display='block'; }
+    finally{ btn.disabled=false; btn.textContent='Log in'; }
   });
   document.getElementById('passwordInput').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('loginBtn').click(); });
-  document.getElementById('logoutBtn').addEventListener('click', function(){
-    sessionStorage.removeItem('dncc_admin_ok');
+  document.getElementById('logoutBtn').addEventListener('click', async function(){
+    try{ if(adminSessionToken) await sb.rpc('admin_logout_v2',{p_token:adminSessionToken}); }catch(e){}
+    sessionStorage.removeItem('dncc_admin_session');
     location.reload();
   });
-  if(sessionStorage.getItem('dncc_admin_ok') === '1'){
-    loggedInAdminUsername = sessionStorage.getItem('dncc_admin_username') || '';
-    document.getElementById('loginGate').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
-    fetchSettings().then(function(s){ currentSettings = s; loadAll(); });
-  }
+  (async function restoreAdminSession(){
+    var token=sessionStorage.getItem('dncc_admin_session');
+    if(!token) return;
+    try{
+      var res=await sb.rpc('admin_validate_session',{p_token:token});
+      if(res.error) throw res.error;
+      var row=sessionRow(res.data);
+      if(!row){ sessionStorage.removeItem('dncc_admin_session'); return; }
+      adminSessionToken=token;
+      await establishAdminSession(row);
+    }catch(err){ console.error(err); sessionStorage.removeItem('dncc_admin_session'); }
+  })();
 
   document.querySelectorAll('.tab-btn').forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -716,6 +770,7 @@
           if(s) currentSettings = s;
           populateSettingsForm();
           populateTemplateForm();
+          if(currentAdminRole==='owner') loadAdminUsers();
         });
       }
       if(btn.dataset.tab === 'activitylog' && !loadedTabs.activity){ loadedTabs.activity=true; loadActivityLog(); }
@@ -2727,78 +2782,94 @@
   async function resendRequestFormLink(r){var needsNew=!r.form_token||!r.form_token_expires_at||new Date(r.form_token_expires_at)<=new Date();if(needsNew){if(!r.fulfillment_device_snapshot||!r.fulfillment_device_snapshot.imei1){alert('No assigned device exists for this request. Assign the device first.');return;}var promptText=r.status==='Completed'?'Generate a new 72-hour handover link to repair/update this completed replacement record?':'The old link expired. Generate a new 72-hour link?';if(!confirm(promptText))return;var token=crypto.randomUUID(),expires=new Date(Date.now()+72*3600000).toISOString();var up=await sb.from('device_requests').update({form_token:token,form_token_expires_at:expires,updated_at:new Date().toISOString()}).eq('id',r.id);if(up.error){alert(up.error.message);return;}r.form_token=token;r.form_token_expires_at=expires;}var link=location.origin+location.pathname.replace(/admin\.html.*$/,'index.html')+'?request_id='+encodeURIComponent(r.id)+'&token='+encodeURIComponent(r.form_token),email=requestEmployeeEmail(r),d=r.fulfillment_device_snapshot||{};var repair=r.status==='Completed';var sent=await sendSimpleEmail(email,(repair?'Update replacement handover form':'Reminder: complete device handover form')+' — Request #'+requestNumber(r),'<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>'+(repair?'IT has reopened your replacement handover form so the current device record can be updated correctly.':'Your assigned '+esc((d.brand||'')+' '+(d.model||''))+' is still waiting for the compulsory handover form.')+'</p><p><a href="'+link+'">'+(repair?'Open replacement handover form':'Complete the handover form')+'</a></p><p>Link valid until '+esc(new Date(r.form_token_expires_at).toLocaleString())+'.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>');alert(sent?(repair?'Replacement handover link reopened and emailed.':'Form link resent.'):'Could not send the email.');}
 
   // ---------- Settings ----------
+  function setSmtpLocked(locked){
+    ['smtp2goApiKey','smtp2goSenderName','smtp2goSenderEmail','itRequestEmail'].forEach(function(id){var el=document.getElementById(id); if(el) el.disabled=locked;});
+    document.getElementById('saveSmtpBtn').disabled=locked;
+    document.getElementById('lockSmtpBtn').style.display=locked?'none':'';
+    var st=document.getElementById('smtpLockState');
+    st.textContent=locked?'Locked':'Unlocked for 5 minutes'; st.className='lock-state'+(locked?'':' unlocked');
+    if(locked){ smtpUnlockSecret=''; document.getElementById('smtpSecretInput').value=''; if(smtpUnlockTimer){clearTimeout(smtpUnlockTimer);smtpUnlockTimer=null;} }
+  }
   function populateSettingsForm(){
     if(!currentSettings) return;
-    document.getElementById('smtp2goApiKey').value = currentSettings.smtp2go_api_key || '';
-    document.getElementById('smtp2goSenderName').value = currentSettings.smtp2go_sender_name || 'DNCC IT Department';
-    document.getElementById('smtp2goSenderEmail').value = currentSettings.smtp2go_sender_email || currentSettings.smtp_from_email || '';
-    document.getElementById('itRequestEmail').value = currentSettings.it_request_email || currentSettings.smtp2go_sender_email || currentSettings.smtp_from_email || '';
-    document.getElementById('newUsername').value = currentSettings.admin_username || 'Varunit';
+    document.getElementById('smtp2goApiKey').value='';
+    document.getElementById('smtp2goSenderName').value=currentSettings.smtp2go_sender_name||'DNCC IT Department';
+    document.getElementById('smtp2goSenderEmail').value=currentSettings.smtp2go_sender_email||currentSettings.smtp_from_email||'';
+    document.getElementById('itRequestEmail').value=currentSettings.it_request_email||currentSettings.smtp2go_sender_email||currentSettings.smtp_from_email||'';
+    setSmtpLocked(true);
   }
+  function showMsg(id,text,type){var el=document.getElementById(id);el.textContent=text;el.className='msg '+type;}
 
-  function showMsg(id, text, type){
-    var el = document.getElementById(id);
-    el.textContent = text; el.className = 'msg ' + type;
-  }
-
-  document.getElementById('saveSmtpBtn').addEventListener('click', async function(){
+  document.getElementById('unlockSmtpBtn').addEventListener('click',async function(){
+    var secret=document.getElementById('smtpSecretInput').value;
+    if(!secret){showMsg('smtpMsg','Enter the admin secret first.','err');return;}
     try{
-      var payload = {
-        smtp2go_api_key: document.getElementById('smtp2goApiKey').value.trim(),
-        smtp2go_sender_name: document.getElementById('smtp2goSenderName').value.trim(),
-        smtp2go_sender_email: document.getElementById('smtp2goSenderEmail').value.trim(),
-        it_request_email: document.getElementById('itRequestEmail').value.trim(),
-        updated_at: new Date().toISOString()
-      };
-      var { error } = await sb.from('settings').update(payload).eq('id',1);
-      if(error) throw error;
-      currentSettings = Object.assign({}, currentSettings, payload);
-      showMsg('smtpMsg', 'SMTP2GO settings saved.', 'ok');
-    }catch(err){ showMsg('smtpMsg', 'Could not save: ' + (err.message||err), 'err'); }
+      var r=await sb.rpc('admin_verify_settings_secret',{p_token:adminSessionToken,p_secret:secret});
+      if(r.error) throw r.error;
+      if(r.data!==true){showMsg('smtpMsg','Incorrect admin secret.','err');return;}
+      smtpUnlockSecret=secret;
+      setSmtpLocked(false);
+      smtpUnlockSecret=secret; // setSmtpLocked(false) intentionally preserves it
+      smtpUnlockTimer=setTimeout(function(){setSmtpLocked(true);showMsg('smtpMsg','SMTP settings locked automatically.','ok');},5*60*1000);
+      document.getElementById('smtpSecretInput').value='';
+      showMsg('smtpMsg','SMTP settings unlocked for 5 minutes.','ok');
+    }catch(err){showMsg('smtpMsg','Could not unlock settings: '+(err.message||err),'err');}
+  });
+  document.getElementById('lockSmtpBtn').addEventListener('click',function(){setSmtpLocked(true);showMsg('smtpMsg','SMTP settings locked.','ok');});
+
+  document.getElementById('saveSmtpBtn').addEventListener('click',async function(){
+    if(!smtpUnlockSecret){showMsg('smtpMsg','Unlock SMTP settings first.','err');return;}
+    try{
+      var r=await sb.rpc('admin_update_smtp_settings',{
+        p_token:adminSessionToken,p_secret:smtpUnlockSecret,
+        p_api_key:document.getElementById('smtp2goApiKey').value.trim(),
+        p_sender_name:document.getElementById('smtp2goSenderName').value.trim(),
+        p_sender_email:document.getElementById('smtp2goSenderEmail').value.trim(),
+        p_it_request_email:document.getElementById('itRequestEmail').value.trim()
+      });
+      if(r.error) throw r.error;
+      currentSettings=await fetchSettings(); populateSettingsForm();
+      showMsg('smtpMsg','SMTP2GO settings saved and locked again.','ok');
+      await logActivity('Updated locked SMTP settings','settings','1','Email sender configuration updated');
+    }catch(err){showMsg('smtpMsg','Could not save: '+(err.message||err),'err');}
   });
 
   document.getElementById('testEmailBtn').addEventListener('click', async function(){
-    var to = prompt('Send a test email to (any address — Gmail, dncc.in, etc.):');
-    if(!to) return;
+    var to=prompt('Send a test email to (any address — Gmail, dncc.in, etc.):'); if(!to)return;
     try{
-      var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'apikey': window.DNCC_CONFIG.SUPABASE_ANON_KEY, 'Authorization':'Bearer ' + window.DNCC_CONFIG.SUPABASE_ANON_KEY },
-        body: JSON.stringify({ to:to, subject:'DNCC IT — Test email (SMTP2GO)', html:'<p>This is a test email from the DNCC IT Mobile Audit portal, sent via SMTP2GO. If you received this, it is working.</p>' })
-      });
-      var json = await res.json();
-      if(!res.ok || !json.ok) throw new Error(json.error || 'Send failed');
-      showMsg('smtpMsg', 'Test email sent to ' + to + '.', 'ok');
-    }catch(err){ showMsg('smtpMsg', 'Test failed: ' + (err.message||err), 'err'); }
+      var res=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:to,subject:'DNCC IT — Test email (SMTP2GO)',html:'<p>This is a test email from the DNCC IT Mobile Audit portal, sent via SMTP2GO. If you received this, it is working.</p>'})});
+      var json=await res.json(); if(!res.ok||!json.ok)throw new Error(json.error||'Send failed');
+      showMsg('smtpMsg','Test email sent to '+to+'.','ok');
+    }catch(err){showMsg('smtpMsg','Test failed: '+(err.message||err),'err');}
   });
 
-  document.getElementById('saveCredsBtn').addEventListener('click', async function(){
-    var u = document.getElementById('newUsername').value.trim();
-    var p = document.getElementById('newPassword').value;
-    var c = document.getElementById('confirmPassword').value;
-    if(!u){ showMsg('credMsg','Username cannot be blank.','err'); return; }
-    if(p && p !== c){ showMsg('credMsg','New password and confirmation do not match.','err'); return; }
+  function roleLabel(role){return role==='owner'?'Owner':role==='admin'?'Full Admin':'IT Staff';}
+  async function loadAdminUsers(){
+    if(currentAdminRole!=='owner')return;
+    var area=document.getElementById('adminUsersArea'); area.innerHTML='<p class="empty-state">Loading users…</p>';
     try{
-      var payload = { admin_username:u, updated_at:new Date().toISOString() };
-      if(p) payload.admin_password = p;
-      var { error } = await sb.from('settings').update(payload).eq('id',1);
-      if(error) throw error;
-      currentSettings = Object.assign({}, currentSettings, payload);
-      document.getElementById('newPassword').value=''; document.getElementById('confirmPassword').value='';
-      showMsg('credMsg', 'Credentials updated. Use the new login next time.', 'ok');
-    }catch(err){ showMsg('credMsg', 'Could not update: ' + (err.message||err), 'err'); }
-  });
-
-  document.getElementById('resetCredsBtn').addEventListener('click', async function(){
-    if(!confirm('Reset admin login to username "Varunit" and the original default password?')) return;
+      var r=await sb.rpc('admin_list_users',{p_token:adminSessionToken}); if(r.error)throw r.error;
+      var rows=r.data||[];
+      if(!rows.length){area.innerHTML='<p class="empty-state">No users found.</p>';return;}
+      area.innerHTML='<div class="table-wrap"><table><thead><tr><th>User</th><th>Role</th><th>Status</th><th>Last login</th><th>Actions</th></tr></thead><tbody>'+rows.map(function(u){
+        var actions=u.role==='owner'?'<span class="sub">Primary owner</span>':'<button class="btn btn-secondary admin-user-access" data-id="'+esc(u.id)+'" data-role="'+esc(u.role)+'" data-active="'+(u.active?'1':'0')+'">Access</button> <button class="btn btn-secondary admin-user-pass" data-id="'+esc(u.id)+'">Reset password</button>';
+        return '<tr><td><b>'+esc(u.display_name||u.username)+'</b><br><span class="sub">'+esc(u.username)+'</span></td><td><span class="user-role">'+esc(roleLabel(u.role))+'</span></td><td>'+(u.active?'Active':'Disabled')+'</td><td>'+esc(u.last_login_at?new Date(u.last_login_at).toLocaleString():'Never')+'</td><td>'+actions+'</td></tr>';
+      }).join('')+'</tbody></table></div>';
+      area.querySelectorAll('.admin-user-access').forEach(function(btn){btn.onclick=function(){var id=this.dataset.id,curRole=this.dataset.role,active=this.dataset.active==='1';openModal('Change user access',[{id:'role',label:'Access level',type:'select',value:curRole,options:[{value:'staff',label:'IT Staff'},{value:'admin',label:'Full Admin'}]},{id:'active',label:'Account status',type:'select',value:active?'true':'false',options:[{value:'true',label:'Active'},{value:'false',label:'Disabled'}]}],async function(v){var x=await sb.rpc('admin_update_user_access',{p_token:adminSessionToken,p_user_id:id,p_role:v.role,p_active:v.active==='true'});if(x.error){alert(x.error.message);return;}closeModal();await logActivity('Updated admin user access','admin_user',id,roleLabel(v.role)+' · '+(v.active==='true'?'Active':'Disabled'));loadAdminUsers();});};});
+      area.querySelectorAll('.admin-user-pass').forEach(function(btn){btn.onclick=async function(){var np=prompt('Enter a new temporary password (minimum 8 characters):');if(!np)return;if(np.length<8){alert('Password must be at least 8 characters.');return;}var x=await sb.rpc('admin_reset_user_password',{p_token:adminSessionToken,p_user_id:this.dataset.id,p_new_password:np});if(x.error){alert(x.error.message);return;}alert('Password reset. Existing sessions for that user were signed out.');await logActivity('Reset admin user password','admin_user',this.dataset.id,'Password reset by owner');};});
+    }catch(err){console.error(err);area.innerHTML='<p class="empty-state">Could not load admin users.</p>';}
+  }
+  document.getElementById('createAdminUserBtn').addEventListener('click',async function(){
+    if(currentAdminRole!=='owner'){showMsg('adminUsersMsg','Only the owner can create users.','err');return;}
+    var dn=document.getElementById('createAdminDisplayName').value.trim(),u=document.getElementById('createAdminUsername').value.trim(),p=document.getElementById('createAdminPassword').value,r=document.getElementById('createAdminRole').value;
+    if(!u||!p){showMsg('adminUsersMsg','Username and password are required.','err');return;}
     try{
-      var payload = { admin_username:'Varunit', admin_password:'Shinchan@1121', updated_at:new Date().toISOString() };
-      var { error } = await sb.from('settings').update(payload).eq('id',1);
-      if(error) throw error;
-      currentSettings = Object.assign({}, currentSettings, payload);
-      populateSettingsForm();
-      showMsg('credMsg', 'Reset to default credentials.', 'ok');
-    }catch(err){ showMsg('credMsg', 'Could not reset: ' + (err.message||err), 'err'); }
+      var x=await sb.rpc('admin_create_user',{p_token:adminSessionToken,p_username:u,p_password:p,p_display_name:dn,p_role:r}); if(x.error)throw x.error;
+      document.getElementById('createAdminDisplayName').value='';document.getElementById('createAdminUsername').value='';document.getElementById('createAdminPassword').value='';
+      showMsg('adminUsersMsg','New '+roleLabel(r)+' user created.','ok');
+      await logActivity('Created admin user','admin_user',String(x.data||''),u+' · '+roleLabel(r));
+      loadAdminUsers();
+    }catch(err){showMsg('adminUsersMsg','Could not create user: '+(err.message||err),'err');}
   });
 
 })();
