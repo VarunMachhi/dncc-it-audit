@@ -594,6 +594,17 @@
         <h3>Email templates</h3>
         <p class="sub">One format per action. The device details (model, RAM, storage, IMEI, SIM, damage) are always inserted automatically between your Intro and Closing text — accurate every time, regardless of wording changes. Placeholders: <code>{{employee_name}}</code> <code>{{employee_id}}</code> <code>{{location}}</code> <code>{{designation}}</code> <code>{{action_date}}</code> <code>{{company_name}}</code></p>
         <div id="tmplMsg" class="msg"></div>
+        <div class="settings-lock" id="templateLockPanel">
+          <div class="settings-lock-main">
+            <span class="settings-lock-icon" id="templateLockIcon">🔒</span>
+            <div><strong id="templateLockTitle">Email templates locked</strong><span class="settings-lock-note" id="templateLockNote">Enter the same admin secret to edit or reset email templates.</span></div>
+          </div>
+          <div class="settings-unlock-controls" id="templateUnlockControls">
+            <input type="password" id="templateSecretInput" placeholder="Enter admin secret" autocomplete="off" />
+            <button class="btn btn-secondary" id="unlockTemplateBtn">Unlock</button>
+          </div>
+          <div class="lock-state" id="templateLockState"><span id="templateLockStateText">Locked</span><button class="btn btn-secondary" id="lockTemplateBtn" style="display:none;">Lock now</button></div>
+        </div>
         <div class="field">
           <label>Template for</label>
           <select id="tmplAction" style="width:100%; padding:8px 10px; border:1px solid var(--line-strong); border-radius:6px; font-size:13px;">
@@ -604,12 +615,12 @@
             <option value="update">Update / Correction (details corrected after employee request)</option>
           </select>
         </div>
-        <div class="field"><label>Subject</label><input type="text" id="tmplSubject" /></div>
-        <div class="field"><label>Intro (shown above the device details)</label><textarea id="tmplBody" style="min-height:110px;"></textarea></div>
-        <div class="field"><label>Closing (shown below the device details)</label><textarea id="tmplClosing" style="min-height:110px;"></textarea></div>
+        <div class="field"><label>Subject</label><input type="text" id="tmplSubject" disabled /></div>
+        <div class="field"><label>Intro (shown above the device details)</label><textarea id="tmplBody" style="min-height:110px;" disabled></textarea></div>
+        <div class="field"><label>Closing (shown below the device details)</label><textarea id="tmplClosing" style="min-height:110px;" disabled></textarea></div>
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-primary" id="saveTmplBtn">Save template</button>
-          <button class="btn btn-secondary" id="resetTmplBtn">Reset this one to default</button>
+          <button class="btn btn-primary" id="saveTmplBtn" disabled>Save template</button>
+          <button class="btn btn-secondary" id="resetTmplBtn" disabled>Reset this one to default</button>
         </div>
       </div>
 
@@ -742,6 +753,10 @@
   var smtpUnlockTimer = null;
   var smtpCountdownTimer = null;
   var smtpUnlockDeadline = 0;
+  var templateUnlockSecret = '';
+  var templateUnlockTimer = null;
+  var templateCountdownTimer = null;
+  var templateUnlockDeadline = 0;
   var currentTemplates = {};
   var DEFAULT_TEMPLATES = {
     handover: {
@@ -2563,7 +2578,9 @@
   document.getElementById('tmplAction').addEventListener('change', populateTemplateForm);
 
   document.getElementById('saveTmplBtn').addEventListener('click', async function(){
-    var btn=this, action = document.getElementById('tmplAction').value;
+    var btn=this;
+    if(!templateUnlockSecret){showMsg('tmplMsg','Unlock email templates first.','err');return;}
+    var action = document.getElementById('tmplAction').value;
     var subject = document.getElementById('tmplSubject').value;
     var body = document.getElementById('tmplBody').value;
     var closing = document.getElementById('tmplClosing').value;
@@ -2572,13 +2589,16 @@
         var { error } = await sb.from('email_templates').upsert([{ action:action, subject:subject, body:body, closing:closing }], { onConflict:'action' });
         if(error) throw error;
         currentTemplates[action] = { action:action, subject:subject, body:body, closing:closing };
-        showMsg('tmplMsg', 'Template saved.', 'ok');
+        setTemplateLocked(true);
+        showMsg('tmplMsg', 'Template saved and locked again.', 'ok');
       }catch(err){ showMsg('tmplMsg', 'Could not save: ' + (err.message||err), 'err'); }
     });
   });
 
   document.getElementById('resetTmplBtn').addEventListener('click', async function(){
-    var btn=this, action = document.getElementById('tmplAction').value;
+    var btn=this;
+    if(!templateUnlockSecret){showMsg('tmplMsg','Unlock email templates first.','err');return;}
+    var action = document.getElementById('tmplAction').value;
     var def = DEFAULT_TEMPLATES[action];
     if(!def) return;
     if(!confirm('Reset the "' + action + '" template to its default wording?')) return;
@@ -2588,7 +2608,8 @@
         if(error) throw error;
         currentTemplates[action] = Object.assign({ action:action }, def);
         populateTemplateForm();
-        showMsg('tmplMsg', 'Reset to default.', 'ok');
+        setTemplateLocked(true);
+        showMsg('tmplMsg', 'Reset to default and locked again.', 'ok');
       }catch(err){ showMsg('tmplMsg', 'Could not reset: ' + (err.message||err), 'err'); }
     });
   });
@@ -2912,6 +2933,46 @@
       stopSmtpCountdown();
     }
   }
+  function stopTemplateCountdown(){
+    if(templateCountdownTimer){clearInterval(templateCountdownTimer);templateCountdownTimer=null;}
+    templateUnlockDeadline=0;
+  }
+  function updateTemplateCountdown(){
+    if(!templateUnlockDeadline)return;
+    var left=templateUnlockDeadline-Date.now();
+    if(left<=0){setTemplateLocked(true);showMsg('tmplMsg','Email templates locked automatically after 5 minutes.','ok');showToast('Email templates auto-locked.','info');return;}
+    var text=document.getElementById('templateLockStateText');
+    if(text) text.innerHTML='Auto-lock in <span class="lock-countdown">'+formatCountdown(left)+'</span>';
+  }
+  function startTemplateCountdown(){
+    stopTemplateCountdown();
+    templateUnlockDeadline=Date.now()+(5*60*1000);
+    updateTemplateCountdown();
+    templateCountdownTimer=setInterval(updateTemplateCountdown,1000);
+    if(templateUnlockTimer)clearTimeout(templateUnlockTimer);
+    templateUnlockTimer=setTimeout(function(){setTemplateLocked(true);showMsg('tmplMsg','Email templates locked automatically after 5 minutes.','ok');showToast('Email templates auto-locked.','info');},5*60*1000+250);
+  }
+  function setTemplateLocked(locked){
+    ['tmplSubject','tmplBody','tmplClosing'].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=locked;});
+    var save=document.getElementById('saveTmplBtn'),reset=document.getElementById('resetTmplBtn');
+    if(save)save.disabled=locked;if(reset)reset.disabled=locked;
+    var panel=document.getElementById('templateLockPanel'),title=document.getElementById('templateLockTitle'),note=document.getElementById('templateLockNote'),icon=document.getElementById('templateLockIcon'),controls=document.getElementById('templateUnlockControls'),lockBtn=document.getElementById('lockTemplateBtn'),st=document.getElementById('templateLockState'),stText=document.getElementById('templateLockStateText');
+    if(panel)panel.classList.toggle('unlocked',!locked);
+    if(title)title.textContent=locked?'Email templates locked':'Email templates unlocked';
+    if(note)note.textContent=locked?'Enter the same admin secret to edit or reset email templates.':'Template editing is enabled temporarily. It will lock automatically.';
+    if(icon)icon.textContent=locked?'🔒':'🔓';
+    if(controls)controls.style.display=locked?'flex':'none';
+    if(lockBtn)lockBtn.style.display=locked?'none':'';
+    if(st)st.className='lock-state'+(locked?'':' unlocked');
+    if(stText&&locked)stText.textContent='Locked';
+    if(locked){
+      templateUnlockSecret='';
+      var secretInput=document.getElementById('templateSecretInput');if(secretInput)secretInput.value='';
+      if(templateUnlockTimer){clearTimeout(templateUnlockTimer);templateUnlockTimer=null;}
+      stopTemplateCountdown();
+    }
+  }
+
   function populateSettingsForm(){
     if(!currentSettings) return;
     document.getElementById('smtp2goApiKey').value='';
@@ -2919,6 +2980,7 @@
     document.getElementById('smtp2goSenderEmail').value=currentSettings.smtp2go_sender_email||currentSettings.smtp_from_email||'';
     document.getElementById('itRequestEmail').value=currentSettings.it_request_email||currentSettings.smtp2go_sender_email||currentSettings.smtp_from_email||'';
     setSmtpLocked(true);
+    setTemplateLocked(true);
   }
   function showMsg(id,text,type){var el=document.getElementById(id);el.textContent=text;el.className='msg '+type;if(text)showToast(text,type==='err'?'err':type==='ok'?'ok':'info');}
 
@@ -2940,6 +3002,25 @@
     });
   });
   document.getElementById('lockSmtpBtn').addEventListener('click',function(){setSmtpLocked(true);showMsg('smtpMsg','SMTP settings locked.','ok');});
+
+  document.getElementById('unlockTemplateBtn').addEventListener('click',async function(){
+    var btn=this,secret=document.getElementById('templateSecretInput').value;
+    if(!secret){showMsg('tmplMsg','Enter the admin secret first.','err');return;}
+    await withButtonBusy(btn,'Checking…',async function(){
+      try{
+        var r=await sb.rpc('admin_verify_settings_secret',{p_token:adminSessionToken,p_secret:secret});
+        if(r.error)throw r.error;
+        if(r.data!==true){showMsg('tmplMsg','Incorrect admin secret.','err');return;}
+        templateUnlockSecret=secret;
+        setTemplateLocked(false);
+        templateUnlockSecret=secret;
+        startTemplateCountdown();
+        document.getElementById('templateSecretInput').value='';
+        showMsg('tmplMsg','Email templates unlocked. Auto-lock timer started.','ok');
+      }catch(err){showMsg('tmplMsg','Could not unlock templates: '+(err.message||err),'err');}
+    });
+  });
+  document.getElementById('lockTemplateBtn').addEventListener('click',function(){setTemplateLocked(true);showMsg('tmplMsg','Email templates locked.','ok');});
 
   document.getElementById('saveSmtpBtn').addEventListener('click',async function(){
     var btn=this;
