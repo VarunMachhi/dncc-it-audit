@@ -2984,40 +2984,68 @@
   }
   function showMsg(id,text,type){var el=document.getElementById(id);el.textContent=text;el.className='msg '+type;if(text)showToast(text,type==='err'?'err':type==='ok'?'ok':'info');}
 
+  async function verifySettingsSecret(secret){
+    secret=(secret||'').trim();
+    if(!secret)return {ok:false,reason:'empty'};
+    if(!adminSessionToken)return {ok:false,reason:'session'};
+    try{
+      var r=await sb.rpc('admin_verify_settings_secret',{p_token:adminSessionToken,p_secret:secret});
+      if(r.error)throw r.error;
+      if(r.data===true)return {ok:true,secret:secret};
+      // Distinguish an expired/invalid admin session from a genuinely wrong secret.
+      var v=await sb.rpc('admin_validate_session',{p_token:adminSessionToken});
+      if(v.error||!Array.isArray(v.data)||!v.data.length)return {ok:false,reason:'session'};
+      return {ok:false,reason:'secret'};
+    }catch(err){
+      return {ok:false,reason:'error',error:err};
+    }
+  }
+
   document.getElementById('unlockSmtpBtn').addEventListener('click',async function(){
     var btn=this,secret=document.getElementById('smtpSecretInput').value;
-    if(!secret){showMsg('smtpMsg','Enter the admin secret first.','err');return;}
+    if(!secret.trim()){showMsg('smtpMsg','Enter the admin secret first.','err');return;}
     await withButtonBusy(btn,'Checking…',async function(){
-      try{
-        var r=await sb.rpc('admin_verify_settings_secret',{p_token:adminSessionToken,p_secret:secret});
-        if(r.error) throw r.error;
-        if(r.data!==true){showMsg('smtpMsg','Incorrect admin secret.','err');return;}
-        smtpUnlockSecret=secret;
-        setSmtpLocked(false);
-        smtpUnlockSecret=secret;
-        startSmtpCountdown();
-        document.getElementById('smtpSecretInput').value='';
-        showMsg('smtpMsg','SMTP settings unlocked. Auto-lock timer started.','ok');
-      }catch(err){showMsg('smtpMsg','Could not unlock settings: '+(err.message||err),'err');}
+      var check=await verifySettingsSecret(secret);
+      if(!check.ok){
+        if(check.reason==='session'){showMsg('smtpMsg','Admin session expired. Please log in again.','err');return;}
+        if(check.reason==='secret'){showMsg('smtpMsg','Incorrect admin secret.','err');return;}
+        showMsg('smtpMsg','Could not verify admin secret: '+((check.error&&check.error.message)||'Please try again.'),'err');return;
+      }
+      smtpUnlockSecret=check.secret;
+      setSmtpLocked(false);
+      smtpUnlockSecret=check.secret;
+      startSmtpCountdown();
+      document.getElementById('smtpSecretInput').value='';
+      showMsg('smtpMsg','SMTP settings unlocked. Auto-lock timer started.','ok');
     });
   });
   document.getElementById('lockSmtpBtn').addEventListener('click',function(){setSmtpLocked(true);showMsg('smtpMsg','SMTP settings locked.','ok');});
 
   document.getElementById('unlockTemplateBtn').addEventListener('click',async function(){
-    var btn=this,secret=document.getElementById('templateSecretInput').value;
-    if(!secret){showMsg('tmplMsg','Enter the admin secret first.','err');return;}
+    var btn=this,raw=document.getElementById('templateSecretInput').value,secret=(raw||'').trim();
+    // If SMTP was already unlocked with the same verified admin secret, reuse that verified unlock.
+    if(!secret && smtpUnlockSecret && smtpUnlockDeadline>Date.now()){
+      templateUnlockSecret=smtpUnlockSecret;
+      setTemplateLocked(false);
+      templateUnlockSecret=smtpUnlockSecret;
+      startTemplateCountdown();
+      showMsg('tmplMsg','Email templates unlocked using the active SMTP admin-secret session.','ok');
+      return;
+    }
+    if(!secret){showMsg('tmplMsg','Enter the same admin secret used for SMTP settings.','err');return;}
     await withButtonBusy(btn,'Checking…',async function(){
-      try{
-        var r=await sb.rpc('admin_verify_settings_secret',{p_token:adminSessionToken,p_secret:secret});
-        if(r.error)throw r.error;
-        if(r.data!==true){showMsg('tmplMsg','Incorrect admin secret.','err');return;}
-        templateUnlockSecret=secret;
-        setTemplateLocked(false);
-        templateUnlockSecret=secret;
-        startTemplateCountdown();
-        document.getElementById('templateSecretInput').value='';
-        showMsg('tmplMsg','Email templates unlocked. Auto-lock timer started.','ok');
-      }catch(err){showMsg('tmplMsg','Could not unlock templates: '+(err.message||err),'err');}
+      var check=await verifySettingsSecret(secret);
+      if(!check.ok){
+        if(check.reason==='session'){showMsg('tmplMsg','Admin session expired. Please log in again.','err');return;}
+        if(check.reason==='secret'){showMsg('tmplMsg','Incorrect admin secret. Use the same secret as SMTP settings.','err');return;}
+        showMsg('tmplMsg','Could not verify admin secret: '+((check.error&&check.error.message)||'Please try again.'),'err');return;
+      }
+      templateUnlockSecret=check.secret;
+      setTemplateLocked(false);
+      templateUnlockSecret=check.secret;
+      startTemplateCountdown();
+      document.getElementById('templateSecretInput').value='';
+      showMsg('tmplMsg','Email templates unlocked. Auto-lock timer started.','ok');
     });
   });
   document.getElementById('lockTemplateBtn').addEventListener('click',function(){setTemplateLocked(true);showMsg('tmplMsg','Email templates locked.','ok');});
