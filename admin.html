@@ -332,6 +332,54 @@
   @keyframes toastIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
   @media(max-width:800px){.admin-user-grid{grid-template-columns:1fr;}.admin-user-create-actions{align-items:stretch;flex-direction:column;}.admin-user-create-actions .sub{margin-right:0;width:100%;}.admin-user-create-actions .btn{width:100%;}.settings-lock{grid-template-columns:1fr;}.settings-unlock-controls{flex-direction:column;align-items:stretch;}.settings-unlock-controls .btn{width:100%;}.lock-state{justify-content:flex-start;}.admin-identity{display:none;}#globalBusy{right:10px;bottom:10px;}#toastStack{right:10px;top:10px;width:calc(100vw - 20px);}}
 
+
+  /* Employee Exit / IT Takeover + accessory registry */
+  .exit-status-badge{display:inline-flex;align-items:center;margin-left:6px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800;vertical-align:middle}
+  .exit-status-badge.exited{background:#fbe7e7;color:#9c2f2f;border:1px solid #efc6c6}
+  .exit-status-badge.active{background:#e7f5ed;color:#26704d;border:1px solid #c7e6d5}
+  .takeover-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+  .takeover-card{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px}
+  .takeover-card h3{margin:0 0 5px;font-size:14px;color:var(--navy)}
+  .takeover-card .sub{margin:0 0 12px}
+  .takeover-employee-list{display:grid;gap:8px;margin-top:10px}
+  .takeover-employee{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:#fff}
+  .takeover-employee:hover{border-color:#9fb8c9;background:#fbfdff}
+  .takeover-employee .name{font-weight:800;color:var(--navy)}
+  .takeover-employee .meta{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45}
+  .asset-summary{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
+  .asset-chip{padding:5px 8px;border-radius:999px;background:#f1f5f7;border:1px solid var(--line);font-size:11px;color:#334b5c}
+  .asset-status{display:inline-flex;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:800}
+  .asset-status.Assigned{background:#e6f5ed;color:#26704d}
+  .asset-status.Spare{background:#fff1df;color:#9a5a13}
+  .asset-status.WithDevice{background:#e7f0fb;color:#285e91}
+  .asset-status.Missing{background:#fbe7e7;color:#9c2f2f}
+  .asset-status.Retired{background:#eceff1;color:#5d6770}
+  .takeover-overlay{position:fixed;inset:0;background:rgba(12,25,35,.56);z-index:130;display:none;align-items:center;justify-content:center;padding:18px}
+  .takeover-overlay.open{display:flex}
+  .takeover-dialog{width:min(980px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:12px;border:1px solid #ccd7df;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+  .takeover-head{display:flex;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;z-index:2}
+  .takeover-head h3{margin:0;color:var(--navy);font-size:16px}
+  .takeover-body{padding:16px 18px}
+  .takeover-emp-summary{padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#f7fafc;margin-bottom:12px;line-height:1.5}
+  .takeover-item{display:grid;grid-template-columns:minmax(220px,1.4fr) 150px 165px minmax(180px,1fr);gap:10px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px}
+  .takeover-item.phone{background:#f5f9fc;border-color:#cbdbe6}
+  .takeover-item .item-title{font-weight:800;color:var(--navy);font-size:12px}
+  .takeover-item .item-meta{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+  .takeover-item label{font-size:10.5px;font-weight:700;color:#415566;display:block;margin-bottom:4px}
+  .takeover-item select,.takeover-item input{width:100%;padding:7px 8px;border:1px solid var(--line-strong);border-radius:6px;background:#fff;font-size:12px}
+  .takeover-actions{display:flex;justify-content:flex-end;gap:9px;padding:12px 18px;border-top:1px solid var(--line);position:sticky;bottom:0;background:#fff}
+  .accessory-add-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:9px}
+  @media(max-width:900px){
+    .takeover-grid{grid-template-columns:1fr}
+    .takeover-item{grid-template-columns:1fr 1fr}
+    .accessory-add-grid{grid-template-columns:1fr 1fr}
+  }
+  @media(max-width:620px){
+    .takeover-item{grid-template-columns:1fr}
+    .takeover-employee{grid-template-columns:1fr}
+    .accessory-add-grid{grid-template-columns:1fr}
+  }
+
 </style>
 </head>
 <body>
@@ -363,6 +411,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="submissions">Submissions</button>
       <button class="tab-btn" data-tab="inventory">Inventory</button>
+      <button class="tab-btn" data-tab="takeover">Employee Exit &amp; Assets <span id="takeoverBadge"></span></button>
       <button class="tab-btn" data-tab="devicerequests">Device Requests <span id="requestBadge"></span></button>
       <button class="tab-btn" data-tab="issues">Issues &amp; Damage <span id="issueBadge"></span></button>
       <button class="tab-btn" data-tab="imeialerts">IMEI Alerts <span id="imeiAlertBadge"></span></button>
@@ -439,6 +488,49 @@
         <button class="btn btn-primary" id="addDeviceBtn">Add to inventory as Spare</button>
       </div>
       <div id="invArea"><p class="empty-state">Loading…</p></div>
+    </div>
+
+
+    <!-- EMPLOYEE EXIT / IT TAKEOVER + ACCESSORIES -->
+    <div class="tab-panel" id="tab-takeover">
+      <div class="panel-bar">
+        <div>
+          <h2>Employee Exit / IT Asset Takeover</h2>
+          <p class="sub" style="margin:3px 0 0;">When an employee leaves, take back all assigned phones and accessories in one checklist. Returned phones become Spare automatically; SIMs, memory cards, charger/cable and other accessories are tracked separately.</p>
+        </div>
+        <button class="btn btn-secondary" id="refreshTakeoverBtn">Refresh</button>
+      </div>
+
+      <div class="takeover-grid">
+        <div class="takeover-card">
+          <h3>Start employee takeover</h3>
+          <p class="sub">Search an employee. The system will show current assigned phones and known accessories before you complete the exit takeover.</p>
+          <input type="text" id="takeoverEmployeeSearch" class="search-input" placeholder="Search employee name, ID, email, location…" style="width:100%;" />
+          <div id="takeoverEmployeeList" class="takeover-employee-list"><p class="empty-state">Open this tab to load employees.</p></div>
+        </div>
+
+        <div class="takeover-card">
+          <h3>Accessory register</h3>
+          <p class="sub">Know exactly whether a SIM, memory card, charger or cable is with an employee, kept inside a phone, in spare stock, missing or retired.</p>
+          <div class="asset-summary" id="accessorySummary"></div>
+          <div class="filter-bar" style="margin-bottom:10px;">
+            <input type="text" id="accessorySearch" class="search-input" placeholder="Search type, SIM, employee, phone IMEI…" />
+            <select id="accessoryStatusFilter">
+              <option value="">All statuses</option>
+              <option value="Assigned">Assigned</option>
+              <option value="Spare">Spare stock</option>
+              <option value="With Device">With phone</option>
+              <option value="Missing">Missing / not returned</option>
+              <option value="Retired">Retired</option>
+            </select>
+            <button class="btn btn-secondary" id="accessoryClearFilters">Clear</button>
+          </div>
+          <button class="btn btn-secondary" id="addAccessoryBtn">+ Add accessory manually</button>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;" id="takeoversArea"></div>
+      <div style="margin-top:14px;" id="accessoriesArea"></div>
     </div>
 
     <!-- DEVICE REQUESTS -->
@@ -701,6 +793,30 @@
   </div>
 </div>
 
+
+  <div class="takeover-overlay" id="takeoverOverlay">
+    <div class="takeover-dialog">
+      <div class="takeover-head">
+        <div><h3>Employee Exit / IT Takeover</h3><div class="sub" id="takeoverDialogSubtitle">Return all company IT assets</div></div>
+        <button class="btn btn-secondary" id="takeoverCloseBtn">Close</button>
+      </div>
+      <div class="takeover-body">
+        <div class="takeover-emp-summary" id="takeoverEmployeeSummary"></div>
+        <div id="takeoverItems"></div>
+        <div class="grid" style="margin-top:12px;">
+          <div class="field"><label>Exit / last working date</label><input type="date" id="takeoverExitDate" /></div>
+          <div class="field"><label>Completed by (IT person)</label><input type="text" id="takeoverCompletedBy" placeholder="IT admin name" /></div>
+        </div>
+        <div class="field"><label>Takeover / exit notes</label><textarea id="takeoverNotes" placeholder="Any pending item, physical condition, HR/IT note, etc."></textarea></div>
+        <div id="takeoverMsg" class="msg"></div>
+      </div>
+      <div class="takeover-actions">
+        <button class="btn btn-secondary" id="takeoverCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="completeTakeoverBtn">Complete takeover &amp; email receipt</button>
+      </div>
+    </div>
+  </div>
+
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -759,6 +875,15 @@
   var templateCountdownTimer = null;
   var templateUnlockDeadline = 0;
   var currentTemplates = {};
+
+  var currentEmployeeItStatus = [];
+  var currentAccessories = [];
+  var currentTakeovers = [];
+  var takeoverEmployeeFilter = '';
+  var accessoryFilter = { search:'', status:'' };
+  var activeTakeoverEmployee = null;
+  var activeTakeoverItems = [];
+
   var DEFAULT_TEMPLATES = {
     handover: {
       subject: 'Your Mobile Device Handover Confirmation — {{company_name}}',
@@ -878,6 +1003,7 @@
       if(btn.dataset.tab === 'issues'){ Promise.all([loadIssueResolutions(), loadEmployeeIssueReports()]).then(function(){ renderIssues(); renderStats(); }); }
       if(btn.dataset.tab === 'imeialerts'){ loadDuplicateImeiAlerts(); }
       if(btn.dataset.tab === 'reports'){ populateReportLocationFilter(); renderReports(); }
+      if(btn.dataset.tab === 'takeover'){ loadTakeoverTab(); }
     });
   });
 
@@ -973,7 +1099,176 @@
   document.getElementById('refreshLogBtn').addEventListener('click', function(){ loadedTabs.activity=true; loadActivityLog(); });
 
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts()]); renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+
+  function employeeKeyFromRecord(r){
+    return String((r&&r.employee_id)||'').trim().toLowerCase()
+      || String((r&&preferredSubmissionEmail(r))||'').trim().toLowerCase()
+      || String((r&&r.employee_name)||'').trim().toLowerCase();
+  }
+  function employeeStatusFor(r){
+    var id=String((r&&r.employee_id)||'').trim().toLowerCase();
+    var email=String((r&&preferredSubmissionEmail(r))||'').trim().toLowerCase();
+    return currentEmployeeItStatus.find(function(x){
+      return (id && String(x.employee_id||'').trim().toLowerCase()===id)
+        || (email && [x.company_email,x.personal_email].some(function(e){return String(e||'').trim().toLowerCase()===email;}));
+    }) || null;
+  }
+  async function loadEmployeeItStatus(){
+    try{
+      var q=await sb.from('employee_it_status').select('*').order('updated_at',{ascending:false}).limit(1000);
+      if(q.error) throw q.error;
+      currentEmployeeItStatus=q.data||[];
+    }catch(err){
+      console.warn('Employee status table not available yet',err);
+      currentEmployeeItStatus=[];
+    }
+  }
+  async function loadAccessories(){
+    try{
+      var q=await sb.from('accessory_assets').select('*').order('updated_at',{ascending:false}).limit(2000);
+      if(q.error) throw q.error;
+      currentAccessories=q.data||[];
+    }catch(err){
+      console.warn('Accessory registry not available yet',err);
+      currentAccessories=[];
+    }
+  }
+  async function loadTakeovers(){
+    try{
+      var q=await sb.from('employee_takeovers').select('*').order('completed_at',{ascending:false}).limit(500);
+      if(q.error) throw q.error;
+      currentTakeovers=q.data||[];
+    }catch(err){
+      console.warn('Takeover table not available yet',err);
+      currentTakeovers=[];
+    }
+  }
+  function sameEmployeeAsset(a,r){
+    var eid=String(r.employee_id||'').trim().toLowerCase();
+    var emails=[r.company_email,r.personal_email].filter(isRealEmail).map(function(x){return String(x).trim().toLowerCase();});
+    return (eid && String(a.assigned_employee_id||'').trim().toLowerCase()===eid)
+      || emails.indexOf(String(a.assigned_employee_email||'').trim().toLowerCase())>=0;
+  }
+  function assignedDevicesForEmployee(r){
+    var eid=String(r.employee_id||'').trim().toLowerCase();
+    var emails=[r.company_email,r.personal_email].filter(isRealEmail).map(function(x){return String(x).trim().toLowerCase();});
+    return currentDevices.filter(function(d){
+      if(d.status!=='Assigned') return false;
+      return (eid && String(d.assigned_employee_id||'').trim().toLowerCase()===eid)
+        || emails.indexOf(String(resolveDeviceEmployeeEmail(d)||'').trim().toLowerCase())>=0;
+    });
+  }
+  async function ensureAccessoryRegistryFromCurrentData(){
+    if(!currentSubs.length || !currentDevices.length) return;
+    var existing={};
+    currentAccessories.forEach(function(a){ if(a.source_ref) existing[a.source_ref]=true; });
+    var inserts=[];
+    var latest=latestSubmissionKeys();
+    latest.forEach(function(r){
+      var st=employeeStatusFor(r);
+      if(st && st.status==='Exited') return;
+      var email=preferredSubmissionEmail(r)||'';
+      if(String(r.charger||'').toLowerCase()==='yes'){
+        var ref='submission:'+r.id+':charger';
+        if(!existing[ref]) inserts.push({asset_type:'Charger',label:'Charger',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,source:'Handover form',source_ref:ref,condition:'Good'});
+      }
+      if(String(r.cable||'').toLowerCase()==='yes'){
+        var ref2='submission:'+r.id+':cable';
+        if(!existing[ref2]) inserts.push({asset_type:'USB/Data Cable',label:'USB/Data Cable',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,source:'Handover form',source_ref:ref2,condition:'Good'});
+      }
+      [r.device1,r.device2].forEach(function(d,idx){
+        if(!d||!d.imei1) return;
+        if(String(d.memoryCard||'').toLowerCase()==='yes'){
+          var refm='submission:'+r.id+':device'+(idx+1)+':memory';
+          if(!existing[refm]) inserts.push({asset_type:'Memory Card',label:'Memory Card '+(d.memoryCardSize||''),identifier:d.memoryCardSize||'',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,device_imei:String(d.imei1),source:'Handover form',source_ref:refm,condition:'Good'});
+        }
+      });
+    });
+    currentDevices.forEach(function(d){
+      resolveDeviceSims(d).forEach(function(sim){
+        if(!/^\d{10}$/.test(sim)||sim==='0000000000') return;
+        var ref='sim:'+sim;
+        if(existing[ref]) return;
+        inserts.push({asset_type:'SIM Card',label:'SIM '+sim,identifier:sim,status:d.status==='Assigned'?'Assigned':'With Device',assigned_employee_id:d.status==='Assigned'?(d.assigned_employee_id||null):null,assigned_employee_name:d.status==='Assigned'?(d.assigned_to||null):null,assigned_employee_email:d.status==='Assigned'?(resolveDeviceEmployeeEmail(d)||null):null,device_imei:d.imei1||null,source:'Device inventory',source_ref:ref,condition:'Good'});
+      });
+    });
+    if(inserts.length){
+      var res=await sb.from('accessory_assets').upsert(inserts,{onConflict:'source_ref',ignoreDuplicates:true});
+      if(res.error) console.warn('Accessory auto-sync warning',res.error);
+      await loadAccessories();
+    }
+  }
+  function assetStatusClass(s){ return String(s||'').replace(/\s+/g,''); }
+  function renderAccessorySummary(){
+    var box=document.getElementById('accessorySummary'); if(!box) return;
+    var counts={Assigned:0,Spare:0,'With Device':0,Missing:0,Retired:0};
+    currentAccessories.forEach(function(a){ if(counts[a.status]!==undefined) counts[a.status]++; });
+    box.innerHTML='<span class="asset-chip">Assigned: <b>'+counts.Assigned+'</b></span>'
+      +'<span class="asset-chip">Spare: <b>'+counts.Spare+'</b></span>'
+      +'<span class="asset-chip">With phone: <b>'+counts['With Device']+'</b></span>'
+      +'<span class="asset-chip">Missing: <b>'+counts.Missing+'</b></span>';
+  }
+  function renderAccessories(){
+    var area=document.getElementById('accessoriesArea'); if(!area) return;
+    renderAccessorySummary();
+    var q=(accessoryFilter.search||'').toLowerCase().trim();
+    var list=currentAccessories.filter(function(a){
+      if(accessoryFilter.status && a.status!==accessoryFilter.status) return false;
+      if(q){
+        var hay=[a.asset_type,a.label,a.identifier,a.status,a.assigned_employee_name,a.assigned_employee_id,a.assigned_employee_email,a.device_imei,a.condition,a.source,a.notes].join(' ').toLowerCase();
+        if(hay.indexOf(q)<0) return false;
+      }
+      return true;
+    });
+    if(!list.length){ area.innerHTML='<div class="takeover-card"><p class="empty-state">No accessories match this filter.</p></div>'; return; }
+    var rows=list.map(function(a){
+      return '<tr><td>'+esc(a.asset_type)+'</td><td>'+esc(a.label||'—')+'</td><td>'+esc(a.identifier||'—')+'</td>'
+        +'<td><span class="asset-status '+assetStatusClass(a.status)+'">'+esc(a.status)+'</span></td>'
+        +'<td>'+esc(a.assigned_employee_name||'—')+(a.assigned_employee_id?'<div class="issue-meta">'+esc(a.assigned_employee_id)+'</div>':'')+'</td>'
+        +'<td>'+esc(a.device_imei||'—')+'</td><td>'+esc(a.condition||'—')+'</td><td>'+esc(a.notes||'—')+'</td>'
+        +'<td><button class="btn-small edit" data-asset-edit="'+a.id+'">Edit</button></td></tr>';
+    }).join('');
+    area.innerHTML='<div class="takeover-card"><h3>Accessory / SIM / memory-card register</h3><div class="table-wrap"><table><thead><tr><th>Type</th><th>Label</th><th>Identifier</th><th>Status</th><th>Employee</th><th>Phone IMEI</th><th>Condition</th><th>Notes</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    area.querySelectorAll('[data-asset-edit]').forEach(function(b){b.addEventListener('click',function(){editAccessory(b.dataset.assetEdit);});});
+  }
+  function renderTakeoverEmployees(){
+    var box=document.getElementById('takeoverEmployeeList'); if(!box) return;
+    var q=(takeoverEmployeeFilter||'').trim().toLowerCase();
+    var list=latestSubmissionKeys().filter(function(r){
+      if(!q) return true;
+      return [r.employee_name,r.employee_id,r.company_email,r.personal_email,r.location,r.designation].join(' ').toLowerCase().indexOf(q)>=0;
+    }).slice(0,100);
+    if(!list.length){ box.innerHTML='<p class="empty-state">No matching employees.</p>'; return; }
+    box.innerHTML=list.map(function(r){
+      var st=employeeStatusFor(r), exited=st&&st.status==='Exited', devs=assignedDevicesForEmployee(r), assets=currentAccessories.filter(function(a){return a.status==='Assigned'&&sameEmployeeAsset(a,r);});
+      var badge=exited?'<span class="exit-status-badge exited">Exited</span>':'<span class="exit-status-badge active">Active</span>';
+      var action=exited?'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary" data-view-takeover="'+esc(r.employee_id||'')+'">View takeover</button><button class="btn btn-secondary" data-reactivate-employee="'+esc(r.employee_id||'')+'">Reactivate</button></div>':'<button class="btn btn-primary" data-start-takeover="'+r.id+'">Start takeover</button>';
+      return '<div class="takeover-employee"><div><div class="name">'+esc(r.employee_name||'—')+' '+badge+'</div><div class="meta">'+esc(r.employee_id||'')+' · '+esc(r.location||'')+' · '+esc(r.designation||'')+'<br/>'+devs.length+' assigned phone(s) · '+assets.length+' tracked accessory item(s)</div></div><div>'+action+'</div></div>';
+    }).join('');
+    box.querySelectorAll('[data-start-takeover]').forEach(function(b){b.addEventListener('click',function(){openEmployeeTakeover(b.dataset.startTakeover);});});
+    box.querySelectorAll('[data-view-takeover]').forEach(function(b){b.addEventListener('click',function(){viewLastTakeover(b.dataset.viewTakeover);});});
+    box.querySelectorAll('[data-reactivate-employee]').forEach(function(b){b.addEventListener('click',async function(){
+      var eid=b.dataset.reactivateEmployee;if(!confirm('Reactivate this employee for future IT assignments? Previous takeover history will be preserved.'))return;
+      var up=await sb.from('employee_it_status').update({status:'Active',updated_at:new Date().toISOString()}).eq('employee_id',eid);
+      if(up.error){alert(up.error.message);return;}await loadEmployeeItStatus();renderTakeoverEmployees();renderSubmissions();showToast('Employee reactivated.','success');
+    });});
+  }
+  function renderTakeovers(){
+    var area=document.getElementById('takeoversArea'); if(!area) return;
+    if(!currentTakeovers.length){ area.innerHTML=''; return; }
+    var rows=currentTakeovers.slice(0,20).map(function(t){
+      return '<tr><td>'+esc(new Date(t.completed_at||t.created_at).toLocaleString())+'</td><td>'+esc(t.employee_name||'')+'<div class="issue-meta">'+esc(t.employee_id||'')+'</div></td><td>'+esc(t.exit_date||'—')+'</td><td>'+esc(t.completed_by||'—')+'</td><td>'+esc(t.notes||'—')+'</td><td><button class="btn-small edit" data-takeover-view="'+t.id+'">Details</button></td></tr>';
+    }).join('');
+    area.innerHTML='<div class="takeover-card"><h3>Recent completed takeovers</h3><div class="table-wrap"><table><thead><tr><th>Completed</th><th>Employee</th><th>Exit date</th><th>IT person</th><th>Notes</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    area.querySelectorAll('[data-takeover-view]').forEach(function(b){b.addEventListener('click',function(){viewTakeoverById(b.dataset.takeoverView);});});
+  }
+  async function loadTakeoverTab(){
+    await Promise.all([loadEmployeeItStatus(),loadAccessories(),loadTakeovers()]);
+    await ensureAccessoryRegistryFromCurrentData();
+    renderTakeoverEmployees(); renderAccessories(); renderTakeovers(); renderSubmissions();
+  }
+
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts(), loadEmployeeItStatus()]); renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -1385,7 +1680,7 @@
       return '<tr>'
         + '<td class="checkbox-cell"><input type="checkbox" class="sub-checkbox" data-id="'+r.id+'" '+checked+' /></td>'
         + '<td>'+esc(new Date(r.created_at).toLocaleString())+'</td>'
-        + '<td>'+esc(r.employee_name)+'</td>'
+        + '<td>'+esc(r.employee_name)+(employeeStatusFor(r)&&employeeStatusFor(r).status==='Exited'?'<br/><span class="exit-status-badge exited">Exited / Takeover completed</span>':'')+'</td>'
         + '<td>'+esc(r.employee_id)+'</td>'
         + '<td>'+esc(r.company_email)+'</td>'
         + '<td>'+esc(r.personal_email)+'</td>'
@@ -2711,6 +3006,7 @@
     var q = (query||'').trim().toLowerCase();
     var deviceImei = assignPickerDevice ? assignPickerDevice.imei1 : null;
     var list = currentSubs.filter(function(s){
+      var itStatus=employeeStatusFor(s); if(itStatus&&itStatus.status==='Exited') return false;
       // Exclude any submission that already has this exact device (prevents duplicate/self-reassign).
       var d1imei = s.device1 && s.device1.imei1, d2imei = s.device2 && s.device2.imei1;
       if(deviceImei && (d1imei === deviceImei || d2imei === deviceImei)) return false;
@@ -2938,6 +3234,154 @@
     }
   }
 
+
+
+
+  // ---------- Employee Exit / IT Asset Takeover ----------
+  function closeTakeoverOverlay(){ document.getElementById('takeoverOverlay').classList.remove('open'); activeTakeoverEmployee=null; activeTakeoverItems=[]; }
+  document.getElementById('takeoverCloseBtn').addEventListener('click',closeTakeoverOverlay);
+  document.getElementById('takeoverCancelBtn').addEventListener('click',closeTakeoverOverlay);
+  document.getElementById('takeoverOverlay').addEventListener('click',function(e){if(e.target===this)closeTakeoverOverlay();});
+
+  document.getElementById('takeoverEmployeeSearch').addEventListener('input',debounce(function(){takeoverEmployeeFilter=this.value;renderTakeoverEmployees();},180));
+  document.getElementById('accessorySearch').addEventListener('input',debounce(function(){accessoryFilter.search=this.value;renderAccessories();},180));
+  document.getElementById('accessoryStatusFilter').addEventListener('change',function(){accessoryFilter.status=this.value;renderAccessories();});
+  document.getElementById('accessoryClearFilters').addEventListener('click',function(){accessoryFilter={search:'',status:''};document.getElementById('accessorySearch').value='';document.getElementById('accessoryStatusFilter').value='';renderAccessories();});
+  document.getElementById('refreshTakeoverBtn').addEventListener('click',function(){loadTakeoverTab();});
+
+  function addDerivedTakeoverItem(arr,item){
+    var key=[item.type,item.source_ref||'',item.identifier||'',item.device_imei||''].join('|');
+    if(arr.some(function(x){return [x.type,x.source_ref||'',x.identifier||'',x.device_imei||''].join('|')===key;})) return;
+    arr.push(item);
+  }
+  function buildEmployeeTakeoverItems(r){
+    var items=[];
+    assignedDevicesForEmployee(r).forEach(function(d){
+      addDerivedTakeoverItem(items,{type:'Mobile Phone',label:((d.brand||'')+' '+(d.model||'')).trim()||'Mobile Phone',identifier:d.imei1||'',device_imei:d.imei1||'',returned:true,destination:'Spare stock',condition:d.condition||'Good',notes:d.notes||'',source_ref:'phone:'+String(d.imei1||'')});
+    });
+    currentAccessories.filter(function(a){return a.status==='Assigned'&&sameEmployeeAsset(a,r);}).forEach(function(a){
+      addDerivedTakeoverItem(items,{type:a.asset_type,label:a.label||a.asset_type,identifier:a.identifier||'',device_imei:a.device_imei||'',returned:true,destination:(a.asset_type==='SIM Card'||a.asset_type==='Memory Card')&&a.device_imei?'Keep with phone':'Spare stock',condition:a.condition||'Good',notes:a.notes||'',source_ref:a.source_ref||('asset:'+a.id),asset_id:a.id});
+    });
+    return items;
+  }
+  function takeoverDestinationOptions(item){
+    if(item.type==='Mobile Phone') return '<option value="Spare stock">Spare stock</option>';
+    if(item.type==='SIM Card'||item.type==='Memory Card'){
+      return '<option value="Spare stock" '+(item.destination==='Spare stock'?'selected':'')+'>Move to spare stock</option><option value="Keep with phone" '+(item.destination==='Keep with phone'?'selected':'')+'>Keep with returned phone</option>';
+    }
+    return '<option value="Spare stock">Spare stock</option>';
+  }
+  function renderTakeoverDialogItems(){
+    var box=document.getElementById('takeoverItems');
+    if(!activeTakeoverItems.length){box.innerHTML='<p class="empty-state">No assigned phone/accessory records were found. You can still complete the employee exit, but verify physically before proceeding.</p>';return;}
+    box.innerHTML=activeTakeoverItems.map(function(it,i){
+      var phone=it.type==='Mobile Phone';
+      return '<div class="takeover-item '+(phone?'phone':'')+'" data-ti="'+i+'"><div><div class="item-title">'+esc(it.type)+' — '+esc(it.label||it.identifier||'')+'</div><div class="item-meta">'+(it.identifier?'ID / No.: '+esc(it.identifier):'')+(it.device_imei&&it.type!=='Mobile Phone'?'<br/>Linked phone IMEI: '+esc(it.device_imei):'')+'</div></div>'
+        +'<div><label>Returned to IT?</label><select class="ti-returned" '+(phone?'title="A phone must be returned before takeover can be completed."':'')+'><option value="yes" selected>Yes</option>'+(phone?'':'<option value="no">No / Missing</option>')+'</select></div>'
+        +'<div><label>After takeover</label><select class="ti-destination">'+takeoverDestinationOptions(it)+'</select></div>'
+        +'<div><label>Condition / note</label><select class="ti-condition"><option '+(it.condition==='Good'?'selected':'')+'>Good</option><option '+(it.condition==='Fair'?'selected':'')+'>Fair</option><option '+(it.condition==='Damaged'?'selected':'')+'>Damaged</option><option '+(it.condition==='Needs repair'?'selected':'')+'>Needs repair</option></select><input class="ti-note" style="margin-top:5px" placeholder="Optional note" value="'+esc(it.notes||'')+'" /></div></div>';
+    }).join('');
+    box.querySelectorAll('.takeover-item').forEach(function(row){
+      var idx=parseInt(row.dataset.ti,10),ret=row.querySelector('.ti-returned'),dest=row.querySelector('.ti-destination');
+      ret.addEventListener('change',function(){if(ret.value==='no'){dest.disabled=true;}else dest.disabled=false;});
+    });
+  }
+  function openEmployeeTakeover(submissionId){
+    var r=currentSubs.find(function(x){return String(x.id)===String(submissionId);}); if(!r)return;
+    var st=employeeStatusFor(r); if(st&&st.status==='Exited'){alert('This employee is already marked Exited. Open the previous takeover details instead.');return;}
+    activeTakeoverEmployee=r; activeTakeoverItems=buildEmployeeTakeoverItems(r);
+    document.getElementById('takeoverEmployeeSummary').innerHTML='<b>'+esc(r.employee_name||'')+'</b> · '+esc(r.employee_id||'')+'<br/>'+esc(r.designation||'')+' · '+esc(r.location||'')+'<br/>'+esc(r.company_email||'')+(r.personal_email?'<br/>'+esc(r.personal_email):'');
+    document.getElementById('takeoverExitDate').value=new Date().toISOString().slice(0,10);
+    document.getElementById('takeoverCompletedBy').value=currentAdminDisplayName||loggedInAdminUsername||'IT Admin';
+    document.getElementById('takeoverNotes').value='';
+    document.getElementById('takeoverMsg').className='msg';document.getElementById('takeoverMsg').textContent='';
+    renderTakeoverDialogItems();
+    document.getElementById('takeoverOverlay').classList.add('open');
+  }
+  function collectTakeoverItems(){
+    var out=[];
+    document.querySelectorAll('#takeoverItems .takeover-item').forEach(function(row){
+      var idx=parseInt(row.dataset.ti,10),base=activeTakeoverItems[idx],returned=row.querySelector('.ti-returned').value==='yes',dest=row.querySelector('.ti-destination').value;
+      out.push(Object.assign({},base,{returned:returned,destination:returned?dest:'Missing',condition:row.querySelector('.ti-condition').value,notes:row.querySelector('.ti-note').value.trim()}));
+    });
+    return out;
+  }
+  function buildTakeoverPdfBase64(r,takeoverId,items,completedBy,exitDate,notes){
+    var ctx=window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME,window.DNCC_CONFIG.DEPARTMENT,'Employee IT Asset Takeover / Exit Receipt');
+    var row=function(l,v){window.DNCCPdf.row(ctx,l,v);},section=function(t){window.DNCCPdf.section(ctx,t);};
+    section('Employee');row('Name',r.employee_name);row('Employee ID',r.employee_id);row('Company email',r.company_email||'—');row('Personal email',r.personal_email||'—');row('Location',r.location||'—');row('Designation',r.designation||'—');row('Exit / last working date',exitDate||'—');row('Takeover ID',String(takeoverId||'—'));row('Completed by',completedBy||'IT Admin');row('Completed at',new Date().toLocaleString());
+    section('Returned company IT assets');
+    items.forEach(function(it){
+      var val=(it.label||it.type)+(it.identifier?' · '+it.identifier:'')+' · '+(it.returned?'Returned':'NOT RETURNED')+' · '+(it.returned?it.destination:'Missing')+' · '+(it.condition||'—')+(it.notes?' · '+it.notes:'');
+      row(it.type,val);
+    });
+    if(notes){section('IT notes');row('Notes',notes);}
+    window.DNCCPdf.footer(ctx,'This is a system-generated IT asset takeover / employee exit confirmation issued by '+window.DNCC_CONFIG.COMPANY_NAME+' '+window.DNCC_CONFIG.DEPARTMENT+'.');
+    return window.DNCCPdf.toBase64(ctx);
+  }
+  async function sendTakeoverReceipt(r,takeoverId,items,completedBy,exitDate,notes){
+    var recipients=[r.company_email,r.personal_email].filter(isRealEmail).filter(function(v,i,a){return a.indexOf(v)===i;});
+    if(!recipients.length)return {ok:false,reason:'No valid employee email found'};
+    var phoneItems=items.filter(function(i){return i.type==='Mobile Phone';});
+    var accItems=items.filter(function(i){return i.type!=='Mobile Phone';});
+    var li=function(it){return '<li><b>'+esc(it.type)+':</b> '+esc(it.label||it.identifier||'')+(it.identifier?' ('+esc(it.identifier)+')':'')+' — '+(it.returned?'Returned · '+esc(it.destination):'<b>Not returned / missing</b>')+(it.condition?' · '+esc(it.condition):'')+'</li>';};
+    var html='<p>Dear '+esc(r.employee_name||'Employee')+',</p><p>This email confirms that the IT asset takeover associated with your employee exit has been recorded by '+esc(window.DNCC_CONFIG.COMPANY_NAME)+' IT Department.</p>'
+      +'<p><b>Exit / last working date:</b> '+esc(exitDate||'—')+'<br/><b>Takeover reference:</b> #'+esc(takeoverId)+'</p>'
+      +(phoneItems.length?'<p><b>Mobile device(s)</b></p><ul>'+phoneItems.map(li).join('')+'</ul>':'')
+      +(accItems.length?'<p><b>SIM / memory card / accessories</b></p><ul>'+accItems.map(li).join('')+'</ul>':'')
+      +(notes?'<p><b>IT note:</b> '+esc(notes)+'</p>':'')
+      +'<p>Returned phones have been moved to IT spare inventory. SIM cards, memory cards and accessories are recorded separately according to the takeover checklist.</p><p>Regards,<br/>'+esc(window.DNCC_CONFIG.COMPANY_NAME)+' IT Department</p>';
+    var pdfBase64=buildTakeoverPdfBase64(r,takeoverId,items,completedBy,exitDate,notes);
+    var res=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:recipients,employeeName:r.employee_name,subject:'IT Asset Takeover / Employee Exit Confirmation — '+window.DNCC_CONFIG.COMPANY_NAME,html:html,pdfBase64:pdfBase64,pdfFilename:'IT_Takeover_'+(r.employee_id||r.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_')+'.pdf'})});
+    var j=await res.json(); if(!res.ok||!j.ok)throw new Error(j.error||'Email send failed'); return {ok:true};
+  }
+  document.getElementById('completeTakeoverBtn').addEventListener('click',async function(){
+    if(!activeTakeoverEmployee)return;
+    var items=collectTakeoverItems(),phones=items.filter(function(i){return i.type==='Mobile Phone';});
+    if(phones.some(function(p){return !p.returned;})){showMsg('takeoverMsg','All assigned phones must be physically returned before the employee exit takeover can be completed.','err');return;}
+    var completedBy=document.getElementById('takeoverCompletedBy').value.trim(),exitDate=document.getElementById('takeoverExitDate').value,notes=document.getElementById('takeoverNotes').value.trim();
+    if(!completedBy){showMsg('takeoverMsg','Enter the IT person completing the takeover.','err');return;}
+    if(!exitDate){showMsg('takeoverMsg','Select the employee exit / last working date.','err');return;}
+    if(!confirm('Complete IT takeover for '+activeTakeoverEmployee.employee_name+'? Returned phones will become Spare and this employee will be marked Exited.'))return;
+    var btn=this;
+    await withButtonBusy(btn,'Completing takeover…',async function(){
+      try{
+        var r=activeTakeoverEmployee;
+        var rpc=await sb.rpc('dncc_complete_employee_takeover',{p_submission_id:Number(r.id),p_employee_id:r.employee_id||'',p_employee_name:r.employee_name||'',p_company_email:r.company_email||'',p_personal_email:r.personal_email||'',p_location:r.location||'',p_designation:r.designation||'',p_exit_date:exitDate,p_items:items,p_completed_by:completedBy,p_notes:notes});
+        if(rpc.error)throw rpc.error;
+        var result=rpc.data||{},takeoverId=result.takeover_id||result.id||'';
+        var mailOk=true;try{await sendTakeoverReceipt(r,takeoverId,items,completedBy,exitDate,notes);}catch(mailErr){mailOk=false;console.error(mailErr);}
+        await logActivity('Completed employee IT takeover','employee_takeover',takeoverId,'Employee '+(r.employee_name||'')+' ('+(r.employee_id||'')+') · '+items.length+' item(s)');
+        closeTakeoverOverlay();
+        await Promise.all([loadInventory(),loadSubmissions(),loadEmployeeItStatus(),loadAccessories(),loadTakeovers()]);
+        renderInventory();renderSubmissions();renderTakeoverEmployees();renderAccessories();renderTakeovers();renderStats();
+        alert(mailOk?'Takeover completed. Employee marked Exited, returned phones moved to Spare, and receipt emailed to company/personal email.':'Takeover completed, but the email receipt could not be sent. Data changes were saved.');
+      }catch(err){console.error(err);showMsg('takeoverMsg','Could not complete takeover: '+(err.message||err),'err');}
+    });
+  });
+  function viewTakeoverById(id){
+    var t=currentTakeovers.find(function(x){return String(x.id)===String(id);});if(!t)return;
+    var items=Array.isArray(t.items_snapshot)?t.items_snapshot:(t.items_snapshot||[]);
+    openModal('Takeover #'+t.id,[{id:'employee',label:'Employee',value:(t.employee_name||'')+' · '+(t.employee_id||'')},{id:'exit',label:'Exit date',value:t.exit_date||''},{id:'completed',label:'Completed by / time',value:(t.completed_by||'')+' · '+(t.completed_at?new Date(t.completed_at).toLocaleString():'')},{id:'items',label:'Returned assets',value:(items||[]).map(function(i){return i.type+' · '+(i.label||i.identifier||'')+' · '+(i.returned?'Returned / '+i.destination:'Missing')+' · '+(i.condition||'');}).join('\n'),type:'textarea'},{id:'notes',label:'Notes',value:t.notes||'',type:'textarea'}],function(){closeModal();});
+  }
+  function viewLastTakeover(employeeId){
+    var id=String(employeeId||'').trim().toLowerCase(),t=currentTakeovers.find(function(x){return String(x.employee_id||'').trim().toLowerCase()===id;});
+    if(t)viewTakeoverById(t.id);else alert('No completed takeover record found for this employee.');
+  }
+  document.getElementById('addAccessoryBtn').addEventListener('click',function(){
+    openModal('Add accessory / SIM / memory card',[{id:'asset_type',label:'Type',value:'Charger',type:'select',options:['Charger','USB/Data Cable','SIM Card','Memory Card','Other']},{id:'label',label:'Label / description',value:''},{id:'identifier',label:'Identifier / SIM number / card size',value:''},{id:'status',label:'Status',value:'Spare',type:'select',options:['Assigned','Spare','With Device','Missing','Retired']},{id:'assigned_employee_name',label:'Assigned employee name',value:''},{id:'assigned_employee_id',label:'Assigned employee ID',value:''},{id:'assigned_employee_email',label:'Assigned employee email',value:''},{id:'device_imei',label:'Linked phone IMEI (optional)',value:''},{id:'condition',label:'Condition',value:'Good',type:'select',options:['Good','Fair','Damaged','Needs repair']},{id:'notes',label:'Notes',value:'',type:'textarea'}],async function(v){
+      if(v.asset_type==='SIM Card'&&v.identifier&&!/^\d{10}$/.test(v.identifier)){alert('SIM number must be 10 digits.');return;}
+      var ref='manual:'+Date.now()+':'+Math.random().toString(36).slice(2,8);
+      var ins=await sb.from('accessory_assets').insert([{asset_type:v.asset_type,label:v.label||v.asset_type,identifier:v.identifier||null,status:v.status,assigned_employee_name:v.assigned_employee_name||null,assigned_employee_id:v.assigned_employee_id||null,assigned_employee_email:v.assigned_employee_email||null,device_imei:v.device_imei||null,condition:v.condition||'Good',notes:v.notes||null,source:'Manual IT entry',source_ref:ref}]);if(ins.error){alert(ins.error.message);return;}closeModal();await loadAccessories();renderAccessories();
+    });
+  });
+  function editAccessory(id){
+    var a=currentAccessories.find(function(x){return String(x.id)===String(id);});if(!a)return;
+    openModal('Edit accessory',[{id:'asset_type',label:'Type',value:a.asset_type,type:'select',options:['Charger','USB/Data Cable','SIM Card','Memory Card','Other']},{id:'label',label:'Label',value:a.label||''},{id:'identifier',label:'Identifier / SIM / size',value:a.identifier||''},{id:'status',label:'Status',value:a.status,type:'select',options:['Assigned','Spare','With Device','Missing','Retired']},{id:'assigned_employee_name',label:'Assigned employee name',value:a.assigned_employee_name||''},{id:'assigned_employee_id',label:'Assigned employee ID',value:a.assigned_employee_id||''},{id:'assigned_employee_email',label:'Assigned employee email',value:a.assigned_employee_email||''},{id:'device_imei',label:'Linked phone IMEI',value:a.device_imei||''},{id:'condition',label:'Condition',value:a.condition||'Good',type:'select',options:['Good','Fair','Damaged','Needs repair']},{id:'notes',label:'Notes',value:a.notes||'',type:'textarea'}],async function(v){
+      if(v.asset_type==='SIM Card'&&v.identifier&&!/^\d{10}$/.test(v.identifier)){alert('SIM number must be 10 digits.');return;}
+      var up=await sb.from('accessory_assets').update({asset_type:v.asset_type,label:v.label||v.asset_type,identifier:v.identifier||null,status:v.status,assigned_employee_name:v.status==='Assigned'?(v.assigned_employee_name||null):null,assigned_employee_id:v.status==='Assigned'?(v.assigned_employee_id||null):null,assigned_employee_email:v.status==='Assigned'?(v.assigned_employee_email||null):null,device_imei:(v.status==='With Device'||v.status==='Assigned')?(v.device_imei||null):null,condition:v.condition||'Good',notes:v.notes||null,updated_at:new Date().toISOString()}).eq('id',a.id);if(up.error){alert(up.error.message);return;}closeModal();await loadAccessories();renderAccessories();
+    });
+  }
 
 
   // ---------- Issues & Damage Resolution ----------
