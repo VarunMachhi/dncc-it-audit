@@ -1004,7 +1004,9 @@
       var c=await findAdminImeiConflict(vals[i],excludeSubmissionId,excludeDeviceId);
       // Admin editing the same submission is allowed to keep that record's own existing IMEI.
       // A genuinely different/external IMEI remains blocked.
-      if(c&&c.exists&&allowed[vals[i]])continue;
+      // If this is the inventory record's own pre-existing IMEI, ignore only a submission snapshot
+      // conflict. If another LIVE inventory device owns it, still block the save.
+      if(c&&c.exists&&allowed[vals[i]]&&!c.device)continue;
       if(c&&c.exists){var d=c.device||{},sub=c.submission||{};return {ok:false,message:'IMEI already exists: '+vals[i]+'\nExisting device: '+(((d.brand||'')+' '+(d.model||'')).trim()||'—')+(d.status?(' · '+d.status):'')+(d.assigned_to?(' · '+d.assigned_to):'')+'\nExisting submission: '+(sub.employee_name||'—')+' '+(sub.employee_id||'')};}
     }
     return {ok:true};
@@ -2365,6 +2367,63 @@
     return [];
   }
 
+  function submissionHasImei(sub, imei){
+    imei=String(imei||'').replace(/\D/g,'');
+    if(!imei || !sub) return false;
+    var ds=[sub.device1,sub.device2];
+    return ds.some(function(x){
+      if(!x) return false;
+      return String(x.imei1||'').replace(/\D/g,'')===imei || String(x.imei2||'').replace(/\D/g,'')===imei;
+    });
+  }
+
+  function latestSubmissionContainingImei(imei, employeeHint){
+    imei=String(imei||'').replace(/\D/g,'');
+    var list=currentSubs.filter(function(s){ return submissionHasImei(s,imei); });
+    if(employeeHint){
+      var hid=String(employeeHint.id||'').trim().toLowerCase();
+      var hemail=String(employeeHint.email||'').trim().toLowerCase();
+      var hname=String(employeeHint.name||'').trim().toLowerCase();
+      var exact=list.filter(function(s){
+        var sid=String(s.employee_id||'').trim().toLowerCase();
+        var semail=String(preferredSubmissionEmail(s)||'').trim().toLowerCase();
+        var sname=String(s.employee_name||'').trim().toLowerCase();
+        return (hid && sid===hid) || (hemail && semail===hemail) || (hname && sname===hname);
+      });
+      if(exact.length) list=exact;
+    }
+    list.sort(function(a,b){ return new Date(b.created_at||0)-new Date(a.created_at||0); });
+    return list[0]||null;
+  }
+
+  async function detachDeviceFromCurrentSubmission(imei, employeeHint){
+    imei=String(imei||'').replace(/\D/g,'');
+    var sub=latestSubmissionContainingImei(imei, employeeHint);
+    if(!sub) return {updated:false};
+    var d1=sub.device1||null, d2=sub.device2||null;
+    var d1Match=d1 && (String(d1.imei1||'').replace(/\D/g,'')===imei || String(d1.imei2||'').replace(/\D/g,'')===imei);
+    var d2Match=d2 && (String(d2.imei1||'').replace(/\D/g,'')===imei || String(d2.imei2||'').replace(/\D/g,'')===imei);
+    if(!d1Match && !d2Match) return {updated:false};
+
+    var next1=d1, next2=d2;
+    if(d1Match){
+      if(d2){ next1=d2; next2=null; }
+      else { next1=null; next2=null; }
+    }else if(d2Match){
+      next2=null;
+    }
+    var count=(next1?1:0)+(next2?1:0);
+    var res=await sb.from('submissions').update({device1:next1,device2:next2,device_count:count}).eq('id',sub.id);
+    if(res.error) throw res.error;
+    await logActivity('Synced spare device out of submission','submission',sub.id,'Removed IMEI '+imei+' from '+(sub.employee_name||'employee')+' current submission after inventory status changed to Spare/Retired.');
+    return {updated:true,submissionId:sub.id,employeeName:sub.employee_name||'',remainingCount:count};
+  }
+
+  function staleSubmissionForInventoryDevice(d){
+    if(!d || (d.status!=='Spare' && d.status!=='Retired')) return null;
+    return latestSubmissionContainingImei(d.imei1,null);
+  }
+
   function renderInventory(){
     var area = document.getElementById('invArea');
     if(!currentDevices.length){ area.innerHTML = '<p class="empty-state">No devices in inventory yet.</p>'; return; }
@@ -2381,6 +2440,8 @@
       var actions = '';
       if(d.status !== 'Retired') actions += '<button class="btn-small assign" data-action="assigntosubmission" data-imei="'+esc(d.imei1)+'" title="Pick an existing employee submission — auto-fills their details">'+(d.status==='Assigned'?'Reassign':'Assign')+'</button>';
       if(d.status !== 'Spare' && d.status !== 'Retired') actions += '<button class="btn-small spare" data-action="spare" data-imei="'+esc(d.imei1)+'">Spare</button>';
+      var staleSub=staleSubmissionForInventoryDevice(d);
+      if(staleSub) actions += '<button class="btn-small spare" data-action="syncsubmission" data-imei="'+esc(d.imei1)+'" title="Remove this Spare/Retired device from '+esc(staleSub.employee_name||'employee')+' current submission">Sync submission</button>';
       if(d.status !== 'Retired') actions += '<button class="btn-small retire" data-action="retire" data-imei="'+esc(d.imei1)+'">Retire</button>';
       actions += '<button class="btn-small edit" data-action="edit" data-imei="'+esc(d.imei1)+'">Edit</button>';
       actions += '<button class="btn-small delete" data-action="delete" data-imei="'+esc(d.imei1)+'">Delete</button>';
@@ -2449,13 +2510,23 @@
     if(action === 'assigntosubmission'){ openAssignPicker(d); return; }
     try{
       if(action === 'spare'){
-        if(!confirm('Mark this device as spare / unassigned?')) return;
+        if(!confirm('Mark this device as spare / unassigned? It will also be removed from the employee’s current Submission record.')) return;
         var prevEmployee = { name:d.assigned_to, id:d.assigned_employee_id, email:resolveDeviceEmployeeEmail(d) };
-        await sb.from('devices').update({ status:'Spare', assigned_to:null, assigned_employee_id:null, assigned_employee_email:null, last_updated:new Date().toISOString() }).eq('imei1', imei1);
-        await sb.from('device_history').insert([{ imei1:imei1, action:'Marked spare (takeover)', employee_name:prevEmployee.name||'', notes:'' }]);
+        var devUpd=await sb.from('devices').update({ status:'Spare', assigned_to:null, assigned_employee_id:null, assigned_employee_email:null, last_updated:new Date().toISOString() }).eq('imei1', imei1);
+        if(devUpd.error) throw devUpd.error;
+        var detachResult=await detachDeviceFromCurrentSubmission(imei1,prevEmployee);
+        await sb.from('device_history').insert([{ imei1:imei1, action:'Marked spare (takeover)', employee_name:prevEmployee.name||'', notes:detachResult.updated?'Removed from current submission #'+detachResult.submissionId:'No matching current submission found' }]);
         if(prevEmployee.email && confirm('Email a return/takeover confirmation to ' + prevEmployee.name + ' now?')){
           await sendActionEmail('takeover', 'Device Return / Takeover Confirmation', prevEmployee, d);
         }
+      } else if(action === 'syncsubmission'){
+        var stale=staleSubmissionForInventoryDevice(d);
+        if(!stale){ alert('No stale Submission link was found for this device.'); return; }
+        if(!confirm('Remove '+(d.brand||'')+' '+(d.model||'')+' (IMEI '+imei1+') from '+(stale.employee_name||'the employee')+' current Submission? Inventory will remain '+d.status+'.')) return;
+        var synced=await detachDeviceFromCurrentSubmission(imei1,{name:stale.employee_name,id:stale.employee_id,email:preferredSubmissionEmail(stale)});
+        if(!synced.updated){ alert('Nothing needed to be changed.'); return; }
+        await sb.from('device_history').insert([{ imei1:imei1, action:'Submission link repaired', employee_name:stale.employee_name||'', notes:'Removed stale '+d.status+' device from current submission #'+synced.submissionId }]);
+        alert('Submission synced. The device is no longer listed under '+(stale.employee_name||'the employee')+'.');
       } else if(action === 'retire'){
         if(!confirm('Retire this device?')) return;
         var prevEmployeeR = { name:d.assigned_to, id:d.assigned_employee_id, email:resolveDeviceEmployeeEmail(d) };
@@ -2495,7 +2566,10 @@
             if(values.sim1 && !/^\d{10}$/.test(values.sim1)){ alert('SIM 1 must be 10 digits or blank.'); return; }
             if(values.sim2 && !/^\d{10}$/.test(values.sim2)){ alert('SIM 2 must be 10 digits or blank.'); return; }
             var editedSims=[values.sim1,values.sim2].filter(Boolean);
-            var imeiCheck=await validateAdminImeis([values.imei1,values.imei2],null,d.id);if(!imeiCheck.ok){alert(imeiCheck.message);return;}
+            // Editing the same inventory record must be allowed to keep its own IMEI(s).
+            // The device row itself is excluded by ID; historical/current submission references to the
+            // same IMEI are allowed only for the IMEI(s) already belonging to this device.
+            var imeiCheck=await validateAdminImeis([values.imei1,values.imei2],null,d.id,[d.imei1,d.imei2]);if(!imeiCheck.ok){alert(imeiCheck.message);return;}
             var detailsChanged = values.brand !== (d.brand||'') || values.model !== (d.model||'')
               || values.ram !== (d.ram||'') || values.storage !== (d.storage||'')
               || values.imei1 !== (d.imei1||'') || values.imei2 !== (d.imei2||'')
@@ -2526,7 +2600,7 @@
         });
         return;
       }
-      await loadInventory(); renderStats();
+      await Promise.all([loadInventory(),loadSubmissions()]); renderStats();
     }catch(err){ console.error(err); alert('Action failed: ' + (err.message||err)); }
   }
 
