@@ -993,13 +993,18 @@
     return res.data||{exists:false,imei:imei};
   }
 
-  async function validateAdminImeis(imeis,excludeSubmissionId,excludeDeviceId){
+  async function validateAdminImeis(imeis,excludeSubmissionId,excludeDeviceId,allowedExistingImeis){
     var vals=(imeis||[]).map(function(v){return String(v||'').replace(/\D/g,'');}).filter(Boolean),seen={};
+    var allowed={};
+    (allowedExistingImeis||[]).forEach(function(v){v=String(v||'').replace(/\D/g,'');if(v)allowed[v]=true;});
     for(var i=0;i<vals.length;i++){
       if(!/^\d{15}$/.test(vals[i]))return {ok:false,message:'Every entered IMEI must be exactly 15 digits.'};
       if(seen[vals[i]])return {ok:false,message:'The same IMEI cannot be used twice: '+vals[i]};
       seen[vals[i]]=true;
       var c=await findAdminImeiConflict(vals[i],excludeSubmissionId,excludeDeviceId);
+      // Admin editing the same submission is allowed to keep that record's own existing IMEI.
+      // A genuinely different/external IMEI remains blocked.
+      if(c&&c.exists&&allowed[vals[i]])continue;
       if(c&&c.exists){var d=c.device||{},sub=c.submission||{};return {ok:false,message:'IMEI already exists: '+vals[i]+'\nExisting device: '+(((d.brand||'')+' '+(d.model||'')).trim()||'—')+(d.status?(' · '+d.status):'')+(d.assigned_to?(' · '+d.assigned_to):'')+'\nExisting submission: '+(sub.employee_name||'—')+' '+(sub.employee_id||'')};}
     }
     return {ok:true};
@@ -1561,6 +1566,94 @@
     };
   }
 
+  function adminEditOriginalImeis(r){
+    var out=[];
+    [r&&r.device1,r&&r.device2].forEach(function(d){if(!d)return;[d.imei1,d.imei2].forEach(function(v){v=String(v||'').replace(/\D/g,'');if(v)out.push(v);});});
+    return out;
+  }
+
+  function preferredAdminEditEmail(r){
+    return [r&&r.company_email,r&&r.personal_email].filter(isRealEmail)[0] || '';
+  }
+
+  function submissionAdminChangeSummary(before,after){
+    var changes=[];
+    function add(label,a,b){a=(a==null?'':String(a));b=(b==null?'':String(b));if(a!==b)changes.push({field:label,before:a||'—',after:b||'—'});}
+    add('Employee name',before.employee_name,after.employee_name);
+    add('Employee ID',before.employee_id,after.employee_id);
+    add('Company email',before.company_email,after.company_email);
+    add('Personal email',before.personal_email,after.personal_email);
+    add('Department',before.department,after.department);
+    add('Location',before.location,after.location);
+    add('Designation',before.designation,after.designation);
+    add('Contact',before.contact,after.contact);
+    add('Device count',before.device_count,after.device_count);
+    function dev(prefix,a,b){a=a||{};b=b||{};add(prefix+' brand',a.brand,b.brand);add(prefix+' model',a.model,b.model);add(prefix+' RAM',a.ram,b.ram);add(prefix+' storage',a.storage,b.storage);add(prefix+' IMEI 1',a.imei1,b.imei1);add(prefix+' IMEI 2',a.imei2,b.imei2);add(prefix+' SIM(s)',(a.simNumbers||[]).join(', '),(b.simNumbers||[]).join(', '));add(prefix+' memory card',a.memoryCard,b.memoryCard);add(prefix+' memory card size',a.memoryCardSize,b.memoryCardSize);add(prefix+' usage',a.usage,b.usage);}
+    dev('Device 1',before.device1,after.device1);
+    dev('Device 2',before.device2,after.device2);
+    add('Charger',before.charger,after.charger);add('Cable',before.cable,after.cable);add('Damage',before.damage,after.damage);add('Damage description',before.damage_what,after.damage_what);add('Damage cause',before.damage_how,after.damage_how);add('Phone problem',before.phone_problem,after.phone_problem);add('Phone problem details',before.phone_problem_details,after.phone_problem_details);
+    return changes;
+  }
+
+  async function syncEditedSubmissionInventory(before,after){
+    var email=preferredAdminEditEmail(after), touched=[];
+    var pairs=[{old:before.device1||null,new:after.device1||null},{old:before.device2||null,new:(after.device_count===2?after.device2:null)}];
+    async function snapshotByImei(imei){
+      if(!imei)return null;
+      var q=await sb.from('devices').select('*').eq('imei1',String(imei).replace(/\D/g,'')).maybeSingle();
+      if(q.error)throw q.error;return q.data||null;
+    }
+    async function restoreTouched(){
+      for(var j=touched.length-1;j>=0;j--){
+        var t=touched[j];
+        try{
+          if(t.type==='insert'&&t.id){await sb.from('devices').delete().eq('id',t.id);}
+          else if(t.type==='update'&&t.before&&t.before.id){
+            var b=t.before;
+            await sb.from('devices').update({brand:b.brand,model:b.model,ram:b.ram,storage:b.storage,imei1:b.imei1,imei2:b.imei2,status:b.status,assigned_to:b.assigned_to,assigned_employee_id:b.assigned_employee_id,assigned_employee_email:b.assigned_employee_email,notes:b.notes,condition:b.condition,sim_slots:b.sim_slots,sim_numbers:b.sim_numbers,sim_assignment_mode:b.sim_assignment_mode,stock_source:b.stock_source,charger_available:b.charger_available,cable_available:b.cable_available,last_updated:b.last_updated}).eq('id',b.id);
+          }
+        }catch(e){console.error('Inventory rollback step failed',e);}
+      }
+    }
+    try{
+      for(var i=0;i<pairs.length;i++){
+        var oldD=pairs[i].old,newD=pairs[i].new;
+        if(oldD&&oldD.imei1&&newD&&newD.imei1){
+          var beforeInv=await snapshotByImei(oldD.imei1);
+          var patch={brand:newD.brand||'',model:newD.model||'',ram:newD.ram||'',storage:newD.storage||'',imei1:String(newD.imei1||'').replace(/\D/g,''),imei2:String(newD.imei2||'').replace(/\D/g,'')||null,sim_numbers:newD.simNumbers||[],sim_slots:(newD.simNumbers||[]).length||null,assigned_to:after.employee_name||null,assigned_employee_id:after.employee_id||null,assigned_employee_email:email||null,last_updated:new Date().toISOString()};
+          var up=await sb.from('devices').update(patch).eq('imei1',String(oldD.imei1||'').replace(/\D/g,''));
+          if(up.error)throw up.error;
+          if(beforeInv)touched.push({type:'update',before:beforeInv});
+        }else if(oldD&&oldD.imei1&&!newD){
+          var beforeSpare=await snapshotByImei(oldD.imei1);
+          var spare=await sb.from('devices').update({status:'Spare',assigned_to:null,assigned_employee_id:null,assigned_employee_email:null,last_updated:new Date().toISOString()}).eq('imei1',String(oldD.imei1||'').replace(/\D/g,''));
+          if(spare.error)throw spare.error;
+          if(beforeSpare)touched.push({type:'update',before:beforeSpare});
+        }else if(!oldD&&newD&&newD.imei1){
+          var payload={brand:newD.brand||'',model:newD.model||'',ram:newD.ram||'',storage:newD.storage||'',imei1:String(newD.imei1||'').replace(/\D/g,''),imei2:String(newD.imei2||'').replace(/\D/g,'')||null,status:'Assigned',assigned_to:after.employee_name||null,assigned_employee_id:after.employee_id||null,assigned_employee_email:email||null,sim_numbers:newD.simNumbers||[],sim_slots:(newD.simNumbers||[]).length||null,last_updated:new Date().toISOString()};
+          var ins=await sb.from('devices').insert([payload]).select('id').single();
+          if(ins.error)throw ins.error;
+          touched.push({type:'insert',id:ins.data&&ins.data.id});
+        }
+      }
+      return true;
+    }catch(err){await restoreTouched();throw err;}
+  }
+
+  async function sendAdminEditUpdateEmail(updated,changes){
+    var recipients=[updated.company_email,updated.personal_email].filter(isRealEmail);
+    if(!recipients.length)return {sent:false,reason:'No valid employee email'};
+    try{
+      var pdfBase64=buildHandoverPDFBase64(recordWithIssueResolutions(updated));
+      var changeHtml=changes.length?'<div style="margin:14px 0;padding:12px 14px;background:#f5f6f7;border-left:3px solid #2c6f97"><p style="margin:0 0 8px;font-weight:bold">Details updated by IT</p><ul style="margin:0;padding-left:20px">'+changes.map(function(c){return '<li><b>'+esc(c.field)+':</b> '+esc(c.before)+' → '+esc(c.after)+'</li>';}).join('')+'</ul></div>':'';
+      var html='<p>Dear '+esc(updated.employee_name||'Employee')+',</p><p>DNCC IT Department has updated your mobile device audit record. Please review the updated details below. A fresh PDF copy is attached for your records.</p>'+changeHtml+buildDeviceDetailsHTML(recordWithIssueResolutions(updated))+'<p>If anything is incorrect, please contact the IT Department.</p><p>Regards,<br/>'+esc(window.DNCC_CONFIG.COMPANY_NAME)+' IT Department</p>';
+      var res=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:recipients,employeeName:updated.employee_name,subject:'Updated Mobile Device Details — '+window.DNCC_CONFIG.COMPANY_NAME,html:html,pdfBase64:pdfBase64,pdfFilename:'Updated_Handover_'+(updated.employee_name||'Employee').replace(/[^a-z0-9]+/gi,'_')+'.pdf'})});
+      var json=await res.json();if(!res.ok||!json.ok)throw new Error(json.error||'Send failed');
+      await sb.from('submissions').update({email_sent_at:new Date().toISOString(),email_sent_via:'admin_update'}).eq('id',updated.id);
+      return {sent:true,recipients:recipients};
+    }catch(err){console.error('Admin update email failed',err);return {sent:false,reason:err.message||String(err)};}
+  }
+
   document.getElementById('addSubBtn').addEventListener('click', function(){
     openModal('Add submission manually', subEditFields({}), async function(values){
       try{
@@ -1581,11 +1674,25 @@
       openModal('Edit submission — ' + (r.employee_name||''), subEditFields(r), async function(values){
         try{
           var row = valuesToSubmissionRow(values, r.device1, r.device2);
-          var imeiCheck=await validateAdminImeis([row.device1&&row.device1.imei1,row.device1&&row.device1.imei2,row.device2&&row.device2.imei1,row.device2&&row.device2.imei2],id,null);if(!imeiCheck.ok){alert(imeiCheck.message);return;}
+          var imeiCheck=await validateAdminImeis([row.device1&&row.device1.imei1,row.device1&&row.device1.imei2,row.device2&&row.device2.imei1,row.device2&&row.device2.imei2],id,null,adminEditOriginalImeis(r));if(!imeiCheck.ok){alert(imeiCheck.message);return;}
+          var beforeSnapshot=JSON.parse(JSON.stringify(r));
+          var changes=submissionAdminChangeSummary(beforeSnapshot,row);
           var { error } = await sb.from('submissions').update(row).eq('id', id);
           if(error) throw error;
-          await logActivity('Edited submission', 'submission', id, 'Updated details for ' + (row.employee_name||r.employee_name||'employee'));
+          try{
+            await syncEditedSubmissionInventory(beforeSnapshot,row);
+          }catch(syncErr){
+            console.error(syncErr);
+            var rollbackRow={employee_name:beforeSnapshot.employee_name,employee_id:beforeSnapshot.employee_id,company_email:beforeSnapshot.company_email,personal_email:beforeSnapshot.personal_email,department:beforeSnapshot.department,location:beforeSnapshot.location,designation:beforeSnapshot.designation,contact:beforeSnapshot.contact,device_count:beforeSnapshot.device_count,charger:beforeSnapshot.charger,cable:beforeSnapshot.cable,damage:beforeSnapshot.damage,damage_what:beforeSnapshot.damage_what,damage_how:beforeSnapshot.damage_how,phone_problem:beforeSnapshot.phone_problem,phone_problem_details:beforeSnapshot.phone_problem_details,device1:beforeSnapshot.device1,device2:beforeSnapshot.device2};
+            try{await sb.from('submissions').update(rollbackRow).eq('id',id);}catch(rbErr){console.error('Rollback failed',rbErr);}
+            throw new Error('Inventory sync failed, so the submission change was cancelled. '+(syncErr.message||syncErr));
+          }
+          await logActivity('Edited submission', 'submission', id, 'Updated details for ' + (row.employee_name||r.employee_name||'employee')+(changes.length?' · '+changes.length+' field(s) changed':''));
+          var updated=Object.assign({},beforeSnapshot,row,{id:id});
+          var mailResult=await sendAdminEditUpdateEmail(updated,changes);
           closeModal(); await loadSubmissions(); renderStats(); loadActivityLog();
+          if(mailResult.sent){alert('Changes saved successfully.\nUpdated PDF emailed to '+mailResult.recipients.join(' and ')+'.');}
+          else{alert('Changes saved successfully, but the update email/PDF could not be sent.\nReason: '+(mailResult.reason||'Unknown error'));}
         }catch(err){ console.error(err); alert('Could not save changes: ' + (err.message||err)); }
       });
     } else if(action === 'allowedit'){
