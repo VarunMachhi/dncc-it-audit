@@ -379,6 +379,7 @@
         <div>
           <button class="btn btn-secondary" id="addSubBtn">+ Add manually</button>
           <button class="btn btn-secondary" id="refreshSubsBtn">Refresh</button>
+          <button class="btn btn-secondary" id="repairStaleAssignmentsBtn" title="Remove devices from the latest employee submission when inventory already says Spare or Retired">Repair stale assignments</button>
           <button class="btn btn-primary" id="exportBtn">Download Excel (.xlsx)</button>
         </div>
       </div>
@@ -972,7 +973,7 @@
   document.getElementById('refreshLogBtn').addEventListener('click', function(){ loadedTabs.activity=true; loadActivityLog(); });
 
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts()]); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts()]); renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -1254,13 +1255,38 @@
     sel.value = current;
   }
 
+  function normalizedImei(v){ return String(v||'').replace(/\D/g,''); }
+
+  function inventoryStateForImei(imei){
+    imei=normalizedImei(imei);
+    if(!imei) return null;
+    return currentDevices.find(function(d){
+      return normalizedImei(d.imei1)===imei || normalizedImei(d.imei2)===imei;
+    }) || null;
+  }
+
+  function deviceIsNotCurrentlyAssigned(snapshot){
+    if(!snapshot) return false;
+    var inv=inventoryStateForImei(snapshot.imei1)||inventoryStateForImei(snapshot.imei2);
+    return !!(inv && (inv.status==='Spare' || inv.status==='Retired'));
+  }
+
+  function effectiveSubmissionDevices(r){
+    var d1=r&&r.device1?r.device1:null, d2=r&&r.device2?r.device2:null;
+    if(d1 && deviceIsNotCurrentlyAssigned(d1)) d1=null;
+    if(d2 && deviceIsNotCurrentlyAssigned(d2)) d2=null;
+    if(!d1 && d2){ d1=d2; d2=null; }
+    return {device1:d1,device2:d2,count:(d1?1:0)+(d2?1:0)};
+  }
+
   function getFilteredSortedSubs(){
     var q = subsFilter.search.trim().toLowerCase();
     var list = currentSubs.filter(function(r){
       if(subsFilter.location && r.location !== subsFilter.location) return false;
       if(subsFilter.damage && r.damage !== subsFilter.damage) return false;
       if(!q) return true;
-      var d1 = r.device1 || {}, d2 = r.device2 || {};
+      var effective = effectiveSubmissionDevices(r);
+      var d1 = effective.device1 || {}, d2 = effective.device2 || {};
       var haystack = [
         r.employee_name, r.employee_id, d1.imei1, d1.imei2, d2.imei1, d2.imei2,
         r.contact, r.company_email, r.personal_email, r.phone_problem, r.phone_problem_details,
@@ -1337,7 +1363,8 @@
     var pageList = list.slice(startIndex, startIndex + PAGE_SIZE);
 
     var rows = pageList.map(function(r){
-      var d1 = r.device1 || {}, d2 = r.device2 || {};
+      var effective = effectiveSubmissionDevices(r);
+      var d1 = effective.device1 || {}, d2 = effective.device2 || {};
       var photoCount = Number(r.photo_count||0);
       var thumbs = photoCount ? '<button class="btn-small" type="button" data-photo-id="'+r.id+'">View '+photoCount+' photo'+(photoCount===1?'':'s')+'</button>' : '—';
       var checked = selectedSubIds.has(String(r.id)) ? 'checked' : '';
@@ -1353,8 +1380,8 @@
         + '<td>'+esc(r.company_email)+'</td>'
         + '<td>'+esc(r.personal_email)+'</td>'
         + '<td>'+esc(r.location)+'</td>'
-        + '<td>'+esc(d1.brand)+' '+esc(d1.model)+'</td>'
-        + '<td>'+esc(d1.imei1)+'</td>'
+        + '<td>'+(effective.count ? (esc(d1.brand)+' '+esc(d1.model)) : '<span class="muted">No current device</span>')+'</td>'
+        + '<td>'+(effective.count ? esc(d1.imei1) : '—')+'</td>'
         + '<td>'+damageText+'</td>'
         + '<td class="problem-cell '+problemClass+'">'+problemText+'</td>'
         + '<td>'+(thumbs||'—')+'</td>'
@@ -1443,6 +1470,48 @@
     document.getElementById('subsDamageFilter').value = '';
     subsPage = 1; renderSubmissions();
   });
+
+  function latestSubmissionKeys(){
+    var seen=new Set(), latest=[];
+    currentSubs.slice().sort(function(a,b){ return new Date(b.created_at||0)-new Date(a.created_at||0); }).forEach(function(r){
+      var key=String(r.employee_id||'').trim().toLowerCase() || String(preferredSubmissionEmail(r)||'').trim().toLowerCase() || String(r.employee_name||'').trim().toLowerCase();
+      if(!key) key='submission:'+r.id;
+      if(!seen.has(key)){ seen.add(key); latest.push(r); }
+    });
+    return latest;
+  }
+
+  async function repairStaleCurrentAssignments(showResult){
+    var latest=latestSubmissionKeys(), fixes=[];
+    latest.forEach(function(r){
+      var eff=effectiveSubmissionDevices(r);
+      var oldCount=(r.device1?1:0)+(r.device2?1:0);
+      if(eff.count!==oldCount || (r.device1 && eff.device1 && normalizedImei(r.device1.imei1)!==normalizedImei(eff.device1.imei1))){
+        fixes.push({record:r,effective:eff});
+      }
+    });
+    if(!fixes.length){ if(showResult) alert('No stale device assignments were found. Submissions already match Inventory.'); return 0; }
+    if(showResult && !confirm('Found '+fixes.length+' employee submission(s) that still contain a Spare/Retired device. Repair them now?')) return 0;
+    var repaired=0;
+    for(var i=0;i<fixes.length;i++){
+      var f=fixes[i], r=f.record, e=f.effective;
+      var res=await sb.from('submissions').update({device1:e.device1,device2:e.device2,device_count:e.count}).eq('id',r.id);
+      if(res.error) throw res.error;
+      repaired++;
+      await logActivity('Repaired stale device assignment','submission',r.id,'Removed Spare/Retired inventory device(s) from latest current submission for '+(r.employee_name||r.employee_id||'employee')+'.');
+    }
+    await loadSubmissions();
+    renderStats();
+    if(showResult) alert('Repaired '+repaired+' submission(s). Spare/Retired phones are no longer shown as currently assigned.');
+    return repaired;
+  }
+
+  var repairStaleBtn=document.getElementById('repairStaleAssignmentsBtn');
+  if(repairStaleBtn){ repairStaleBtn.addEventListener('click',async function(){
+    var old=repairStaleBtn.textContent; repairStaleBtn.disabled=true; repairStaleBtn.textContent='Repairing…';
+    try{ await repairStaleCurrentAssignments(true); }catch(err){ console.error(err); alert('Repair failed: '+(err.message||err)); }
+    finally{ repairStaleBtn.disabled=false; repairStaleBtn.textContent=old; }
+  }); }
 
   function debounce(fn, wait){
     var t;
@@ -2587,7 +2656,7 @@
             if(deviceUpdate.error) throw deviceUpdate.error;
             await logActivity('Edited device', 'device', values.imei1, 'Updated details for ' + (values.brand||'')+' '+(values.model||'') + (detailsChanged ? ' (device details changed)' : ''));
 
-            closeModal(); await loadInventory(); renderStats(); loadActivityLog();
+            closeModal(); await loadInventory(); renderSubmissions(); renderStats(); loadActivityLog();
 
             if(detailsChanged && values.assigned_employee_email){
               var updatedDevice = { brand:values.brand, model:values.model, ram:values.ram, storage:values.storage, imei1:values.imei1, imei2:values.imei2 };
