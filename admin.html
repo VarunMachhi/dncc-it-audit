@@ -1279,6 +1279,16 @@
     return {device1:d1,device2:d2,count:(d1?1:0)+(d2?1:0)};
   }
 
+  function currentStateSubmissionRecord(r){
+    if(!r) return r;
+    var effective=effectiveSubmissionDevices(r);
+    var out=Object.assign({},r);
+    out.device1=effective.device1||null;
+    out.device2=effective.device2||null;
+    out.device_count=effective.count;
+    return out;
+  }
+
   function getFilteredSortedSubs(){
     var q = subsFilter.search.trim().toLowerCase();
     var list = currentSubs.filter(function(r){
@@ -1806,14 +1816,16 @@
     } else if(action === 'email'){
       await sendHandoverEmail(r);
     } else if(action === 'print'){
+      if(!currentDevices.length){ try{ await loadInventory(); }catch(e){ console.error('Inventory refresh before PDF failed',e); } }
       var ctx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, 'Mobile Device Handover Receipt');
-      _fillHandoverDoc(ctx, recordWithIssueResolutions(r));
+      _fillHandoverDoc(ctx, currentStateSubmissionRecord(recordWithIssueResolutions(r)));
       var blobUrl = ctx.doc.output('bloburl');
       window.open(blobUrl, '_blank');
     }
   }
 
   function _fillHandoverDoc(ctx, r){
+    r = currentStateSubmissionRecord(r);
     var row = function(l,v){ window.DNCCPdf.row(ctx,l,v); };
     var section = function(t){ window.DNCCPdf.section(ctx,t); };
     section('Employee');
@@ -1850,6 +1862,7 @@
   }
 
   function buildHandoverPDFBase64(r){
+    r = currentStateSubmissionRecord(r);
     var ctx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, 'Mobile Device Handover Receipt');
     var row = function(l,v){ window.DNCCPdf.row(ctx,l,v); };
     var section = function(t){ window.DNCCPdf.section(ctx,t); };
@@ -1888,6 +1901,7 @@
   }
 
   function buildDeviceDetailsHTML(r){
+    r = currentStateSubmissionRecord(r);
     var devices = [r.device1];
     if(r.device_count === 2 && r.device2) devices.push(r.device2);
     var html = '';
