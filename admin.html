@@ -504,7 +504,7 @@
       <div class="takeover-grid">
         <div class="takeover-card">
           <h3>Start employee takeover</h3>
-          <p class="sub">Search an employee. Employee ID is the primary identity, so shared department/company email addresses never merge two employees. The system will show only that employee's current phones and accessories.</p>
+          <p class="sub">Search an employee. Employee ID is the primary identity. Active employees are never auto-unassigned just because they temporarily show zero phones. If an accidental Spare/unassignment occurred, use Restore phones.</p>
           <input type="text" id="takeoverEmployeeSearch" class="search-input" placeholder="Search employee name, ID, email, location…" style="width:100%;" />
           <div id="takeoverEmployeeList" class="takeover-employee-list"><p class="empty-state">Open this tab to load employees.</p></div>
         </div>
@@ -1245,10 +1245,11 @@
       if(st&&st.status==='Exited') return;
       var empKey=canonicalEmployeeAssetKey(r); if(!empKey) return;
       var email=preferredSubmissionEmail(r)||'';
-      if(String(r.charger||'').toLowerCase()==='yes'){
+      var hasCurrentPhone=assignedDevicesForEmployee(r).length>0;
+      if(hasCurrentPhone && String(r.charger||'').toLowerCase()==='yes'){
         push({asset_type:'Charger',label:'Charger',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,device_imei:null,source:'Handover form',source_ref:'employee:'+empKey+':charger',condition:'Good'});
       }
-      if(String(r.cable||'').toLowerCase()==='yes'){
+      if(hasCurrentPhone && String(r.cable||'').toLowerCase()==='yes'){
         push({asset_type:'USB/Data Cable',label:'USB/Data Cable',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,device_imei:null,source:'Handover form',source_ref:'employee:'+empKey+':cable',condition:'Good'});
       }
       var eff=effectiveSubmissionDevices(r);
@@ -1274,6 +1275,14 @@
       if(del.error) throw del.error;
     }
   }
+  async function reconcileZeroPhoneAutoAccessories(targetEmployeeId){
+    // IMPORTANT: An Active employee may temporarily have zero phones while IT is
+    // correcting inventory, replacing a handset, or waiting for a device.
+    // Never mutate their accessories based only on a zero-phone condition.
+    // Accessories are auto-released only by the explicit Employee Exit/Takeover flow.
+    return false;
+  }
+
   async function reconcileExitedEmployeeAssets(){
     var exitedIds=new Set(currentEmployeeItStatus.filter(function(x){return x.status==='Exited';}).map(function(x){return normalizedEmployeeId(x.employee_id);}).filter(Boolean));
     if(!exitedIds.size||!currentAccessories.length) return false;
@@ -1303,6 +1312,7 @@
   async function ensureAccessoryRegistryFromCurrentData(){
     if(!currentSubs.length||!currentDevices.length) return;
     await reconcileExitedEmployeeAssets();
+    await reconcileZeroPhoneAutoAccessories();
     var desired=desiredAutoAccessoryRows();
 
     // The first version used submission IDs in source_ref, so every new/replacement
@@ -1377,6 +1387,133 @@
     area.innerHTML='<div class="takeover-card"><h3>Accessory / SIM / memory-card register</h3><div class="table-wrap"><table><thead><tr><th>Type</th><th>Label</th><th>Identifier</th><th>Status</th><th>Employee</th><th>Phone IMEI</th><th>Condition</th><th>Notes</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
     area.querySelectorAll('[data-asset-edit]').forEach(function(b){b.addEventListener('click',function(){editAccessory(b.dataset.assetEdit);});});
   }
+  function sameEmployeeRecord(a,b){
+    var aid=normalizedEmployeeId(a&&a.employee_id), bid=normalizedEmployeeId(b&&b.employee_id);
+    if(aid&&bid) return aid===bid;
+    var ap=normalizedEmployeeEmail(a&&a.personal_email), bp=normalizedEmployeeEmail(b&&b.personal_email);
+    if(ap&&bp) return ap===bp;
+    return false;
+  }
+
+  function recoverableHistoricalPhonesForEmployee(r){
+    var st=employeeStatusFor(r);
+    if(st&&st.status==='Exited') return [];
+    var same=currentSubs.filter(function(x){ return sameEmployeeRecord(x,r); })
+      .slice().sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
+    // Find the most recent historical submission that still had at least one phone.
+    var source=same.find(function(x){return !!(x.device1||x.device2);});
+    if(!source) return [];
+    var seen=new Set(), out=[];
+    [source.device1,source.device2].forEach(function(d){
+      if(!d) return;
+      var imei=normalizedImei(d.imei1||d.imei2||'');
+      if(!imei||seen.has(imei)) return;
+      seen.add(imei);
+      var inv=currentDevices.find(function(x){
+        return normalizedImei(x.imei1)===imei || normalizedImei(x.imei2)===imei;
+      });
+      if(!inv) return;
+      // Recovery is deliberately limited to phones that are currently Spare and
+      // completely unassigned. Never steal a device from another employee.
+      if(inv.status!=='Spare') return;
+      if(normalizedEmployeeId(inv.assigned_employee_id)||String(inv.assigned_to||'').trim()) return;
+      out.push({snapshot:d,inventory:inv,source_submission_id:source.id,source_created_at:source.created_at});
+    });
+    return out;
+  }
+
+  function mergedRecoverySnapshot(candidate){
+    var d=Object.assign({},candidate.snapshot||{}), inv=candidate.inventory||{};
+    ['brand','model','ram','storage','imei1','imei2','condition'].forEach(function(k){
+      if(inv[k]!==undefined&&inv[k]!==null&&String(inv[k]).trim()!=='') d[k]=inv[k];
+    });
+    d.simNumbers=resolveDeviceSims(inv);
+    return d;
+  }
+
+  async function restoreEmployeePhoneAssignments(r, selectedCandidates){
+    if(!selectedCandidates.length) throw new Error('Select at least one phone to restore.');
+    if(selectedCandidates.length>2) throw new Error('This form supports a maximum of two current phones.');
+    var st=employeeStatusFor(r);
+    if(st&&st.status==='Exited') throw new Error('This employee is marked Exited. Reactivate first if they rejoined.');
+
+    // Re-check inventory at save time so a stale browser cannot overwrite a newer assignment.
+    var fresh=[];
+    for(var i=0;i<selectedCandidates.length;i++){
+      var c=selectedCandidates[i], imei=normalizedImei(c.inventory.imei1||c.snapshot.imei1);
+      var q=await sb.from('devices').select('*').eq('imei1',c.inventory.imei1).single();
+      if(q.error) throw q.error;
+      var inv=q.data;
+      if(!inv || inv.status!=='Spare' || normalizedEmployeeId(inv.assigned_employee_id) || String(inv.assigned_to||'').trim()){
+        throw new Error('IMEI '+imei+' is no longer an unassigned Spare device. Refresh and check Inventory.');
+      }
+      fresh.push({snapshot:c.snapshot,inventory:inv});
+    }
+
+    var target=currentSubs.filter(function(x){return sameEmployeeRecord(x,r);})
+      .slice().sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);})[0] || r;
+    var email=preferredSubmissionEmail(target)||preferredSubmissionEmail(r)||'';
+    var snaps=fresh.map(mergedRecoverySnapshot);
+
+    for(var j=0;j<fresh.length;j++){
+      var inv=fresh[j].inventory;
+      var up=await sb.from('devices').update({
+        status:'Assigned',
+        assigned_to:r.employee_name||target.employee_name||'',
+        assigned_employee_id:r.employee_id||target.employee_id||'',
+        assigned_employee_email:email||null,
+        last_updated:new Date().toISOString()
+      }).eq('imei1',inv.imei1);
+      if(up.error) throw up.error;
+      await sb.from('device_history').insert([{
+        imei1:inv.imei1,
+        action:'Assignment restored after consistency repair',
+        employee_name:r.employee_name||target.employee_name||'',
+        notes:'Restored to '+(r.employee_id||target.employee_id||'employee')+' from historical submission after an accidental Spare/unassignment.'
+      }]);
+    }
+
+    var subUp=await sb.from('submissions').update({
+      device1:snaps[0]||null,
+      device2:snaps[1]||null,
+      device_count:snaps.length
+    }).eq('id',target.id);
+    if(subUp.error) throw subUp.error;
+
+    await logActivity('Restored active employee device assignment','submission',target.id,
+      'Restored '+fresh.length+' phone(s) to '+(r.employee_name||r.employee_id||'employee')+' after accidental unassignment.');
+
+    await Promise.all([loadInventory(),loadSubmissions(),loadAccessories()]);
+    try{ await ensureAccessoryRegistryFromCurrentData(); }catch(e){ console.warn('Accessory refresh after restore warning',e); }
+    renderInventory(); renderSubmissions(); renderTakeoverEmployees(); renderAccessories(); renderStats();
+    return fresh.length;
+  }
+
+  function openRestoreEmployeePhones(r){
+    var candidates=recoverableHistoricalPhonesForEmployee(r);
+    if(!candidates.length){ alert('No recoverable Spare phones were found from this employee’s latest historical device record.'); return; }
+    var fields=[
+      {section:'Recovery safety check'},
+      {id:'info',label:'Employee',value:(r.employee_name||'')+' · '+(r.employee_id||''),type:'text'}
+    ];
+    candidates.forEach(function(c,idx){
+      var inv=c.inventory, label=((inv.brand||'')+' '+(inv.model||'')).trim()+' · IMEI '+(inv.imei1||'')+(resolveDeviceSims(inv).length?' · SIM '+resolveDeviceSims(inv).join(', '):'');
+      fields.push({id:'restore_'+idx,label:label,value:'Restore to employee',type:'select',options:['Restore to employee','Keep Spare']});
+    });
+    openModal('Restore phone assignment — '+(r.employee_name||''),fields,async function(v){
+      var chosen=candidates.filter(function(c,idx){return v['restore_'+idx]==='Restore to employee';});
+      if(!chosen.length){alert('Nothing selected to restore.');return;}
+      var names=chosen.map(function(c){return ((c.inventory.brand||'')+' '+(c.inventory.model||'')).trim()+' ('+c.inventory.imei1+')';}).join('\n• ');
+      if(!confirm('Restore these phone(s) to '+(r.employee_name||'employee')+'?\n\n• '+names+'\n\nThis will set Inventory to Assigned and restore the latest Submission device slots.')) return;
+      try{
+        var count=await restoreEmployeePhoneAssignments(r,chosen);
+        closeModal();
+        alert(count+' phone(s) restored successfully to '+(r.employee_name||'employee')+'.');
+      }catch(err){console.error(err);alert('Could not restore assignment: '+(err.message||err));}
+    });
+    var info=document.getElementById('mf_info'); if(info){info.readOnly=true;info.style.background='#f5f7f8';}
+  }
+
   function renderTakeoverEmployees(){
     var box=document.getElementById('takeoverEmployeeList'); if(!box) return;
     var q=(takeoverEmployeeFilter||'').trim().toLowerCase();
@@ -1388,11 +1525,18 @@
     box.innerHTML=list.map(function(r){
       var st=employeeStatusFor(r), exited=st&&st.status==='Exited', devs=assignedDevicesForEmployee(r), assets=currentAssignedAssetsForEmployee(r);
       var badge=exited?'<span class="exit-status-badge exited">Exited</span>':'<span class="exit-status-badge active">Active</span>';
-      var action=exited?'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary" data-view-takeover="'+esc(r.employee_id||'')+'">View takeover</button><button class="btn btn-secondary" data-reactivate-employee="'+esc(r.employee_id||'')+'">Reactivate</button></div>':'<button class="btn btn-primary" data-start-takeover="'+r.id+'">Start takeover</button>';
+      var recoverable=(!exited&&devs.length===0)?recoverableHistoricalPhonesForEmployee(r):[];
+      var action=exited
+        ?'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary" data-view-takeover="'+esc(r.employee_id||'')+'">View takeover</button><button class="btn btn-secondary" data-reactivate-employee="'+esc(r.employee_id||'')+'">Reactivate</button></div>'
+        :'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary" data-start-takeover="'+r.id+'">Start takeover</button>'+(recoverable.length?'<button class="btn btn-secondary" data-restore-phones="'+r.id+'">Restore phones ('+recoverable.length+')</button>':'')+'</div>';
       var assetNames=assets.map(function(a){return a.asset_type+(a.identifier?' '+a.identifier:'');}).join(', ');
-      return '<div class="takeover-employee"><div><div class="name">'+esc(r.employee_name||'—')+' '+badge+'</div><div class="meta">'+esc(r.employee_id||'')+' · '+esc(r.location||'')+' · '+esc(r.designation||'')+'<br/>'+devs.length+' assigned phone(s) · '+assets.length+' assigned accessory item(s)'+(assetNames?'<br/>Accessories: '+esc(assetNames):'')+'</div></div><div>'+action+'</div></div>';
+      return '<div class="takeover-employee"><div><div class="name">'+esc(r.employee_name||'—')+' '+badge+'</div><div class="meta">'+esc(r.employee_id||'')+' · '+esc(r.location||'')+' · '+esc(r.designation||'')+'<br/>'+devs.length+' assigned phone(s) · '+assets.length+' current assigned accessory item(s)'+(assetNames?'<br/>Accessories: '+esc(assetNames):'')+'</div></div><div>'+action+'</div></div>';
     }).join('');
     box.querySelectorAll('[data-start-takeover]').forEach(function(b){b.addEventListener('click',function(){openEmployeeTakeover(b.dataset.startTakeover);});});
+    box.querySelectorAll('[data-restore-phones]').forEach(function(b){b.addEventListener('click',function(){
+      var r=currentSubs.find(function(x){return String(x.id)===String(b.dataset.restorePhones);});
+      if(r) openRestoreEmployeePhones(r);
+    });});
     box.querySelectorAll('[data-view-takeover]').forEach(function(b){b.addEventListener('click',function(){viewLastTakeover(b.dataset.viewTakeover);});});
     box.querySelectorAll('[data-reactivate-employee]').forEach(function(b){b.addEventListener('click',async function(){
       var eid=b.dataset.reactivateEmployee;if(!confirm('Reactivate this employee for future IT assignments? Previous takeover history will be preserved.'))return;
@@ -1415,7 +1559,7 @@
     renderTakeoverEmployees(); renderAccessories(); renderTakeovers(); renderSubmissions();
   }
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts(), loadEmployeeItStatus(), loadAccessories()]); renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts(), loadEmployeeItStatus(), loadAccessories()]); try{await reconcileZeroPhoneAutoAccessories();}catch(e){console.warn('Accessory current-state reconciliation warning',e);} renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -1958,13 +2102,17 @@
   async function repairStaleCurrentAssignments(showResult){
     var latest=latestSubmissionKeys(), fixes=[];
     latest.forEach(function(r){
+      var st=employeeStatusFor(r);
+      // Never bulk-remove phones from an Active employee. Explicit Inventory Spare/
+      // Retire actions already sync safely. This bulk tool is only for exited/legacy rows.
+      if(!st || st.status!=='Exited') return;
       var eff=effectiveSubmissionDevices(r);
       var oldCount=(r.device1?1:0)+(r.device2?1:0);
       if(eff.count!==oldCount || (r.device1 && eff.device1 && normalizedImei(r.device1.imei1)!==normalizedImei(eff.device1.imei1))){
         fixes.push({record:r,effective:eff});
       }
     });
-    if(!fixes.length){ if(showResult) alert('No stale device assignments were found. Submissions already match Inventory.'); return 0; }
+    if(!fixes.length){ if(showResult) alert('No exited/legacy stale assignments were found. Active employees are never auto-removed by this bulk repair.'); return 0; }
     if(showResult && !confirm('Found '+fixes.length+' employee submission(s) that still contain a Spare/Retired device. Repair them now?')) return 0;
     var repaired=0;
     for(var i=0;i<fixes.length;i++){
@@ -3090,6 +3238,8 @@
         if(devUpd.error) throw devUpd.error;
         var detachResult=await detachDeviceFromCurrentSubmission(imei1,prevEmployee);
         await sb.from('device_history').insert([{ imei1:imei1, action:'Marked spare (takeover)', employee_name:prevEmployee.name||'', notes:detachResult.updated?'Removed from current submission #'+detachResult.submissionId:'No matching current submission found' }]);
+        await Promise.all([loadInventory(),loadAccessories(),loadSubmissions()]);
+        await reconcileZeroPhoneAutoAccessories(prevEmployee.id||'');
         if(prevEmployee.email && confirm('Email a return/takeover confirmation to ' + prevEmployee.name + ' now?')){
           await sendActionEmail('takeover', 'Device Return / Takeover Confirmation', prevEmployee, d);
         }
@@ -3100,12 +3250,17 @@
         var synced=await detachDeviceFromCurrentSubmission(imei1,{name:stale.employee_name,id:stale.employee_id,email:preferredSubmissionEmail(stale)});
         if(!synced.updated){ alert('Nothing needed to be changed.'); return; }
         await sb.from('device_history').insert([{ imei1:imei1, action:'Submission link repaired', employee_name:stale.employee_name||'', notes:'Removed stale '+d.status+' device from current submission #'+synced.submissionId }]);
-        alert('Submission synced. The device is no longer listed under '+(stale.employee_name||'the employee')+'.');
+        await Promise.all([loadInventory(),loadAccessories(),loadSubmissions()]);
+        await reconcileZeroPhoneAutoAccessories(stale.employee_id||'');
+        alert('Submission synced. The device is no longer listed under '+(stale.employee_name||'the employee')+'. Accessories were not changed automatically because the employee is still Active.');
       } else if(action === 'retire'){
-        if(!confirm('Retire this device?')) return;
+        if(!confirm('Retire this device? If assigned, it will also be removed from the employee current Submission.')) return;
         var prevEmployeeR = { name:d.assigned_to, id:d.assigned_employee_id, email:resolveDeviceEmployeeEmail(d) };
-        await sb.from('devices').update({ status:'Retired', last_updated:new Date().toISOString() }).eq('imei1', imei1);
-        await sb.from('device_history').insert([{ imei1:imei1, action:'Retired', employee_name:prevEmployeeR.name||'', notes:'' }]);
+        await sb.from('devices').update({ status:'Retired', assigned_to:null, assigned_employee_id:null, assigned_employee_email:null, last_updated:new Date().toISOString() }).eq('imei1', imei1);
+        var retiredDetach=await detachDeviceFromCurrentSubmission(imei1,prevEmployeeR);
+        await sb.from('device_history').insert([{ imei1:imei1, action:'Retired', employee_name:prevEmployeeR.name||'', notes:retiredDetach.updated?'Removed from current submission #'+retiredDetach.submissionId:'' }]);
+        await Promise.all([loadInventory(),loadAccessories(),loadSubmissions()]);
+        await reconcileZeroPhoneAutoAccessories(prevEmployeeR.id||'');
         if(prevEmployeeR.email && confirm('Email a retirement notice to ' + prevEmployeeR.name + ' now?')){
           await sendActionEmail('retire', 'Device Retirement Notice', prevEmployeeR, d);
         }
