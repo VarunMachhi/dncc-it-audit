@@ -1127,6 +1127,29 @@
     if(uniqueCompany) arr.push(uniqueCompany);
     return arr;
   }
+  function uniqueEmployeeNameForEmployee(r){
+    var name=String(r&&r.employee_name||'').trim().toLowerCase();
+    if(!name) return '';
+    var ids=new Set();
+    latestSubmissionKeys().forEach(function(x){
+      if(String(x.employee_name||'').trim().toLowerCase()===name){
+        var xid=normalizedEmployeeId(x.employee_id);
+        if(xid) ids.add(xid);
+      }
+    });
+    return ids.size===1 ? name : '';
+  }
+  function deviceBelongsToEmployee(d,r){
+    if(!d||!r) return false;
+    var eid=normalizedEmployeeId(r.employee_id);
+    var deviceEid=normalizedEmployeeId(d.assigned_employee_id);
+    if(eid && deviceEid) return eid===deviceEid;
+    var emails=employeeIdentityEmails(r);
+    var de=normalizedEmployeeEmail(resolveDeviceEmployeeEmail(d));
+    if(emails.length && de && emails.indexOf(de)>=0) return true;
+    var uname=uniqueEmployeeNameForEmployee(r);
+    return !!(uname && String(d.assigned_to||'').trim().toLowerCase()===uname);
+  }
   function employeeStatusFor(r){
     var id=normalizedEmployeeId(r&&r.employee_id);
     if(id){
@@ -1185,16 +1208,10 @@
     return emails.length>0 && emails.indexOf(normalizedEmployeeEmail(a&&a.assigned_employee_email))>=0;
   }
   function assignedDevicesForEmployee(r){
-    var eid=normalizedEmployeeId(r&&r.employee_id);
-    var emails=employeeIdentityEmails(r);
+    var st=employeeStatusFor(r);
+    if(st&&st.status==='Exited') return [];
     return currentDevices.filter(function(d){
-      if(d.status!=='Assigned') return false;
-      var deviceEid=normalizedEmployeeId(d.assigned_employee_id);
-      if(eid){
-        if(deviceEid) return deviceEid===eid;
-        return emails.length>0 && emails.indexOf(normalizedEmployeeEmail(resolveDeviceEmployeeEmail(d)))>=0;
-      }
-      return emails.length>0 && emails.indexOf(normalizedEmployeeEmail(resolveDeviceEmployeeEmail(d)))>=0;
+      return d.status==='Assigned' && deviceBelongsToEmployee(d,r);
     });
   }
   function canonicalEmployeeAssetKey(r){
@@ -1202,6 +1219,8 @@
     return base.replace(/\s+/g,' ');
   }
   function currentAssignedAssetsForEmployee(r){
+    var st=employeeStatusFor(r);
+    if(st&&st.status==='Exited') return [];
     var raw=currentAccessories.filter(function(a){return a.status==='Assigned'&&sameEmployeeAsset(a,r);});
     var seen=new Set(), out=[];
     raw.forEach(function(a){
@@ -1255,8 +1274,35 @@
       if(del.error) throw del.error;
     }
   }
+  async function reconcileExitedEmployeeAssets(){
+    var exitedIds=new Set(currentEmployeeItStatus.filter(function(x){return x.status==='Exited';}).map(function(x){return normalizedEmployeeId(x.employee_id);}).filter(Boolean));
+    if(!exitedIds.size||!currentAccessories.length) return false;
+    var changed=false;
+    for(var i=0;i<currentAccessories.length;i++){
+      var a=currentAccessories[i];
+      if(a.status!=='Assigned') continue;
+      var aid=normalizedEmployeeId(a.assigned_employee_id);
+      if(!aid||!exitedIds.has(aid)) continue;
+      var linked=a.device_imei?inventoryStateForImei(a.device_imei):null;
+      var nextStatus=((a.asset_type==='SIM Card'||a.asset_type==='Memory Card')&&linked&&(linked.status==='Spare'||linked.status==='Retired'))?'With Device':'Spare';
+      var up=await sb.from('accessory_assets').update({
+        status:nextStatus,
+        assigned_employee_id:null,
+        assigned_employee_name:null,
+        assigned_employee_email:null,
+        device_imei:nextStatus==='With Device'?(a.device_imei||null):null,
+        notes:(a.notes?String(a.notes)+' · ':'')+'Auto-reconciled after employee exit',
+        updated_at:new Date().toISOString()
+      }).eq('id',a.id);
+      if(up.error) throw up.error;
+      changed=true;
+    }
+    if(changed) await loadAccessories();
+    return changed;
+  }
   async function ensureAccessoryRegistryFromCurrentData(){
     if(!currentSubs.length||!currentDevices.length) return;
+    await reconcileExitedEmployeeAssets();
     var desired=desiredAutoAccessoryRows();
 
     // The first version used submission IDs in source_ref, so every new/replacement
@@ -1343,7 +1389,8 @@
       var st=employeeStatusFor(r), exited=st&&st.status==='Exited', devs=assignedDevicesForEmployee(r), assets=currentAssignedAssetsForEmployee(r);
       var badge=exited?'<span class="exit-status-badge exited">Exited</span>':'<span class="exit-status-badge active">Active</span>';
       var action=exited?'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary" data-view-takeover="'+esc(r.employee_id||'')+'">View takeover</button><button class="btn btn-secondary" data-reactivate-employee="'+esc(r.employee_id||'')+'">Reactivate</button></div>':'<button class="btn btn-primary" data-start-takeover="'+r.id+'">Start takeover</button>';
-      return '<div class="takeover-employee"><div><div class="name">'+esc(r.employee_name||'—')+' '+badge+'</div><div class="meta">'+esc(r.employee_id||'')+' · '+esc(r.location||'')+' · '+esc(r.designation||'')+'<br/>'+devs.length+' assigned phone(s) · '+assets.length+' tracked accessory item(s)</div></div><div>'+action+'</div></div>';
+      var assetNames=assets.map(function(a){return a.asset_type+(a.identifier?' '+a.identifier:'');}).join(', ');
+      return '<div class="takeover-employee"><div><div class="name">'+esc(r.employee_name||'—')+' '+badge+'</div><div class="meta">'+esc(r.employee_id||'')+' · '+esc(r.location||'')+' · '+esc(r.designation||'')+'<br/>'+devs.length+' assigned phone(s) · '+assets.length+' assigned accessory item(s)'+(assetNames?'<br/>Accessories: '+esc(assetNames):'')+'</div></div><div>'+action+'</div></div>';
     }).join('');
     box.querySelectorAll('[data-start-takeover]').forEach(function(b){b.addEventListener('click',function(){openEmployeeTakeover(b.dataset.startTakeover);});});
     box.querySelectorAll('[data-view-takeover]').forEach(function(b){b.addEventListener('click',function(){viewLastTakeover(b.dataset.viewTakeover);});});
@@ -1368,7 +1415,7 @@
     renderTakeoverEmployees(); renderAccessories(); renderTakeovers(); renderSubmissions();
   }
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts(), loadEmployeeItStatus()]); renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts(), loadEmployeeItStatus(), loadAccessories()]); renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
 
   async function loadTemplates(){
     try{
@@ -1660,17 +1707,28 @@
     }) || null;
   }
 
-  function deviceIsNotCurrentlyAssigned(snapshot){
-    if(!snapshot) return false;
+  function currentInventoryForSnapshot(snapshot,r){
+    if(!snapshot) return null;
     var inv=inventoryStateForImei(snapshot.imei1)||inventoryStateForImei(snapshot.imei2);
-    return !!(inv && (inv.status==='Spare' || inv.status==='Retired'));
+    if(!inv){
+      // If inventory has not loaded yet, preserve the snapshot temporarily.
+      return currentDevices.length ? null : snapshot;
+    }
+    if(inv.status!=='Assigned'||!deviceBelongsToEmployee(inv,r)) return null;
+    var merged=Object.assign({},snapshot);
+    ['brand','model','ram','storage','imei1','imei2','condition'].forEach(function(k){
+      if(inv[k]!==undefined&&inv[k]!==null&&String(inv[k]).trim()!=='') merged[k]=inv[k];
+    });
+    merged.simNumbers=resolveDeviceSims(inv);
+    return merged;
   }
 
   function effectiveSubmissionDevices(r){
-    var d1=r&&r.device1?r.device1:null, d2=r&&r.device2?r.device2:null;
-    if(d1 && deviceIsNotCurrentlyAssigned(d1)) d1=null;
-    if(d2 && deviceIsNotCurrentlyAssigned(d2)) d2=null;
-    if(!d1 && d2){ d1=d2; d2=null; }
+    var st=employeeStatusFor(r);
+    if(st&&st.status==='Exited') return {device1:null,device2:null,count:0};
+    var d1=currentInventoryForSnapshot(r&&r.device1?r.device1:null,r);
+    var d2=currentInventoryForSnapshot(r&&r.device2?r.device2:null,r);
+    if(!d1&&d2){d1=d2;d2=null;}
     return {device1:d1,device2:d2,count:(d1?1:0)+(d2?1:0)};
   }
 
@@ -1681,6 +1739,17 @@
     out.device1=effective.device1||null;
     out.device2=effective.device2||null;
     out.device_count=effective.count;
+    var assets=currentAssignedAssetsForEmployee(r);
+    out._currentAccessories=assets;
+    out.charger=assets.some(function(a){return a.asset_type==='Charger';})?'Yes':'No';
+    out.cable=assets.some(function(a){return a.asset_type==='USB/Data Cable';})?'Yes':'No';
+    out._currentDeviceImeis=[out.device1&&out.device1.imei1,out.device2&&out.device2.imei1].filter(Boolean).map(normalizedImei);
+    // Damage/problem on the handover snapshot belongs to the old phone. If there
+    // is no current assigned phone, do not present it as a current condition.
+    if(effective.count===0){
+      out.damage='No'; out.damage_what=''; out.damage_how='';
+      out.phone_problem='No'; out.phone_problem_details='';
+    }
     return out;
   }
 
@@ -2239,18 +2308,28 @@
       row('Memory/SD card', d.memoryCard === 'Yes' ? ('Yes — ' + d.memoryCardSize) : (d.memoryCard || '—'));
       row('Usage', d.usage);
     });
-    section('Accessories & Condition');
-    row('Charger provided', r.charger); row('Data/USB cable provided', r.cable); row('Damage present', r.damage);
-    if(r.damage === 'Yes'){
-      window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how);
-      var damageResolution = recordResolution(r, 'Physical Damage');
-      if(damageResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Physical Damage', damageResolution.resolution_notes, damageResolution.resolved_by, damageResolution.resolved_at); }
+    if(!r.device_count){
+      section('Current Assignment');
+      row('Mobile device', 'No current assigned mobile device');
     }
-    row('Phone problem reported', r.phone_problem || '—');
-    if(r.phone_problem === 'Yes'){
-      window.DNCCPdf.problemBlock(ctx, r.phone_problem_details || '—');
-      var problemResolution = recordResolution(r, 'Phone Problem');
-      if(problemResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Phone Problem', problemResolution.resolution_notes, problemResolution.resolved_by, problemResolution.resolved_at); }
+    section('Current Accessories & Condition');
+    row('Charger assigned', r.charger); row('Data/USB cable assigned', r.cable);
+    (r._currentAccessories||[]).filter(function(a){return a.asset_type!=='Charger'&&a.asset_type!=='USB/Data Cable';}).forEach(function(a){
+      row(a.asset_type, (a.label||a.asset_type)+(a.identifier?' · '+a.identifier:'')+(a.device_imei?' · Phone IMEI '+a.device_imei:''));
+    });
+    if(r.device_count){
+      row('Damage present', r.damage);
+      if(r.damage === 'Yes'){
+        window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how);
+        var damageResolution = recordResolution(r, 'Physical Damage');
+        if(damageResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Physical Damage', damageResolution.resolution_notes, damageResolution.resolved_by, damageResolution.resolved_at); }
+      }
+      row('Phone problem reported', r.phone_problem || '—');
+      if(r.phone_problem === 'Yes'){
+        window.DNCCPdf.problemBlock(ctx, r.phone_problem_details || '—');
+        var problemResolution = recordResolution(r, 'Phone Problem');
+        if(problemResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Phone Problem', problemResolution.resolution_notes, problemResolution.resolved_by, problemResolution.resolved_at); }
+      }
     }
     appendEmployeeReportedIssuesToPdf(ctx, r);
     window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
@@ -2277,18 +2356,28 @@
       row('Memory/SD card', d.memoryCard === 'Yes' ? ('Yes — ' + d.memoryCardSize) : (d.memoryCard || '—'));
       row('Usage', d.usage);
     });
-    section('Accessories & Condition');
-    row('Charger provided', r.charger); row('Data/USB cable provided', r.cable); row('Damage present', r.damage);
-    if(r.damage === 'Yes'){
-      window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how);
-      var damageResolution = recordResolution(r, 'Physical Damage');
-      if(damageResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Physical Damage', damageResolution.resolution_notes, damageResolution.resolved_by, damageResolution.resolved_at); }
+    if(!r.device_count){
+      section('Current Assignment');
+      row('Mobile device', 'No current assigned mobile device');
     }
-    row('Phone problem reported', r.phone_problem || '—');
-    if(r.phone_problem === 'Yes'){
-      window.DNCCPdf.problemBlock(ctx, r.phone_problem_details || '—');
-      var problemResolution = recordResolution(r, 'Phone Problem');
-      if(problemResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Phone Problem', problemResolution.resolution_notes, problemResolution.resolved_by, problemResolution.resolved_at); }
+    section('Current Accessories & Condition');
+    row('Charger assigned', r.charger); row('Data/USB cable assigned', r.cable);
+    (r._currentAccessories||[]).filter(function(a){return a.asset_type!=='Charger'&&a.asset_type!=='USB/Data Cable';}).forEach(function(a){
+      row(a.asset_type, (a.label||a.asset_type)+(a.identifier?' · '+a.identifier:'')+(a.device_imei?' · Phone IMEI '+a.device_imei:''));
+    });
+    if(r.device_count){
+      row('Damage present', r.damage);
+      if(r.damage === 'Yes'){
+        window.DNCCPdf.damageBlock(ctx, r.damage_what, r.damage_how);
+        var damageResolution = recordResolution(r, 'Physical Damage');
+        if(damageResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Physical Damage', damageResolution.resolution_notes, damageResolution.resolved_by, damageResolution.resolved_at); }
+      }
+      row('Phone problem reported', r.phone_problem || '—');
+      if(r.phone_problem === 'Yes'){
+        window.DNCCPdf.problemBlock(ctx, r.phone_problem_details || '—');
+        var problemResolution = recordResolution(r, 'Phone Problem');
+        if(problemResolution){ window.DNCCPdf.resolutionBlock(ctx, 'Phone Problem', problemResolution.resolution_notes, problemResolution.resolved_by, problemResolution.resolved_at); }
+      }
     }
     appendEmployeeReportedIssuesToPdf(ctx, r);
     window.DNCCPdf.footer(ctx, 'This is a system-generated handover confirmation issued by ' + window.DNCC_CONFIG.COMPANY_NAME + ' ' + window.DNCC_CONFIG.DEPARTMENT + '. Please retain this document for your records.');
@@ -2312,6 +2401,13 @@
       html += '<b>Memory/SD card:</b> ' + (d.memoryCard==='Yes' ? ('Yes — '+d.memoryCardSize) : (d.memoryCard||'No'));
       html += '</p></div>';
     });
+    if(!r.device_count){
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#f5f6f7;border-left:3px solid #2c6f97;"><p style="margin:0;"><b>Current mobile assignment:</b> No current assigned mobile device.</p></div>';
+    }
+    var currentAssets=r._currentAccessories||[];
+    if(currentAssets.length){
+      html += '<div style="margin:14px 0;padding:12px 14px;background:#f5f6f7;border-left:3px solid #6a7f8e;"><p style="margin:0 0 6px;font-weight:bold;">Current assigned accessories</p><ul style="margin:0;padding-left:18px;">'+currentAssets.map(function(a){return '<li>'+esc(a.asset_type)+(a.label&&a.label!==a.asset_type?' — '+esc(a.label):'')+(a.identifier?' · '+esc(a.identifier):'')+'</li>';}).join('')+'</ul></div>';
+    }
     if(r.damage === 'Yes'){
       html += '<div style="margin:14px 0;padding:12px 14px;background:#fbeee1;border-left:3px solid #b5691f;">';
       html += '<p style="margin:0;"><b>Reported damage:</b> ' + (r.damage_what||'—') + '<br/><b>Cause:</b> ' + (r.damage_how||'—') + '</p></div>';
@@ -3544,7 +3640,15 @@
   function recordWithIssueResolutions(sub){var clone=Object.assign({},sub);clone._issueResolutions=currentIssueResolutions.filter(function(x){return String(x.submission_id)===String(sub.id);});clone._employeeIssueReports=employeeIssueReportsFor(sub.id);return clone;}
   function recordResolution(record,type){var arr=record&&record._issueResolutions||[];return arr.find(function(x){return x.issue_type===type&&x.status==='Resolved';})||null;}
   function appendEmployeeReportedIssuesToPdf(ctx,r){
-    var reports=r&&r._employeeIssueReports||[];if(!reports.length)return;window.DNCCPdf.section(ctx,'Issues Reported After Handover');
+    var reports=r&&r._employeeIssueReports||[];
+    if(r&&Array.isArray(r._currentDeviceImeis)){
+      var imeis=r._currentDeviceImeis;
+      reports=reports.filter(function(rep){
+        var d=rep.device_snapshot||{}, imei=normalizedImei(rep.device_imei1||d.imei1||'');
+        return imei && imeis.indexOf(imei)>=0;
+      });
+    }
+    if(!reports.length)return;window.DNCCPdf.section(ctx,'Issues Reported After Handover');
     reports.slice().sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at);}).forEach(function(rep,idx){var d=rep.device_snapshot||{};window.DNCCPdf.row(ctx,'Report '+(idx+1)+' / date',new Date(rep.created_at).toLocaleString());window.DNCCPdf.row(ctx,'Device',((d.brand||'')+' '+(d.model||'')).trim()+' · IMEI '+(rep.device_imei1||d.imei1||'—'));window.DNCCPdf.row(ctx,'Issue type',rep.issue_type);if(rep.issue_type==='Physical Damage')window.DNCCPdf.damageBlock(ctx,rep.issue_details,rep.damage_cause||'Not specified');else window.DNCCPdf.problemBlock(ctx,rep.issue_details);window.DNCCPdf.row(ctx,'Status',rep.status||'Open');if(rep.status==='Resolved')window.DNCCPdf.resolutionBlock(ctx,rep.issue_type,rep.resolution_notes,rep.resolved_by,rep.resolved_at);});
   }
   async function sendIssueResolvedEmail(sub,ticket,resolution){
