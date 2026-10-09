@@ -504,7 +504,7 @@
       <div class="takeover-grid">
         <div class="takeover-card">
           <h3>Start employee takeover</h3>
-          <p class="sub">Search an employee. The system will show current assigned phones and known accessories before you complete the exit takeover.</p>
+          <p class="sub">Search an employee. Employee ID is the primary identity, so shared department/company email addresses never merge two employees. The system will show only that employee's current phones and accessories.</p>
           <input type="text" id="takeoverEmployeeSearch" class="search-input" placeholder="Search employee name, ID, email, location…" style="width:100%;" />
           <div id="takeoverEmployeeList" class="takeover-employee-list"><p class="empty-state">Open this tab to load employees.</p></div>
         </div>
@@ -1105,12 +1105,41 @@
       || String((r&&preferredSubmissionEmail(r))||'').trim().toLowerCase()
       || String((r&&r.employee_name)||'').trim().toLowerCase();
   }
+  function normalizedEmployeeId(v){ return String(v||'').trim().toLowerCase(); }
+  function normalizedEmployeeEmail(v){ return String(v||'').trim().toLowerCase(); }
+  function uniqueCompanyEmailForEmployee(r){
+    var email=normalizedEmployeeEmail(r&&r.company_email);
+    if(!isRealEmail(email)) return '';
+    var ids=new Set();
+    latestSubmissionKeys().forEach(function(x){
+      if(normalizedEmployeeEmail(x.company_email)===email){
+        var xid=normalizedEmployeeId(x.employee_id);
+        if(xid) ids.add(xid);
+      }
+    });
+    return ids.size===1 ? email : '';
+  }
+  function employeeIdentityEmails(r){
+    var arr=[];
+    var personal=normalizedEmployeeEmail(r&&r.personal_email);
+    if(isRealEmail(personal)) arr.push(personal);
+    var uniqueCompany=uniqueCompanyEmailForEmployee(r);
+    if(uniqueCompany) arr.push(uniqueCompany);
+    return arr;
+  }
   function employeeStatusFor(r){
-    var id=String((r&&r.employee_id)||'').trim().toLowerCase();
-    var email=String((r&&preferredSubmissionEmail(r))||'').trim().toLowerCase();
+    var id=normalizedEmployeeId(r&&r.employee_id);
+    if(id){
+      return currentEmployeeItStatus.find(function(x){
+        return normalizedEmployeeId(x.employee_id)===id;
+      }) || null;
+    }
+    var emails=employeeIdentityEmails(r);
+    if(!emails.length) return null;
     return currentEmployeeItStatus.find(function(x){
-      return (id && String(x.employee_id||'').trim().toLowerCase()===id)
-        || (email && [x.company_email,x.personal_email].some(function(e){return String(e||'').trim().toLowerCase()===email;}));
+      return [x.personal_email,x.company_email].some(function(e){
+        return emails.indexOf(normalizedEmployeeEmail(e))>=0;
+      });
     }) || null;
   }
   async function loadEmployeeItStatus(){
@@ -1144,18 +1173,28 @@
     }
   }
   function sameEmployeeAsset(a,r){
-    var eid=String(r.employee_id||'').trim().toLowerCase();
-    var emails=[r.company_email,r.personal_email].filter(isRealEmail).map(function(x){return String(x).trim().toLowerCase();});
-    return (eid && String(a.assigned_employee_id||'').trim().toLowerCase()===eid)
-      || emails.indexOf(String(a.assigned_employee_email||'').trim().toLowerCase())>=0;
+    var eid=normalizedEmployeeId(r&&r.employee_id);
+    var assetEid=normalizedEmployeeId(a&&a.assigned_employee_id);
+    if(eid){
+      if(assetEid) return assetEid===eid;
+      var fallbackEmails=employeeIdentityEmails(r);
+      if(!fallbackEmails.length) return false;
+      return fallbackEmails.indexOf(normalizedEmployeeEmail(a&&a.assigned_employee_email))>=0;
+    }
+    var emails=employeeIdentityEmails(r);
+    return emails.length>0 && emails.indexOf(normalizedEmployeeEmail(a&&a.assigned_employee_email))>=0;
   }
   function assignedDevicesForEmployee(r){
-    var eid=String(r.employee_id||'').trim().toLowerCase();
-    var emails=[r.company_email,r.personal_email].filter(isRealEmail).map(function(x){return String(x).trim().toLowerCase();});
+    var eid=normalizedEmployeeId(r&&r.employee_id);
+    var emails=employeeIdentityEmails(r);
     return currentDevices.filter(function(d){
       if(d.status!=='Assigned') return false;
-      return (eid && String(d.assigned_employee_id||'').trim().toLowerCase()===eid)
-        || emails.indexOf(String(resolveDeviceEmployeeEmail(d)||'').trim().toLowerCase())>=0;
+      var deviceEid=normalizedEmployeeId(d.assigned_employee_id);
+      if(eid){
+        if(deviceEid) return deviceEid===eid;
+        return emails.length>0 && emails.indexOf(normalizedEmployeeEmail(resolveDeviceEmployeeEmail(d)))>=0;
+      }
+      return emails.length>0 && emails.indexOf(normalizedEmployeeEmail(resolveDeviceEmployeeEmail(d)))>=0;
     });
   }
   function canonicalEmployeeAssetKey(r){
