@@ -400,6 +400,30 @@
   .asset-assign-grid select,.asset-assign-grid input,.asset-assign-grid textarea{width:100%}
   @media(max-width:650px){.asset-assign-grid{grid-template-columns:1fr}.asset-actions{min-width:0}}
 
+
+  /* Simplified lifecycle / daily operations */
+  .ops-hero{border:1px solid var(--line);border-radius:12px;background:#fff;padding:16px;margin-bottom:14px}
+  .ops-hero h2{margin:0 0 5px;color:var(--navy);font-size:18px}
+  .ops-hero p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}
+  .ops-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .ops-card{border:1px solid var(--line);border-radius:11px;padding:14px;background:#fff;min-height:142px;display:flex;flex-direction:column}
+  .ops-card h3{margin:0 0 6px;color:var(--navy);font-size:14px}
+  .ops-card p{margin:0 0 12px;color:var(--muted);font-size:11.5px;line-height:1.45;flex:1}
+  .ops-card .btn{align-self:flex-start}
+  .ops-rule{margin-top:12px;padding:10px 12px;border:1px solid #cfdde6;border-radius:8px;background:#f7fafc;font-size:11.5px;color:#3d5363}
+  .ops-state{margin-top:14px;border:1px solid var(--line);border-radius:11px;background:#fff;padding:14px}
+  .ops-state-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .ops-state-results{display:grid;gap:8px;margin-top:10px}
+  .ops-state-row{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fbfdfe;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+  .ops-state-row .name{font-weight:800;color:var(--navy)}
+  .ops-state-row .meta{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+  .ops-badge{display:inline-flex;padding:3px 7px;border-radius:999px;font-size:10px;font-weight:800}
+  .ops-badge.active{background:#e7f5ed;color:#26704d}
+  .ops-badge.exited{background:#fbe7e7;color:#9c2f2f}
+  .maintenance-note{padding:10px 12px;border:1px dashed #c8d4dc;border-radius:8px;background:#fafcfd;color:#5c6d78;font-size:11px}
+  @media(max-width:950px){.ops-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:650px){.ops-grid{grid-template-columns:1fr}.ops-state-row{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -429,7 +453,8 @@
     <div class="stats" id="statsRow"></div>
 
     <div class="tabs">
-      <button class="tab-btn active" data-tab="submissions">Submissions</button>
+      <button class="tab-btn active" data-tab="operations">Daily Operations</button>
+      <button class="tab-btn" data-tab="submissions">Submissions</button>
       <button class="tab-btn" data-tab="inventory">Inventory</button>
       <button class="tab-btn" data-tab="takeover">Employee Exit &amp; Assets <span id="takeoverBadge"></span></button>
       <button class="tab-btn" data-tab="devicerequests">Device Requests <span id="requestBadge"></span></button>
@@ -442,7 +467,33 @@
     </div>
 
     <!-- SUBMISSIONS -->
-    <div class="tab-panel active" id="tab-submissions">
+    
+    <div class="tab-panel active" id="tab-operations">
+      <div class="ops-hero">
+        <h2>Daily IT Operations</h2>
+        <p>Use these six actions for day-to-day work. Each action changes only the exact employee/device/assets you confirm. Submissions remain historical evidence; current ownership comes from Inventory + Accessory Registry.</p>
+        <div class="ops-rule"><b>Identity rule:</b> Employee ID is the primary identity. Name or shared company email never decides ownership.</div>
+      </div>
+      <div class="ops-grid">
+        <div class="ops-card"><h3>Assign Device</h3><p>Issue one Spare phone to one Active employee. No other device is changed.</p><button class="btn btn-primary" id="opAssignDeviceBtn">Assign device</button></div>
+        <div class="ops-card"><h3>Replace Device</h3><p>Atomically return the old phone and assign one Spare phone. Optional SIM transfer happens in the same operation.</p><button class="btn btn-primary" id="opReplaceDeviceBtn">Replace device</button></div>
+        <div class="ops-card"><h3>Return Device</h3><p>Take one assigned phone back to IT and move it to Spare. Choose whether SIM stays with the phone.</p><button class="btn btn-primary" id="opReturnDeviceBtn">Return device</button></div>
+        <div class="ops-card"><h3>Manage Accessories</h3><p>Assign, move, return, mark missing, or retire Charger / Cable / SIM / Memory Card through the controlled registry.</p><button class="btn btn-secondary" id="opAccessoriesBtn">Open accessories</button></div>
+        <div class="ops-card"><h3>Resolve Issue</h3><p>Open reported damage/phone problems and record the resolution once, with IT person and time.</p><button class="btn btn-secondary" id="opIssuesBtn">Open issues</button></div>
+        <div class="ops-card"><h3>Employee Exit</h3><p>Collect all company IT assets using the takeover checklist. Employee becomes Exited only after confirmation.</p><button class="btn btn-secondary" id="opExitBtn">Start exit/takeover</button></div>
+      </div>
+      <div class="ops-state">
+        <div class="ops-state-head">
+          <div><b>Current employee asset state</b><div class="sub">Search by employee ID or name. This reads live Inventory + Accessory Registry, not old handover forms.</div></div>
+          <button class="btn btn-secondary" id="opHealthBtn">Check system consistency</button>
+        </div>
+        <input id="opEmployeeSearch" class="search-input" style="width:100%;margin-top:10px;" placeholder="Search employee ID or name…" />
+        <div id="opEmployeeResults" class="ops-state-results"></div>
+        <div id="opHealthSummary" class="asset-health" style="display:none;margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="tab-submissions">
       <div class="panel-bar">
         <h2>Form submissions</h2>
         <div>
@@ -680,6 +731,7 @@
 
     <!-- SETTINGS -->
     <div class="tab-panel" id="tab-settings">
+      <div class="maintenance-note" style="margin-bottom:12px;"><b>Maintenance rule:</b> Daily ownership/status changes should be done from <b>Daily Operations</b>. Technical repair tools are not part of the normal workflow and must not be used to guess ownership.</div>
       <div class="card-form">
         <h3>Email sending (SMTP2GO)</h3>
         <p class="sub">Sensitive email settings are locked by a separate admin secret. Viewing this page does not allow anyone to change the sender/API configuration.</p>
@@ -928,6 +980,8 @@
   var currentEmployeeItStatus = [];
   var currentAccessories = [];
   var currentAccessoryHealth = [];
+  var currentSystemHealth = [];
+  var editingFromChangeRequestId = null;
   var activeAccessoryAssignment = null;
   var currentTakeovers = [];
   var takeoverEmployeeFilter = '';
@@ -1055,6 +1109,7 @@
       if(btn.dataset.tab === 'imeialerts'){ loadDuplicateImeiAlerts(); }
       if(btn.dataset.tab === 'reports'){ populateReportLocationFilter(); renderReports(); }
       if(btn.dataset.tab === 'takeover'){ loadTakeoverTab(); }
+      if(btn.dataset.tab === 'operations'){ renderDailyOperations(); }
     });
   });
 
@@ -1711,7 +1766,7 @@
     renderTakeoverEmployees();renderAccessories();renderTakeovers();renderSubmissions();
   }
 
-  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts(), loadEmployeeItStatus(), loadAccessories()]); try{await reconcileZeroPhoneAutoAccessories();}catch(e){console.warn('Accessory current-state reconciliation warning',e);} renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
+  async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts(), loadEmployeeItStatus(), loadAccessories()]); try{await reconcileZeroPhoneAutoAccessories();}catch(e){console.warn('Accessory current-state reconciliation warning',e);} renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); renderDailyOperations(); }
 
   async function loadTemplates(){
     try{
@@ -1878,6 +1933,7 @@
     if(action === 'editlinked'){
       var sub = currentSubs.find(function(s){ return s.id === c.submission_id; });
       if(!sub){ alert('Linked submission not found — it may have been deleted.'); return; }
+      editingFromChangeRequestId=String(c.id);
       document.querySelector('.tab-btn[data-tab="submissions"]').click();
       handleSubAction('edit', sub.id);
       return;
@@ -1902,6 +1958,13 @@
           if(allRecipients.length === 0) allRecipients = [c.employee_email].filter(Boolean);
 
           if(allRecipients.length > 0){
+            var approvalEventKey='change_request:'+String(c.id)+':approved';
+            var approvalClaimed=await claimEmailEvent(approvalEventKey,'Change request approved');
+            if(!approvalClaimed){
+              await loadChangeRequests();renderStats();loadActivityLog();
+              alert('Request approved. The final notification email was already sent earlier, so no duplicate email was sent.');
+              return;
+            }
             var t = currentTemplates.update || DEFAULT_TEMPLATES.update;
             var vars = {
               employee_name: sub.employee_name||c.employee_name||'', employee_id: sub.employee_id||c.employee_id||'',
@@ -1969,6 +2032,223 @@
     catch(err){ console.error(err); alert('Could not load photos: '+(err.message||err)); }
     finally{ if(btn){btn.disabled=false;btn.textContent=oldText;} }
   }
+
+
+  // ---------- Simplified Daily Operations ----------
+  function currentEmployeeRows(){
+    var seen=new Set(),out=[];
+    latestSubmissionKeys().forEach(function(r){
+      var id=normalizedEmployeeId(r.employee_id);
+      if(!id||seen.has(id))return;
+      seen.add(id);out.push(r);
+    });
+    return out.sort(function(a,b){return String(a.employee_name||'').localeCompare(String(b.employee_name||''));});
+  }
+  function operationEmployeeOptions(activeOnly){
+    return currentEmployeeRows().filter(function(r){
+      var st=employeeStatusFor(r);
+      return !activeOnly || !(st&&st.status==='Exited');
+    });
+  }
+  function operationDeviceLabel(d){
+    return ((d.brand||'')+' '+(d.model||'')).trim()+' · IMEI '+(d.imei1||'')+(resolveDeviceSims(d).length?' · SIM '+resolveDeviceSims(d).join(', '):'');
+  }
+  async function refreshOperationalState(){
+    await Promise.all([loadInventory(),loadSubmissions(),loadEmployeeItStatus(),loadAccessories()]);
+    try{await loadAccessoryHealth();}catch(e){}
+    renderInventory();renderSubmissions();renderTakeoverEmployees();renderAccessories();renderStats();renderDailyOperations();
+  }
+  function employeeById(id){
+    id=normalizedEmployeeId(id);
+    return currentEmployeeRows().find(function(r){return normalizedEmployeeId(r.employee_id)===id;})||null;
+  }
+  function deviceByImei(imei){
+    var n=normalizedImei(imei);
+    return currentDevices.find(function(d){return normalizedImei(d.imei1)===n||normalizedImei(d.imei2)===n;})||null;
+  }
+  function operationActor(){ return currentAdminDisplayName||loggedInAdminUsername||'IT Admin'; }
+
+  async function claimEmailEvent(eventKey, subject){
+    try{
+      var q=await sb.rpc('dncc_claim_email_event',{p_event_key:eventKey,p_subject:subject||''});
+      if(q.error)throw q.error;
+      return q.data===true || (q.data&&q.data.claimed===true);
+    }catch(err){
+      console.warn('Email dedupe claim unavailable; continuing without dedupe',err);
+      return true;
+    }
+  }
+
+  async function sendOperationEmail(kind, eventKey, employee, device, subjectText, detailText){
+    var recipients=[employee.company_email,employee.personal_email].filter(isRealEmail).filter(function(v,i,a){return a.indexOf(v)===i;});
+    if(!recipients.length)return {sent:false,reason:'No valid employee email'};
+    var claimed=await claimEmailEvent(eventKey,subjectText);
+    if(!claimed)return {sent:false,reason:'This operation email was already sent'};
+    var html='<p>Dear '+esc(employee.employee_name||'Employee')+',</p><p>'+esc(detailText)+'</p>'
+      +buildSingleDeviceDetailsHTML(device)
+      +'<p>Employee ID: <b>'+esc(employee.employee_id||'')+'</b></p>'
+      +'<p>Regards,<br/>'+esc(window.DNCC_CONFIG.COMPANY_NAME)+' IT Department</p>';
+    try{
+      var pdfBase64=buildGenericPDFBase64(subjectText,{name:employee.employee_name,id:employee.employee_id,email:preferredSubmissionEmail(employee)},device);
+      var res=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:recipients,employeeName:employee.employee_name,subject:subjectText,html:html,pdfBase64:pdfBase64,pdfFilename:kind+'_'+(employee.employee_id||'employee')+'.pdf'})});
+      var j=await res.json();if(!res.ok||!j.ok)throw new Error(j.error||'Send failed');
+      return {sent:true,recipients:recipients};
+    }catch(err){console.error(err);return {sent:false,reason:err.message||String(err)};}
+  }
+
+  function renderDailyOperations(){
+    var box=document.getElementById('opEmployeeResults');if(!box)return;
+    var q=String(document.getElementById('opEmployeeSearch').value||'').trim().toLowerCase();
+    var rows=currentEmployeeRows().filter(function(r){
+      if(!q)return true;
+      return [r.employee_id,r.employee_name,r.location,r.designation].join(' ').toLowerCase().indexOf(q)>=0;
+    }).slice(0,30);
+    if(!rows.length){box.innerHTML='<div class="empty-state">No matching employee.</div>';return;}
+    box.innerHTML=rows.map(function(r){
+      var st=employeeStatusFor(r), exited=st&&st.status==='Exited';
+      var devs=assignedDevicesForEmployee(r);
+      var assets=currentAssignedAssetsForEmployee(r);
+      return '<div class="ops-state-row"><div><div class="name">'+esc(r.employee_name||'')+' <span class="ops-badge '+(exited?'exited':'active')+'">'+(exited?'Exited':'Active')+'</span></div>'
+        +'<div class="meta">'+esc(r.employee_id||'')+' · '+devs.length+' current phone(s) · '+assets.length+' current accessory item(s)'
+        +(devs.length?'<br/>Phones: '+devs.map(function(d){return esc(((d.brand||'')+' '+(d.model||'')).trim())+' · '+esc(d.imei1||'');}).join(' | '):'')
+        +(assets.length?'<br/>Accessories: '+assets.map(function(a){return esc(a.asset_type+(a.identifier?' '+a.identifier:''));}).join(', '):'')
+        +'</div></div><button class="btn btn-secondary" data-op-current="'+esc(r.employee_id||'')+'">Current statement</button></div>';
+    }).join('');
+    box.querySelectorAll('[data-op-current]').forEach(function(b){b.addEventListener('click',function(){openCurrentAssetStatement(b.dataset.opCurrent);});});
+  }
+  document.getElementById('opEmployeeSearch').addEventListener('input',debounce(renderDailyOperations,180));
+
+  async function loadSystemHealth(){
+    try{
+      var q=await sb.rpc('dncc_system_consistency_health');
+      if(q.error)throw q.error;
+      currentSystemHealth=Array.isArray(q.data)?q.data:[];
+    }catch(err){
+      console.error(err);currentSystemHealth=[];
+      throw err;
+    }
+  }
+  function renderSystemHealth(){
+    var box=document.getElementById('opHealthSummary');if(!box)return;
+    box.style.display='block';
+    if(!currentSystemHealth.length){box.className='asset-health ok';box.innerHTML='<b>System consistency:</b> No current conflicts found.';return;}
+    var high=currentSystemHealth.filter(function(x){return x.severity==='High';}).length;
+    box.className='asset-health '+(high?'err':'warn');
+    box.innerHTML='<b>System consistency:</b> '+currentSystemHealth.length+' issue(s) found'+(high?' · '+high+' high priority':'')+'. This check does not change data.<br/>'
+      +currentSystemHealth.slice(0,8).map(function(x){return '• '+esc(x.message||x.issue_type||'Issue');}).join('<br/>')
+      +(currentSystemHealth.length>8?'<br/>…and '+(currentSystemHealth.length-8)+' more.':'');
+  }
+  document.getElementById('opHealthBtn').addEventListener('click',async function(){
+    await withButtonBusy(this,'Checking…',async function(){
+      try{await loadSystemHealth();renderSystemHealth();}catch(err){alert('Could not run health check: '+(err.message||err));}
+    });
+  });
+
+  function openCurrentAssetStatement(employeeId){
+    var r=employeeById(employeeId);if(!r)return;
+    var ctx=window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME,window.DNCC_CONFIG.DEPARTMENT,'Current IT Asset Statement');
+    var row=function(l,v){window.DNCCPdf.row(ctx,l,v);},section=function(t){window.DNCCPdf.section(ctx,t);};
+    section('Employee');row('Name',r.employee_name);row('Employee ID',r.employee_id);row('Location',r.location||'—');row('Designation',r.designation||'—');row('Generated at',new Date().toLocaleString());
+    var devs=assignedDevicesForEmployee(r),assets=currentAssignedAssetsForEmployee(r);
+    section('Current Mobile Devices');
+    if(!devs.length)row('Status','No current assigned mobile device');
+    devs.forEach(function(d,i){row('Phone '+(i+1),operationDeviceLabel(d));});
+    section('Current Accessories');
+    if(!assets.length)row('Status','No current assigned accessory');
+    assets.forEach(function(a){row(accessoryCode(a),a.asset_type+(a.identifier?' · '+a.identifier:'')+(a.device_imei?' · Phone IMEI '+a.device_imei:''));});
+    window.DNCCPdf.footer(ctx,'Current-state statement generated from live Inventory and Accessory Registry. Historical handover receipts are unchanged.');
+    window.open(ctx.doc.output('bloburl'),'_blank');
+  }
+
+  function openAssignDeviceOperation(prefillImei){
+    var employees=operationEmployeeOptions(true);
+    var spares=currentDevices.filter(function(d){return d.status==='Spare'&&!normalizedEmployeeId(d.assigned_employee_id)&&!String(d.assigned_to||'').trim();});
+    if(!employees.length){alert('No Active employee found.');return;}
+    if(!spares.length){alert('No unassigned Spare device available.');return;}
+    openModal('Assign Device',[
+      {id:'employee_id',label:'Employee *',value:employees[0].employee_id,type:'select',options:employees.map(function(r){return {value:r.employee_id,label:r.employee_name+' · '+r.employee_id+' · '+(r.location||'')};})},
+      {id:'imei',label:'Spare device *',value:(prefillImei&&spares.some(function(d){return d.imei1===prefillImei;}))?prefillImei:spares[0].imei1,type:'select',options:spares.map(function(d){return {value:d.imei1,label:operationDeviceLabel(d)};})},
+      {id:'note',label:'Assignment note',value:'',type:'textarea'}
+    ],async function(v){
+      var emp=employeeById(v.employee_id),dev=deviceByImei(v.imei);if(!emp||!dev)return;
+      if(!confirm('Assign '+operationDeviceLabel(dev)+' to '+emp.employee_name+' ('+emp.employee_id+')? Only this device will change.'))return;
+      var rpc=await sb.rpc('dncc_assign_device_op',{p_imei:v.imei,p_employee_id:v.employee_id,p_changed_by:operationActor(),p_note:v.note||null});
+      if(rpc.error){alert(rpc.error.message);return;}
+      closeModal();await refreshOperationalState();
+      var event=(rpc.data&&rpc.data.event_key)||('assign:'+v.imei+':'+Date.now());
+      var mail=await sendOperationEmail('Device_Assignment',event,emp,deviceByImei(v.imei)||dev,'Device Assignment Confirmation — '+window.DNCC_CONFIG.COMPANY_NAME,'DNCC IT has assigned the following mobile device to you for official use.');
+      showToast(mail.sent?'Device assigned and confirmation emailed.':'Device assigned. Email: '+(mail.reason||'not sent'),mail.sent?'success':'warning');
+    });
+  }
+
+  function openReturnDeviceOperation(prefillImei){
+    var assigned=currentDevices.filter(function(d){return d.status==='Assigned'&&normalizedEmployeeId(d.assigned_employee_id);});
+    if(!assigned.length){alert('No currently Assigned device found.');return;}
+    openModal('Return Device to IT',[
+      {id:'imei',label:'Assigned device *',value:(prefillImei&&assigned.some(function(d){return d.imei1===prefillImei;}))?prefillImei:assigned[0].imei1,type:'select',options:assigned.map(function(d){return {value:d.imei1,label:operationDeviceLabel(d)+' · '+(d.assigned_to||d.assigned_employee_id)};})},
+      {id:'keep_sims',label:'SIM handling',value:'Keep SIM with returned phone',type:'select',options:['Keep SIM with returned phone','Remove SIM to spare stock']},
+      {id:'note',label:'Return / condition note',value:'',type:'textarea'}
+    ],async function(v){
+      var dev=deviceByImei(v.imei);if(!dev)return;
+      var emp=employeeById(dev.assigned_employee_id);if(!emp){alert('Assigned Employee ID is missing/invalid. Run consistency check first.');return;}
+      if(!confirm('Return '+operationDeviceLabel(dev)+' from '+emp.employee_name+' to IT Spare?\n\nSIM: '+v.keep_sims))return;
+      var rpc=await sb.rpc('dncc_return_device_op',{p_imei:v.imei,p_keep_sims:v.keep_sims==='Keep SIM with returned phone',p_changed_by:operationActor(),p_note:v.note||null});
+      if(rpc.error){alert(rpc.error.message);return;}
+      closeModal();await refreshOperationalState();
+      var event=(rpc.data&&rpc.data.event_key)||('return:'+v.imei+':'+Date.now());
+      var mail=await sendOperationEmail('Device_Return',event,emp,dev,'Device Return Confirmation — '+window.DNCC_CONFIG.COMPANY_NAME,'DNCC IT has received the following mobile device back from you.');
+      showToast(mail.sent?'Device returned to Spare and confirmation emailed.':'Device returned to Spare. Email: '+(mail.reason||'not sent'),mail.sent?'success':'warning');
+    });
+  }
+
+  function openReplaceDeviceOperation(prefillOldImei){
+    var assigned=currentDevices.filter(function(d){return d.status==='Assigned'&&normalizedEmployeeId(d.assigned_employee_id);});
+    var spares=currentDevices.filter(function(d){return d.status==='Spare'&&!normalizedEmployeeId(d.assigned_employee_id)&&!String(d.assigned_to||'').trim();});
+    if(!assigned.length||!spares.length){alert('Replacement requires one Assigned old phone and one unassigned Spare phone.');return;}
+    var oldDefault=(prefillOldImei&&assigned.some(function(d){return d.imei1===prefillOldImei;}))?prefillOldImei:assigned[0].imei1;
+    openModal('Replace Device',[
+      {id:'old_imei',label:'Old assigned phone *',value:oldDefault,type:'select',options:assigned.map(function(d){return {value:d.imei1,label:operationDeviceLabel(d)+' · '+(d.assigned_to||d.assigned_employee_id)};})},
+      {id:'new_imei',label:'Replacement Spare phone *',value:spares[0].imei1,type:'select',options:spares.map(function(d){return {value:d.imei1,label:operationDeviceLabel(d)};})},
+      {id:'transfer_sims',label:'SIM handling',value:'Transfer old SIM(s) to replacement',type:'select',options:['Transfer old SIM(s) to replacement','Do not transfer SIM(s)']},
+      {id:'note',label:'Replacement reason / note',value:'',type:'textarea'}
+    ],async function(v){
+      if(v.old_imei===v.new_imei){alert('Old and replacement phone cannot be the same.');return;}
+      var oldDev=deviceByImei(v.old_imei),newDev=deviceByImei(v.new_imei);if(!oldDev||!newDev)return;
+      var emp=employeeById(oldDev.assigned_employee_id);if(!emp){alert('Old phone has no valid Employee ID. Run consistency check first.');return;}
+      if(!confirm('Replace for '+emp.employee_name+'?\n\nOld: '+operationDeviceLabel(oldDev)+'\nNew: '+operationDeviceLabel(newDev)+'\n\n'+v.transfer_sims+'\n\nBoth changes will happen as one database operation.'))return;
+      var rpc=await sb.rpc('dncc_replace_device_op',{p_employee_id:emp.employee_id,p_old_imei:v.old_imei,p_new_imei:v.new_imei,p_transfer_sims:v.transfer_sims==='Transfer old SIM(s) to replacement',p_changed_by:operationActor(),p_note:v.note||null});
+      if(rpc.error){alert(rpc.error.message);return;}
+      closeModal();await refreshOperationalState();
+      var updatedNew=deviceByImei(v.new_imei)||newDev;
+      var event=(rpc.data&&rpc.data.event_key)||('replace:'+v.old_imei+':'+v.new_imei+':'+Date.now());
+      var mail=await sendOperationEmail('Device_Replacement',event,emp,updatedNew,'Device Replacement Confirmation — '+window.DNCC_CONFIG.COMPANY_NAME,'DNCC IT has replaced your previous mobile device with the following device.');
+      showToast(mail.sent?'Replacement completed and confirmation emailed.':'Replacement completed. Email: '+(mail.reason||'not sent'),mail.sent?'success':'warning');
+    });
+  }
+
+  function openRetireDeviceOperation(prefillImei){
+    var spares=currentDevices.filter(function(d){return d.status==='Spare';});
+    if(!spares.length){alert('Only Spare devices can be retired. Return an Assigned phone first.');return;}
+    openModal('Retire Device',[
+      {id:'imei',label:'Spare device *',value:(prefillImei&&spares.some(function(d){return d.imei1===prefillImei;}))?prefillImei:spares[0].imei1,type:'select',options:spares.map(function(d){return {value:d.imei1,label:operationDeviceLabel(d)};})},
+      {id:'note',label:'Retirement reason *',value:'',type:'textarea'}
+    ],async function(v){
+      if(!String(v.note||'').trim()){alert('Enter the retirement reason.');return;}
+      var dev=deviceByImei(v.imei);if(!dev)return;
+      if(!confirm('Retire '+operationDeviceLabel(dev)+'?\n\nThis keeps history but removes it from available stock.'))return;
+      var rpc=await sb.rpc('dncc_retire_device_op',{p_imei:v.imei,p_changed_by:operationActor(),p_note:v.note});
+      if(rpc.error){alert(rpc.error.message);return;}
+      closeModal();await refreshOperationalState();showToast('Device retired. History preserved.','success');
+    });
+  }
+
+  document.getElementById('opAssignDeviceBtn').addEventListener('click',function(){openAssignDeviceOperation();});
+  document.getElementById('opReplaceDeviceBtn').addEventListener('click',function(){openReplaceDeviceOperation();});
+  document.getElementById('opReturnDeviceBtn').addEventListener('click',function(){openReturnDeviceOperation();});
+  document.getElementById('opAccessoriesBtn').addEventListener('click',function(){document.querySelector('.tab-btn[data-tab="takeover"]').click();});
+  document.getElementById('opIssuesBtn').addEventListener('click',function(){document.querySelector('.tab-btn[data-tab="issues"]').click();});
+  document.getElementById('opExitBtn').addEventListener('click',function(){document.querySelector('.tab-btn[data-tab="takeover"]').click();});
+
 
   // ---------- Submissions ----------
   async function loadSubmissions(){
@@ -2158,11 +2438,11 @@
         + '<td>'+ (r.email_sent_at ? ('Sent '+new Date(r.email_sent_at).toLocaleDateString()) : '—') +'</td>'
         + '<td style="white-space:nowrap;">'
         +   '<button class="btn-small email" data-action="email" data-id="'+r.id+'">Email</button>'
-        +   '<button class="btn-small edit" data-action="edit" data-id="'+r.id+'">Edit</button>'
+        +   '<button class="btn-small edit" data-action="edit" data-id="'+r.id+'" title="Edit historical form only — current Inventory is not changed">Edit form</button>'
         +   '<button class="btn-small edit-link-btn" data-action="allowedit" data-id="'+r.id+'" title="Send a time-limited employee edit link">Allow edit</button>'
         +   '<button class="btn-small edit" data-action="edithistory" data-id="'+r.id+'" title="View employee self-edit history">Edit log</button>'
-        +   '<button class="btn-small assign" data-action="print" data-id="'+r.id+'" title="Open a printable PDF">Print</button>'
-        +   '<button class="btn-small delete" data-action="delete" data-id="'+r.id+'">Delete</button>'
+        +   '<button class="btn-small assign" data-action="originalreceipt" data-id="'+r.id+'" title="Original handover snapshot">Original receipt</button>'
+        +   '<button class="btn-small assign" data-action="print" data-id="'+r.id+'" title="Live current asset statement">Current statement</button>'
         + '</td>'
         + '</tr>';
     }).join('');
@@ -2511,12 +2791,35 @@
     });
   });
 
+
+  function buildOriginalHandoverReceipt(r){
+    var ctx=window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME,window.DNCC_CONFIG.DEPARTMENT,'Original Mobile Device Handover Receipt');
+    var row=function(l,v){window.DNCCPdf.row(ctx,l,v);},section=function(t){window.DNCCPdf.section(ctx,t);};
+    section('Employee');
+    row('Name',r.employee_name||'');row('Employee ID',r.employee_id||'');row('Company email',r.company_email||'—');row('Personal email',r.personal_email||'—');
+    row('Department',r.department||'—');row('Location',r.location||'—');row('Designation',r.designation||'—');row('Original submission',r.created_at?new Date(r.created_at).toLocaleString():'—');
+    [r.device1,r.device2].forEach(function(d,idx){
+      if(!d)return;
+      section('Original Mobile Phone '+(idx+1));
+      row('Brand / model',((d.brand||'')+' '+(d.model||'')).trim());row('RAM / Storage',(d.ram||'—')+' / '+(d.storage||'—'));
+      row('IMEI 1',d.imei1||'—');row('IMEI 2',d.imei2||'—');row('SIM number(s)',Array.isArray(d.simNumbers)?d.simNumbers.join(', '):'—');
+      row('Memory/SD card',d.memoryCard==='Yes'?('Yes · '+(d.memoryCardSize||'')):(d.memoryCard||'No'));row('Usage',d.usage||'—');
+    });
+    section('Original Accessories & Condition');
+    row('Charger provided',r.charger||'—');row('Data/USB cable provided',r.cable||'—');row('Damage present',r.damage||'—');
+    if(r.damage==='Yes'){window.DNCCPdf.damageBlock(ctx,r.damage_what||'—',r.damage_how||'—');}
+    row('Phone problem reported',r.phone_problem||'—');
+    if(r.phone_problem==='Yes'){window.DNCCPdf.problemBlock(ctx,r.phone_problem_details||'—');}
+    window.DNCCPdf.footer(ctx,'Historical receipt: this document preserves the original employee handover submission. Current ownership may be different.');
+    return ctx;
+  }
+
   async function handleSubAction(action, id){
     var r = currentSubs.find(function(s){ return String(s.id)===String(id); });
     if(!r) return;
     if(action === 'edit'){
       try{ r = await getFullSubmission(id); }catch(err){ console.error(err); alert('Could not load complete submission: '+(err.message||err)); return; }
-      openModal('Edit submission — ' + (r.employee_name||''), subEditFields(r), async function(values){
+      openModal('Edit historical submission — ' + (r.employee_name||''), subEditFields(r), async function(values){
         try{
           var row = valuesToSubmissionRow(values, r.device1, r.device2);
           var imeiCheck=await validateAdminImeis([row.device1&&row.device1.imei1,row.device1&&row.device1.imei2,row.device2&&row.device2.imei1,row.device2&&row.device2.imei2],id,null,adminEditOriginalImeis(r));if(!imeiCheck.ok){alert(imeiCheck.message);return;}
@@ -2524,19 +2827,17 @@
           var changes=submissionAdminChangeSummary(beforeSnapshot,row);
           var { error } = await sb.from('submissions').update(row).eq('id', id);
           if(error) throw error;
-          try{
-            await syncEditedSubmissionInventory(beforeSnapshot,row);
-          }catch(syncErr){
-            console.error(syncErr);
-            var rollbackRow={employee_name:beforeSnapshot.employee_name,employee_id:beforeSnapshot.employee_id,company_email:beforeSnapshot.company_email,personal_email:beforeSnapshot.personal_email,department:beforeSnapshot.department,location:beforeSnapshot.location,designation:beforeSnapshot.designation,contact:beforeSnapshot.contact,device_count:beforeSnapshot.device_count,charger:beforeSnapshot.charger,cable:beforeSnapshot.cable,damage:beforeSnapshot.damage,damage_what:beforeSnapshot.damage_what,damage_how:beforeSnapshot.damage_how,phone_problem:beforeSnapshot.phone_problem,phone_problem_details:beforeSnapshot.phone_problem_details,device1:beforeSnapshot.device1,device2:beforeSnapshot.device2};
-            try{await sb.from('submissions').update(rollbackRow).eq('id',id);}catch(rbErr){console.error('Rollback failed',rbErr);}
-            throw new Error('Inventory sync failed, so the submission change was cancelled. '+(syncErr.message||syncErr));
-          }
-          await logActivity('Edited submission', 'submission', id, 'Updated details for ' + (row.employee_name||r.employee_name||'employee')+(changes.length?' · '+changes.length+' field(s) changed':''));
+          // Submission is historical evidence only. Editing it never changes current
+          // Inventory ownership/status/SIM placement. Use Daily Operations for lifecycle
+          // changes and Inventory → Edit details for device metadata.
+          await logActivity('Edited historical submission', 'submission', id, 'Updated historical form for ' + (row.employee_name||r.employee_name||'employee')+(changes.length?' · '+changes.length+' field(s) changed':'')+' · Current Inventory unchanged');
           var updated=Object.assign({},beforeSnapshot,row,{id:id});
-          var mailResult=await sendAdminEditUpdateEmail(updated,changes);
+          var fromChangeRequest=!!editingFromChangeRequestId;
+          var mailResult=fromChangeRequest?{sent:false,reason:'Deferred until Change Request approval'}:await sendAdminEditUpdateEmail(updated,changes);
+          editingFromChangeRequestId=null;
           closeModal(); await loadSubmissions(); renderStats(); loadActivityLog();
-          if(mailResult.sent){alert('Changes saved successfully.\nUpdated PDF emailed to '+mailResult.recipients.join(' and ')+'.');}
+          if(fromChangeRequest){alert('Changes saved. No email was sent yet. Approve the Change Request to send one final consolidated email + updated PDF.');}
+          else if(mailResult.sent){alert('Changes saved successfully.\nUpdated PDF emailed to '+mailResult.recipients.join(' and ')+'.');}
           else{alert('Changes saved successfully, but the update email/PDF could not be sent.\nReason: '+(mailResult.reason||'Unknown error'));}
         }catch(err){ console.error(err); alert('Could not save changes: ' + (err.message||err)); }
       });
@@ -2579,9 +2880,13 @@
       }catch(err){ console.error(err); alert('Could not delete: ' + (err.message||err)); }
     } else if(action === 'email'){
       await sendHandoverEmail(r);
+    } else if(action === 'originalreceipt'){
+      try{r=await getFullSubmission(id);}catch(e){console.error(e);}
+      var originalCtx=buildOriginalHandoverReceipt(r);
+      window.open(originalCtx.doc.output('bloburl'),'_blank');
     } else if(action === 'print'){
       if(!currentDevices.length){ try{ await loadInventory(); }catch(e){ console.error('Inventory refresh before PDF failed',e); } }
-      var ctx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, 'Mobile Device Handover Receipt');
+      var ctx = window.DNCCPdf.newDoc(window.DNCC_CONFIG.COMPANY_NAME, window.DNCC_CONFIG.DEPARTMENT, 'Current IT Asset Statement');
       _fillHandoverDoc(ctx, currentStateSubmissionRecord(recordWithIssueResolutions(r)));
       var blobUrl = ctx.doc.output('bloburl');
       window.open(blobUrl, '_blank');
@@ -2735,6 +3040,9 @@
     if(recipients.length === 0){ alert('This submission has no real email addresses on file (company email may be set to "NOT").'); return; }
     if(!confirm('Send the ' + templateKey + ' confirmation email to ' + recipients.join(' and ') + '?')) return;
     try{
+      var handoverEventKey='submission:'+String(r.id)+':'+templateKey+':'+String(r.updated_at||r.created_at||'v1');
+      var handoverClaimed=await claimEmailEvent(handoverEventKey,'Submission '+templateKey);
+      if(!handoverClaimed){alert('This exact '+templateKey+' email was already sent. Duplicate email prevented.');return;}
       var pdfBase64 = buildHandoverPDFBase64(r);
       var t = currentTemplates[templateKey] || DEFAULT_TEMPLATES[templateKey] || DEFAULT_TEMPLATES.handover;
       var vars = {
@@ -3033,7 +3341,12 @@
       case 'sim_register': return buildSimRows(currentSubs);
       case 'employee_device': return buildEmployeeDeviceRows(currentSubs);
       case 'issues': return buildIssueRows(currentSubs);
-      case 'accessories': return buildAccessoriesRows(currentSubs);
+      case 'accessories': return currentAccessories.map(function(a){return {
+        'Asset ID':accessoryCode(a),'Type':a.asset_type||'','Label':a.label||'','Identifier':a.identifier||'',
+        'Status':a.status||'','Employee':a.assigned_employee_name||'','Employee ID':a.assigned_employee_id||'',
+        'Phone IMEI':a.device_imei||'','Condition':a.condition||'','Source':a.source||'','Notes':a.notes||'',
+        '__date':a.updated_at||a.created_at||'','__location':''
+      };});
       case 'inventory': return buildInventoryRows(currentDevices,false);
       case 'spare_retired': return buildInventoryRows(currentDevices,true);
       case 'location_summary': return buildLocationSummaryRows(currentSubs);
@@ -3312,13 +3625,13 @@
 
     var rows = pageList.map(function(d){
       var actions = '';
-      if(d.status !== 'Retired') actions += '<button class="btn-small assign" data-action="assigntosubmission" data-imei="'+esc(d.imei1)+'" title="Pick an existing employee submission — auto-fills their details">'+(d.status==='Assigned'?'Reassign':'Assign')+'</button>';
-      if(d.status !== 'Spare' && d.status !== 'Retired') actions += '<button class="btn-small spare" data-action="spare" data-imei="'+esc(d.imei1)+'">Spare</button>';
-      var staleSub=staleSubmissionForInventoryDevice(d);
-      if(staleSub) actions += '<button class="btn-small spare" data-action="syncsubmission" data-imei="'+esc(d.imei1)+'" title="Remove this Spare/Retired device from '+esc(staleSub.employee_name||'employee')+' current submission">Sync submission</button>';
-      if(d.status !== 'Retired') actions += '<button class="btn-small retire" data-action="retire" data-imei="'+esc(d.imei1)+'">Retire</button>';
-      actions += '<button class="btn-small edit" data-action="edit" data-imei="'+esc(d.imei1)+'">Edit</button>';
-      actions += '<button class="btn-small delete" data-action="delete" data-imei="'+esc(d.imei1)+'">Delete</button>';
+      if(d.status==='Spare') actions += '<button class="btn-small assign" data-action="opassign" data-imei="'+esc(d.imei1)+'">Assign</button>';
+      if(d.status==='Assigned'){
+        actions += '<button class="btn-small spare" data-action="opreturn" data-imei="'+esc(d.imei1)+'">Return</button>';
+        actions += '<button class="btn-small assign" data-action="opreplace" data-imei="'+esc(d.imei1)+'">Replace</button>';
+      }
+      if(d.status==='Spare') actions += '<button class="btn-small retire" data-action="opretire" data-imei="'+esc(d.imei1)+'">Retire</button>';
+      actions += '<button class="btn-small edit" data-action="edit" data-imei="'+esc(d.imei1)+'" title="Edit metadata only">Edit details</button>';
       var employeeEmail = resolveDeviceEmployeeEmail(d) || '—';
       return '<tr>'
         + '<td>'+esc(d.brand)+' '+esc(d.model)+'</td>'
@@ -3381,6 +3694,10 @@
 
   async function handleInventoryAction(action, imei1){
     var d = currentDevices.find(function(x){ return x.imei1===imei1; });
+    if(action==='opassign'){openAssignDeviceOperation(imei1);return;}
+    if(action==='opreturn'){openReturnDeviceOperation(imei1);return;}
+    if(action==='opreplace'){openReplaceDeviceOperation(imei1);return;}
+    if(action==='opretire'){openRetireDeviceOperation(imei1);return;}
     if(action === 'assigntosubmission'){ openAssignPicker(d); return; }
     try{
       if(action === 'spare'){
