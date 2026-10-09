@@ -380,6 +380,26 @@
     .accessory-add-grid{grid-template-columns:1fr}
   }
 
+
+  /* Accessory lifecycle v2: explicit assignment + consistency */
+  .asset-actions{display:flex;gap:5px;flex-wrap:wrap;min-width:190px}
+  .asset-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10.5px;color:#526775}
+  .asset-health{margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#f8fafb;font-size:11.5px}
+  .asset-health.ok{background:#eef8f2;border-color:#cbe7d5;color:#286744}
+  .asset-health.warn{background:#fff8e8;border-color:#ead9a6;color:#76591e}
+  .asset-health.err{background:#fff0f0;border-color:#e9c2c2;color:#8f3333}
+  .asset-assign-overlay{position:fixed;inset:0;background:rgba(12,25,35,.56);z-index:145;display:none;align-items:center;justify-content:center;padding:18px}
+  .asset-assign-overlay.open{display:flex}
+  .asset-assign-dialog{width:min(720px,96vw);max-height:92vh;overflow:auto;background:#fff;border:1px solid #ccd7df;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.28)}
+  .asset-assign-head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .asset-assign-body{padding:16px 17px}
+  .asset-assign-foot{padding:12px 17px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+  .asset-preview{padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#f7fafc;margin-bottom:12px;line-height:1.45}
+  .asset-assign-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .asset-assign-grid .field{margin:0}
+  .asset-assign-grid select,.asset-assign-grid input,.asset-assign-grid textarea{width:100%}
+  @media(max-width:650px){.asset-assign-grid{grid-template-columns:1fr}.asset-actions{min-width:0}}
+
 </style>
 </head>
 <body>
@@ -504,7 +524,7 @@
       <div class="takeover-grid">
         <div class="takeover-card">
           <h3>Start employee takeover</h3>
-          <p class="sub">Search an employee. Employee ID is the primary identity. Active employees are never auto-unassigned just because they temporarily show zero phones. If an accidental Spare/unassignment occurred, use Restore phones.</p>
+          <p class="sub">Search an employee. Employee ID is the primary identity. Active employees are never auto-unassigned just because they temporarily show zero phones. If an accidental Spare/unassignment occurred, Restore phones checks full Supabase submission/device history before showing recovery candidates.</p>
           <input type="text" id="takeoverEmployeeSearch" class="search-input" placeholder="Search employee name, ID, email, location…" style="width:100%;" />
           <div id="takeoverEmployeeList" class="takeover-employee-list"><p class="empty-state">Open this tab to load employees.</p></div>
         </div>
@@ -514,7 +534,7 @@
           <p class="sub">Current logical assets only: one auto-tracked charger/cable per employee, one memory card per current phone, and each SIM number once. Historical duplicate form rows are cleaned automatically.</p>
           <div class="asset-summary" id="accessorySummary"></div>
           <div class="filter-bar" style="margin-bottom:10px;">
-            <input type="text" id="accessorySearch" class="search-input" placeholder="Search type, SIM, employee, phone IMEI…" />
+            <input type="text" id="accessorySearch" class="search-input" placeholder="Search asset ID, type, SIM, employee, phone IMEI…" />
             <select id="accessoryStatusFilter">
               <option value="">All statuses</option>
               <option value="Assigned">Assigned</option>
@@ -525,7 +545,11 @@
             </select>
             <button class="btn btn-secondary" id="accessoryClearFilters">Clear</button>
           </div>
-          <button class="btn btn-secondary" id="addAccessoryBtn">+ Add accessory manually</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="addAccessoryBtn">+ Add stock accessory</button>
+            <button class="btn btn-secondary" id="checkAccessoryConsistencyBtn">Check consistency</button>
+          </div>
+          <div id="accessoryHealthBox" class="asset-health" style="display:none;"></div>
         </div>
       </div>
 
@@ -817,6 +841,31 @@
     </div>
   </div>
 
+
+  <div class="asset-assign-overlay" id="assetAssignOverlay">
+    <div class="asset-assign-dialog">
+      <div class="asset-assign-head">
+        <div><h3 style="margin:0;color:var(--navy);font-size:16px;">Assign / move accessory</h3><div class="sub" id="assetAssignSubtitle" style="margin-top:4px;"></div></div>
+        <button class="btn btn-secondary" id="assetAssignClose">Close</button>
+      </div>
+      <div class="asset-assign-body">
+        <div id="assetAssignPreview" class="asset-preview"></div>
+        <div class="asset-assign-grid">
+          <div class="field"><label>Employee *</label><select id="assetAssignEmployee"></select></div>
+          <div class="field" id="assetAssignModeWrap"><label>Assignment type *</label><select id="assetAssignMode"><option value="Employee">Direct to employee</option><option value="Device">Attach to employee phone</option></select></div>
+          <div class="field" id="assetAssignDeviceWrap" style="display:none;"><label>Employee phone *</label><select id="assetAssignDevice"></select></div>
+          <div class="field"><label>Assigned by</label><input id="assetAssignBy" type="text" /></div>
+        </div>
+        <div class="field" style="margin-top:10px;"><label>Assignment note</label><textarea id="assetAssignNote" placeholder="Optional: issued by IT, replacement accessory, SIM inserted in phone, etc."></textarea></div>
+        <div id="assetAssignMsg" class="msg"></div>
+      </div>
+      <div class="asset-assign-foot">
+        <button class="btn btn-secondary" id="assetAssignCancel">Cancel</button>
+        <button class="btn btn-primary" id="assetAssignConfirm">Assign asset</button>
+      </div>
+    </div>
+  </div>
+
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -878,6 +927,8 @@
 
   var currentEmployeeItStatus = [];
   var currentAccessories = [];
+  var currentAccessoryHealth = [];
+  var activeAccessoryAssignment = null;
   var currentTakeovers = [];
   var takeoverEmployeeFilter = '';
   var accessoryFilter = { search:'', status:'' };
@@ -1220,173 +1271,157 @@
   }
   function currentAssignedAssetsForEmployee(r){
     var st=employeeStatusFor(r);
-    if(st&&st.status==='Exited') return [];
-    var raw=currentAccessories.filter(function(a){return a.status==='Assigned'&&sameEmployeeAsset(a,r);});
-    var seen=new Set(), out=[];
-    raw.forEach(function(a){
-      var type=String(a.asset_type||'');
-      var key;
-      if(type==='Charger'||type==='USB/Data Cable') key=type.toLowerCase();
-      else if(type==='Memory Card') key='memory:'+normalizedImei(a.device_imei||'')+':'+String(a.identifier||'').trim().toLowerCase();
-      else if(type==='SIM Card') key='sim:'+String(a.identifier||'').replace(/\D/g,'');
-      else key='asset:'+String(a.id||a.source_ref||Math.random());
-      if(!seen.has(key)){seen.add(key);out.push(a);}
+    if(st&&st.status==='Exited')return [];
+    var seen=new Set(),out=[];
+    currentAccessories.forEach(function(a){
+      if((a.status!=='Assigned'&&a.status!=='With Device')||!sameEmployeeAsset(a,r))return;
+      var key=String(a.id||a.source_ref||'');
+      if(!key||seen.has(key))return;
+      seen.add(key);out.push(a);
     });
     return out;
   }
-  function desiredAutoAccessoryRows(){
-    var desired=[], seen=new Set();
-    function push(row){
-      if(!row.source_ref||seen.has(row.source_ref)) return;
-      seen.add(row.source_ref); desired.push(row);
-    }
+
+  function desiredAutoAccessorySeeds(){
+    var desired=[],seen=new Set();
+    function push(row){if(!row.source_ref||seen.has(row.source_ref))return;seen.add(row.source_ref);desired.push(row);}
     latestSubmissionKeys().forEach(function(r){
-      var st=employeeStatusFor(r);
-      if(st&&st.status==='Exited') return;
-      var empKey=canonicalEmployeeAssetKey(r); if(!empKey) return;
+      var st=employeeStatusFor(r); if(st&&st.status==='Exited')return;
+      var empKey=canonicalEmployeeAssetKey(r); if(!empKey)return;
       var email=preferredSubmissionEmail(r)||'';
-      var hasCurrentPhone=assignedDevicesForEmployee(r).length>0;
-      if(hasCurrentPhone && String(r.charger||'').toLowerCase()==='yes'){
-        push({asset_type:'Charger',label:'Charger',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,device_imei:null,source:'Handover form',source_ref:'employee:'+empKey+':charger',condition:'Good'});
+      // Handover data seeds a missing asset only. Once created, IT owns its current
+      // assignment state; later replacement/edit forms never reassign it automatically.
+      if(String(r.charger||'').toLowerCase()==='yes'){
+        push({asset_type:'Charger',label:'Charger',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,device_imei:null,source:'Handover form',source_ref:'employee:'+empKey+':charger',condition:'Good',assignment_mode:'Employee'});
       }
-      if(hasCurrentPhone && String(r.cable||'').toLowerCase()==='yes'){
-        push({asset_type:'USB/Data Cable',label:'USB/Data Cable',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,device_imei:null,source:'Handover form',source_ref:'employee:'+empKey+':cable',condition:'Good'});
+      if(String(r.cable||'').toLowerCase()==='yes'){
+        push({asset_type:'USB/Data Cable',label:'USB/Data Cable',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,device_imei:null,source:'Handover form',source_ref:'employee:'+empKey+':cable',condition:'Good',assignment_mode:'Employee'});
       }
       var eff=effectiveSubmissionDevices(r);
       [eff.device1,eff.device2].forEach(function(d){
-        if(!d||!d.imei1||String(d.memoryCard||'').toLowerCase()!=='yes') return;
-        var imei=normalizedImei(d.imei1); if(!imei) return;
-        push({asset_type:'Memory Card',label:'Memory Card '+(d.memoryCardSize||''),identifier:d.memoryCardSize||'',status:'Assigned',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,device_imei:imei,source:'Handover form',source_ref:'memory:'+imei,condition:'Good'});
-      });
-    });
-    currentDevices.forEach(function(d){
-      resolveDeviceSims(d).forEach(function(sim){
-        sim=String(sim||'').replace(/\D/g,'');
-        if(!/^\d{10}$/.test(sim)||sim==='0000000000') return;
-        push({asset_type:'SIM Card',label:'SIM '+sim,identifier:sim,status:d.status==='Assigned'?'Assigned':'With Device',assigned_employee_id:d.status==='Assigned'?(d.assigned_employee_id||null):null,assigned_employee_name:d.status==='Assigned'?(d.assigned_to||null):null,assigned_employee_email:d.status==='Assigned'?(resolveDeviceEmployeeEmail(d)||null):null,device_imei:d.imei1||null,source:'Device inventory',source_ref:'sim:'+sim,condition:'Good'});
+        if(!d||!d.imei1||String(d.memoryCard||'').toLowerCase()!=='yes')return;
+        var imei=normalizedImei(d.imei1); if(!imei)return;
+        push({asset_type:'Memory Card',label:'Memory Card '+(d.memoryCardSize||''),identifier:d.memoryCardSize||'',status:'With Device',assigned_employee_id:r.employee_id||null,assigned_employee_name:r.employee_name||null,assigned_employee_email:email||null,device_imei:imei,source:'Handover form',source_ref:'memory:'+imei,condition:'Good',assignment_mode:'Device'});
       });
     });
     return desired;
   }
-  async function deleteAccessoryIds(ids){
-    for(var i=0;i<ids.length;i+=50){
-      var part=ids.slice(i,i+50);
-      var del=await sb.from('accessory_assets').delete().in('id',part);
-      if(del.error) throw del.error;
+
+  async function loadAccessoryHealth(){
+    try{
+      var q=await sb.rpc('dncc_accessory_health');
+      if(q.error)throw q.error;
+      currentAccessoryHealth=Array.isArray(q.data)?q.data:[];
+    }catch(err){
+      console.warn('Accessory health check unavailable',err);
+      currentAccessoryHealth=[];
     }
-  }
-  async function reconcileZeroPhoneAutoAccessories(targetEmployeeId){
-    // IMPORTANT: An Active employee may temporarily have zero phones while IT is
-    // correcting inventory, replacing a handset, or waiting for a device.
-    // Never mutate their accessories based only on a zero-phone condition.
-    // Accessories are auto-released only by the explicit Employee Exit/Takeover flow.
-    return false;
   }
 
-  async function reconcileExitedEmployeeAssets(){
-    var exitedIds=new Set(currentEmployeeItStatus.filter(function(x){return x.status==='Exited';}).map(function(x){return normalizedEmployeeId(x.employee_id);}).filter(Boolean));
-    if(!exitedIds.size||!currentAccessories.length) return false;
-    var changed=false;
-    for(var i=0;i<currentAccessories.length;i++){
-      var a=currentAccessories[i];
-      if(a.status!=='Assigned') continue;
-      var aid=normalizedEmployeeId(a.assigned_employee_id);
-      if(!aid||!exitedIds.has(aid)) continue;
-      var linked=a.device_imei?inventoryStateForImei(a.device_imei):null;
-      var nextStatus=((a.asset_type==='SIM Card'||a.asset_type==='Memory Card')&&linked&&(linked.status==='Spare'||linked.status==='Retired'))?'With Device':'Spare';
-      var up=await sb.from('accessory_assets').update({
-        status:nextStatus,
-        assigned_employee_id:null,
-        assigned_employee_name:null,
-        assigned_employee_email:null,
-        device_imei:nextStatus==='With Device'?(a.device_imei||null):null,
-        notes:(a.notes?String(a.notes)+' · ':'')+'Auto-reconciled after employee exit',
-        updated_at:new Date().toISOString()
-      }).eq('id',a.id);
-      if(up.error) throw up.error;
-      changed=true;
+  async function reconcileAccessoryRegistry(){
+    try{
+      var q=await sb.rpc('dncc_reconcile_accessory_registry');
+      if(q.error)throw q.error;
+      return q.data||{};
+    }catch(err){
+      console.warn('Accessory reconciliation unavailable',err);
+      return {};
     }
-    if(changed) await loadAccessories();
-    return changed;
   }
+
   async function ensureAccessoryRegistryFromCurrentData(){
-    if(!currentSubs.length||!currentDevices.length) return;
-    await reconcileExitedEmployeeAssets();
-    await reconcileZeroPhoneAutoAccessories();
-    var desired=desiredAutoAccessoryRows();
+    if(!currentSubs.length||!currentDevices.length)return;
+    await reconcileAccessoryRegistry();
+    await loadAccessories();
 
-    // The first version used submission IDs in source_ref, so every new/replacement
-    // submission created a second "Assigned" Charger/Cable/Memory row.
-    // These rows are derived data, not manual inventory. Remove only those legacy
-    // auto-generated rows; manual entries and takeover history are never deleted.
-    var legacy=currentAccessories.filter(function(a){
-      if(a.source!=='Handover form'&&a.source!=='Device inventory') return false;
-      var ref=String(a.source_ref||'');
-      if(a.source==='Handover form') return ref.indexOf('submission:')===0;
-      return a.source==='Device inventory' && ref.indexOf('sim:')!==0;
-    });
-    if(legacy.length){
-      await deleteAccessoryIds(legacy.map(function(a){return a.id;}));
-      currentAccessories=currentAccessories.filter(function(a){return !legacy.some(function(x){return String(x.id)===String(a.id);});});
-    }
-
+    var desired=desiredAutoAccessorySeeds();
     var byRef={};
     currentAccessories.forEach(function(a){if(a.source_ref)byRef[a.source_ref]=a;});
-    var inserts=[], updates=[];
+    var inserts=[];
+
     desired.forEach(function(row){
-      var existing=byRef[row.source_ref];
-      if(!existing){inserts.push(row);return;}
-      // If IT manually adjusted an auto-created asset, do not overwrite that decision.
-      if(String(existing.source||'').indexOf('Manual override')===0) return;
-      if(existing.source==='Handover form'||existing.source==='Device inventory'){
-        updates.push({id:existing.id,row:row});
-      }
+      // Never overwrite an existing registry row from a historical handover form.
+      // Also avoid creating an auto-form duplicate when IT already tracks the same
+      // physical kind for this employee/device.
+      if(byRef[row.source_ref])return;
+      var equivalent=currentAccessories.some(function(a){
+        if(a.status==='Retired')return false;
+        if(row.asset_type==='Memory Card'){
+          return a.asset_type==='Memory Card'&&normalizedImei(a.device_imei)===normalizedImei(row.device_imei);
+        }
+        if(row.asset_type==='Charger'||row.asset_type==='USB/Data Cable'){
+          return a.asset_type===row.asset_type
+            && normalizedEmployeeId(a.assigned_employee_id)===normalizedEmployeeId(row.assigned_employee_id)
+            && (a.status==='Assigned'||a.status==='With Device');
+        }
+        return false;
+      });
+      if(!equivalent)inserts.push(row);
     });
 
     if(inserts.length){
-      var ins=await sb.from('accessory_assets').upsert(inserts,{onConflict:'source_ref',ignoreDuplicates:true});
-      if(ins.error) throw ins.error;
+      var ins=await sb.from('accessory_assets').insert(inserts);
+      if(ins.error)throw ins.error;
+      await reconcileAccessoryRegistry();
+      await loadAccessories();
     }
-    for(var j=0;j<updates.length;j++){
-      var u=updates[j];
-      var upd=await sb.from('accessory_assets').update(Object.assign({},u.row,{updated_at:new Date().toISOString()})).eq('id',u.id);
-      if(upd.error) throw upd.error;
-    }
-    if(legacy.length||inserts.length||updates.length) await loadAccessories();
+    await loadAccessoryHealth();
   }
   function assetStatusClass(s){ return String(s||'').replace(/\s+/g,''); }
+  function accessoryCode(a){return 'ACC-'+String(a.id||0).padStart(6,'0');}
+  function accessoryAssignmentText(a){
+    if(a.status==='With Device')return a.assigned_employee_name?('With phone · '+a.assigned_employee_name):'With phone / stock device';
+    if(a.status==='Assigned')return a.assigned_employee_name?('Employee · '+a.assigned_employee_name):'Employee assignment incomplete';
+    return '—';
+  }
   function renderAccessorySummary(){
-    var box=document.getElementById('accessorySummary'); if(!box) return;
+    var box=document.getElementById('accessorySummary'); if(!box)return;
     var counts={Assigned:0,Spare:0,'With Device':0,Missing:0,Retired:0};
-    currentAccessories.forEach(function(a){ if(counts[a.status]!==undefined) counts[a.status]++; });
-    box.innerHTML='<span class="asset-chip">Assigned: <b>'+counts.Assigned+'</b></span>'
-      +'<span class="asset-chip">Spare: <b>'+counts.Spare+'</b></span>'
+    currentAccessories.forEach(function(a){if(counts[a.status]!==undefined)counts[a.status]++;});
+    box.innerHTML='<span class="asset-chip">Employee: <b>'+counts.Assigned+'</b></span>'
       +'<span class="asset-chip">With phone: <b>'+counts['With Device']+'</b></span>'
-      +'<span class="asset-chip">Missing: <b>'+counts.Missing+'</b></span>';
+      +'<span class="asset-chip">Spare: <b>'+counts.Spare+'</b></span>'
+      +'<span class="asset-chip">Missing: <b>'+counts.Missing+'</b></span>'
+      +'<span class="asset-chip">Retired: <b>'+counts.Retired+'</b></span>';
+  }
+  function renderAccessoryHealth(){
+    var box=document.getElementById('accessoryHealthBox'); if(!box)return;
+    if(!currentAccessoryHealth.length){box.style.display='block';box.className='asset-health ok';box.innerHTML='<b>Consistency check:</b> No accessory assignment conflicts found.';return;}
+    var critical=currentAccessoryHealth.filter(function(x){return x.severity==='High';}).length;
+    box.style.display='block';box.className='asset-health '+(critical?'err':'warn');
+    box.innerHTML='<b>Consistency check:</b> '+currentAccessoryHealth.length+' issue(s) found'+(critical?' · '+critical+' high priority':'')+'.<br/>'
+      +currentAccessoryHealth.slice(0,6).map(function(x){return '• '+esc(x.message||x.issue_type||'Issue');}).join('<br/>')
+      +(currentAccessoryHealth.length>6?'<br/>…and '+(currentAccessoryHealth.length-6)+' more.':'');
   }
   function renderAccessories(){
-    var area=document.getElementById('accessoriesArea'); if(!area) return;
-    renderAccessorySummary();
+    var area=document.getElementById('accessoriesArea'); if(!area)return;
+    renderAccessorySummary();renderAccessoryHealth();
     var q=(accessoryFilter.search||'').toLowerCase().trim();
     var list=currentAccessories.filter(function(a){
-      if(accessoryFilter.status && a.status!==accessoryFilter.status) return false;
+      if(accessoryFilter.status&&a.status!==accessoryFilter.status)return false;
       if(q){
-        var hay=[a.asset_type,a.label,a.identifier,a.status,a.assigned_employee_name,a.assigned_employee_id,a.assigned_employee_email,a.device_imei,a.condition,a.source,a.notes].join(' ').toLowerCase();
-        if(hay.indexOf(q)<0) return false;
+        var hay=[accessoryCode(a),a.asset_type,a.label,a.identifier,a.status,a.assigned_employee_name,a.assigned_employee_id,a.assigned_employee_email,a.device_imei,a.condition,a.source,a.notes,a.assignment_mode].join(' ').toLowerCase();
+        if(hay.indexOf(q)<0)return false;
       }
       return true;
     });
-    if(!list.length){ area.innerHTML='<div class="takeover-card"><p class="empty-state">No accessories match this filter.</p></div>'; return; }
+    if(!list.length){area.innerHTML='<div class="takeover-card"><p class="empty-state">No accessories match this filter.</p></div>';return;}
     var rows=list.map(function(a){
-      return '<tr><td>'+esc(a.asset_type)+'</td><td>'+esc(a.label||'—')+'</td><td>'+esc(a.identifier||'—')+'</td>'
-        +'<td><span class="asset-status '+assetStatusClass(a.status)+'">'+esc(a.status)+'</span></td>'
+      var actions='<div class="asset-actions">';
+      if(a.status==='Spare')actions+='<button class="btn-small assign" data-asset-action="assign" data-id="'+a.id+'">Assign</button>';
+      if(a.status==='Assigned'||a.status==='With Device')actions+='<button class="btn-small assign" data-asset-action="assign" data-id="'+a.id+'">Move</button><button class="btn-small spare" data-asset-action="return" data-id="'+a.id+'">Return</button>';
+      if(a.status==='Missing')actions+='<button class="btn-small assign" data-asset-action="recover" data-id="'+a.id+'">Found → Spare</button>';
+      actions+='<button class="btn-small edit" data-asset-action="edit" data-id="'+a.id+'">Edit</button><button class="btn-small edit" data-asset-action="history" data-id="'+a.id+'">History</button></div>';
+      return '<tr><td><span class="asset-code">'+accessoryCode(a)+'</span></td><td>'+esc(a.asset_type)+'</td><td>'+esc(a.label||'—')+'</td><td>'+esc(a.identifier||'—')+'</td>'
+        +'<td><span class="asset-status '+assetStatusClass(a.status)+'">'+esc(a.status)+'</span><div class="issue-meta">'+esc(accessoryAssignmentText(a))+'</div></td>'
         +'<td>'+esc(a.assigned_employee_name||'—')+(a.assigned_employee_id?'<div class="issue-meta">'+esc(a.assigned_employee_id)+'</div>':'')+'</td>'
-        +'<td>'+esc(a.device_imei||'—')+'</td><td>'+esc(a.condition||'—')+'</td><td>'+esc(a.notes||'—')+'</td>'
-        +'<td><button class="btn-small edit" data-asset-edit="'+a.id+'">Edit</button></td></tr>';
+        +'<td>'+esc(a.device_imei||'—')+'</td><td>'+esc(a.condition||'—')+'</td><td>'+esc(a.source||'—')+'</td><td>'+esc(a.notes||'—')+'</td><td>'+actions+'</td></tr>';
     }).join('');
-    area.innerHTML='<div class="takeover-card"><h3>Accessory / SIM / memory-card register</h3><div class="table-wrap"><table><thead><tr><th>Type</th><th>Label</th><th>Identifier</th><th>Status</th><th>Employee</th><th>Phone IMEI</th><th>Condition</th><th>Notes</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-    area.querySelectorAll('[data-asset-edit]').forEach(function(b){b.addEventListener('click',function(){editAccessory(b.dataset.assetEdit);});});
+    area.innerHTML='<div class="takeover-card"><h3>Accessory / SIM / memory-card register</h3><p class="sub">Use <b>Assign / Move / Return</b> for ownership changes. Edit changes description/condition only, so assignment data cannot be accidentally broken.</p><div class="table-scroll-shell"><div class="table-top-scroll"><div class="table-top-scroll-inner"></div></div><div class="table-wrap"><table style="min-width:1450px"><thead><tr><th>Asset ID</th><th>Type</th><th>Label</th><th>Identifier</th><th>Status</th><th>Employee</th><th>Phone IMEI</th><th>Condition</th><th>Source</th><th>Notes</th><th>Actions</th></tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+    wireTableScrollSync(area);
+    area.querySelectorAll('[data-asset-action]').forEach(function(b){b.addEventListener('click',function(){handleAccessoryAction(b.dataset.assetAction,b.dataset.id);});});
   }
+
   function sameEmployeeRecord(a,b){
     var aid=normalizedEmployeeId(a&&a.employee_id), bid=normalizedEmployeeId(b&&b.employee_id);
     if(aid&&bid) return aid===bid;
@@ -1395,31 +1430,108 @@
     return false;
   }
 
-  function recoverableHistoricalPhonesForEmployee(r){
+  function localRecoverableHistoricalPhonesForEmployee(r){
     var st=employeeStatusFor(r);
     if(st&&st.status==='Exited') return [];
     var same=currentSubs.filter(function(x){ return sameEmployeeRecord(x,r); })
       .slice().sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
-    // Find the most recent historical submission that still had at least one phone.
-    var source=same.find(function(x){return !!(x.device1||x.device2);});
-    if(!source) return [];
     var seen=new Set(), out=[];
-    [source.device1,source.device2].forEach(function(d){
-      if(!d) return;
-      var imei=normalizedImei(d.imei1||d.imei2||'');
-      if(!imei||seen.has(imei)) return;
-      seen.add(imei);
-      var inv=currentDevices.find(function(x){
-        return normalizedImei(x.imei1)===imei || normalizedImei(x.imei2)===imei;
+    same.forEach(function(source){
+      [source.device1,source.device2].forEach(function(d){
+        if(!d) return;
+        var imei=normalizedImei(d.imei1||d.imei2||'');
+        if(!imei||seen.has(imei)) return;
+        seen.add(imei);
+        var inv=currentDevices.find(function(x){
+          return normalizedImei(x.imei1)===imei || normalizedImei(x.imei2)===imei;
+        });
+        if(!inv || inv.status!=='Spare') return;
+        if(normalizedEmployeeId(inv.assigned_employee_id)||String(inv.assigned_to||'').trim()) return;
+        out.push({snapshot:d,inventory:inv,source_submission_id:source.id,source_created_at:source.created_at,source:'submission'});
       });
-      if(!inv) return;
-      // Recovery is deliberately limited to phones that are currently Spare and
-      // completely unassigned. Never steal a device from another employee.
-      if(inv.status!=='Spare') return;
-      if(normalizedEmployeeId(inv.assigned_employee_id)||String(inv.assigned_to||'').trim()) return;
-      out.push({snapshot:d,inventory:inv,source_submission_id:source.id,source_created_at:source.created_at});
     });
     return out;
+  }
+
+  async function fetchRecoverableHistoricalPhonesForEmployee(r){
+    var st=employeeStatusFor(r);
+    if(st&&st.status==='Exited') return [];
+
+    var eid=String(r.employee_id||'').trim();
+    var rows=[];
+    if(eid){
+      var q=await sb.from('submissions').select('id,created_at,employee_id,employee_name,personal_email,company_email,device1,device2')
+        .eq('employee_id',eid).order('created_at',{ascending:false}).limit(200);
+      if(q.error) throw q.error;
+      rows=q.data||[];
+    }else if(isRealEmail(r.personal_email)){
+      var q2=await sb.from('submissions').select('id,created_at,employee_id,employee_name,personal_email,company_email,device1,device2')
+        .eq('personal_email',r.personal_email).order('created_at',{ascending:false}).limit(200);
+      if(q2.error) throw q2.error;
+      rows=q2.data||[];
+    }
+
+    var spareQ=await sb.from('devices').select('*').eq('status','Spare').limit(1000);
+    if(spareQ.error) throw spareQ.error;
+    var spare=(spareQ.data||[]).filter(function(inv){
+      return !normalizedEmployeeId(inv.assigned_employee_id) && !String(inv.assigned_to||'').trim();
+    });
+    var spareByImei={};
+    spare.forEach(function(inv){
+      [inv.imei1,inv.imei2].forEach(function(v){
+        var n=normalizedImei(v); if(n) spareByImei[n]=inv;
+      });
+    });
+
+    var seen=new Set(), candidates=[];
+    rows.forEach(function(source){
+      [source.device1,source.device2].forEach(function(d){
+        if(!d) return;
+        var imei=normalizedImei(d.imei1||d.imei2||'');
+        if(!imei||seen.has(imei)) return;
+        var inv=spareByImei[imei];
+        if(!inv) return;
+        seen.add(imei);
+        candidates.push({
+          snapshot:d,
+          inventory:inv,
+          source_submission_id:source.id,
+          source_created_at:source.created_at,
+          source:'submission'
+        });
+      });
+    });
+
+    // Fallback: if older repair already erased every submission device slot,
+    // use device_history as a discovery aid. This never restores automatically:
+    // the admin must explicitly select the phone, and the device must currently
+    // be Spare + unassigned.
+    if(!candidates.length && r.employee_name){
+      var hq=await sb.from('device_history').select('imei1,action,employee_name,notes,created_at')
+        .eq('employee_name',r.employee_name).order('created_at',{ascending:false}).limit(200);
+      if(!hq.error){
+        (hq.data||[]).forEach(function(h){
+          var imei=normalizedImei(h.imei1);
+          if(!imei||seen.has(imei)||!spareByImei[imei]) return;
+          var inv=spareByImei[imei];
+          seen.add(imei);
+          candidates.push({
+            snapshot:{
+              brand:inv.brand||'',model:inv.model||'',ram:inv.ram||'',storage:inv.storage||'',
+              imei1:inv.imei1||'',imei2:inv.imei2||'',simNumbers:resolveDeviceSims(inv),condition:inv.condition||'Good'
+            },
+            inventory:inv,
+            source_submission_id:null,
+            source_created_at:h.created_at,
+            source:'device history'
+          });
+        });
+      }
+    }
+
+    // Most recent evidence first. Admin still explicitly chooses which phones to restore.
+    candidates.sort(function(a,b){return new Date(b.source_created_at||0)-new Date(a.source_created_at||0);});
+    return candidates;
   }
 
   function mergedRecoverySnapshot(candidate){
@@ -1489,29 +1601,69 @@
     return fresh.length;
   }
 
-  function openRestoreEmployeePhones(r){
-    var candidates=recoverableHistoricalPhonesForEmployee(r);
-    if(!candidates.length){ alert('No recoverable Spare phones were found from this employee’s latest historical device record.'); return; }
+  async function openRestoreEmployeePhones(r){
+    var st=employeeStatusFor(r);
+    if(st&&st.status==='Exited'){alert('This employee is marked Exited. Reactivate first if they rejoined.');return;}
+
+    var busyToast=showToast('Checking full employee/device history…','info');
+    var candidates;
+    try{
+      candidates=await fetchRecoverableHistoricalPhonesForEmployee(r);
+    }catch(err){
+      console.error(err);
+      alert('Could not check recovery history: '+(err.message||err));
+      return;
+    }
+    if(!candidates.length){
+      alert('No Spare + unassigned historical phones were found for '+(r.employee_name||'this employee')+'.\n\nNothing was changed. Check Inventory or Device History manually.');
+      return;
+    }
+
     var fields=[
       {section:'Recovery safety check'},
       {id:'info',label:'Employee',value:(r.employee_name||'')+' · '+(r.employee_id||''),type:'text'}
     ];
     candidates.forEach(function(c,idx){
-      var inv=c.inventory, label=((inv.brand||'')+' '+(inv.model||'')).trim()+' · IMEI '+(inv.imei1||'')+(resolveDeviceSims(inv).length?' · SIM '+resolveDeviceSims(inv).join(', '):'');
-      fields.push({id:'restore_'+idx,label:label,value:'Restore to employee',type:'select',options:['Restore to employee','Keep Spare']});
+      var inv=c.inventory;
+      var label=((inv.brand||'')+' '+(inv.model||'')).trim()
+        +' · IMEI '+(inv.imei1||'')
+        +(resolveDeviceSims(inv).length?' · SIM '+resolveDeviceSims(inv).join(', '):'')
+        +' · found via '+(c.source==='submission'?'submission history':'device history');
+      fields.push({
+        id:'restore_'+idx,
+        label:label,
+        value:'Keep Spare',
+        type:'select',
+        options:['Keep Spare','Restore to employee']
+      });
     });
+
     openModal('Restore phone assignment — '+(r.employee_name||''),fields,async function(v){
       var chosen=candidates.filter(function(c,idx){return v['restore_'+idx]==='Restore to employee';});
       if(!chosen.length){alert('Nothing selected to restore.');return;}
-      var names=chosen.map(function(c){return ((c.inventory.brand||'')+' '+(c.inventory.model||'')).trim()+' ('+c.inventory.imei1+')';}).join('\n• ');
-      if(!confirm('Restore these phone(s) to '+(r.employee_name||'employee')+'?\n\n• '+names+'\n\nThis will set Inventory to Assigned and restore the latest Submission device slots.')) return;
+      if(chosen.length>2){alert('Select maximum two phones for the current employee form.');return;}
+
+      var names=chosen.map(function(c){
+        return ((c.inventory.brand||'')+' '+(c.inventory.model||'')).trim()+' ('+c.inventory.imei1+')';
+      }).join('\n• ');
+
+      if(!confirm(
+        'Restore these phone(s) to '+(r.employee_name||'employee')+'?\n\n• '+names+
+        '\n\nOnly the selected phones will be restored. Other Spare phones remain unchanged.'
+      )) return;
+
       try{
         var count=await restoreEmployeePhoneAssignments(r,chosen);
         closeModal();
         alert(count+' phone(s) restored successfully to '+(r.employee_name||'employee')+'.');
-      }catch(err){console.error(err);alert('Could not restore assignment: '+(err.message||err));}
+      }catch(err){
+        console.error(err);
+        alert('Could not restore assignment: '+(err.message||err));
+      }
     });
-    var info=document.getElementById('mf_info'); if(info){info.readOnly=true;info.style.background='#f5f7f8';}
+
+    var info=document.getElementById('mf_info');
+    if(info){info.readOnly=true;info.style.background='#f5f7f8';}
   }
 
   function renderTakeoverEmployees(){
@@ -1525,17 +1677,16 @@
     box.innerHTML=list.map(function(r){
       var st=employeeStatusFor(r), exited=st&&st.status==='Exited', devs=assignedDevicesForEmployee(r), assets=currentAssignedAssetsForEmployee(r);
       var badge=exited?'<span class="exit-status-badge exited">Exited</span>':'<span class="exit-status-badge active">Active</span>';
-      var recoverable=(!exited&&devs.length===0)?recoverableHistoricalPhonesForEmployee(r):[];
       var action=exited
         ?'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-secondary" data-view-takeover="'+esc(r.employee_id||'')+'">View takeover</button><button class="btn btn-secondary" data-reactivate-employee="'+esc(r.employee_id||'')+'">Reactivate</button></div>'
-        :'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary" data-start-takeover="'+r.id+'">Start takeover</button>'+(recoverable.length?'<button class="btn btn-secondary" data-restore-phones="'+r.id+'">Restore phones ('+recoverable.length+')</button>':'')+'</div>';
+        :'<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary" data-start-takeover="'+r.id+'">Start takeover</button>'+(devs.length===0?'<button class="btn btn-secondary" data-restore-phones="'+r.id+'">Restore phones</button>':'')+'</div>';
       var assetNames=assets.map(function(a){return a.asset_type+(a.identifier?' '+a.identifier:'');}).join(', ');
       return '<div class="takeover-employee"><div><div class="name">'+esc(r.employee_name||'—')+' '+badge+'</div><div class="meta">'+esc(r.employee_id||'')+' · '+esc(r.location||'')+' · '+esc(r.designation||'')+'<br/>'+devs.length+' assigned phone(s) · '+assets.length+' current assigned accessory item(s)'+(assetNames?'<br/>Accessories: '+esc(assetNames):'')+'</div></div><div>'+action+'</div></div>';
     }).join('');
     box.querySelectorAll('[data-start-takeover]').forEach(function(b){b.addEventListener('click',function(){openEmployeeTakeover(b.dataset.startTakeover);});});
-    box.querySelectorAll('[data-restore-phones]').forEach(function(b){b.addEventListener('click',function(){
+    box.querySelectorAll('[data-restore-phones]').forEach(function(b){b.addEventListener('click',async function(){
       var r=currentSubs.find(function(x){return String(x.id)===String(b.dataset.restorePhones);});
-      if(r) openRestoreEmployeePhones(r);
+      if(r) await openRestoreEmployeePhones(r);
     });});
     box.querySelectorAll('[data-view-takeover]').forEach(function(b){b.addEventListener('click',function(){viewLastTakeover(b.dataset.viewTakeover);});});
     box.querySelectorAll('[data-reactivate-employee]').forEach(function(b){b.addEventListener('click',async function(){
@@ -1556,7 +1707,8 @@
   async function loadTakeoverTab(){
     await Promise.all([loadEmployeeItStatus(),loadAccessories(),loadTakeovers()]);
     await ensureAccessoryRegistryFromCurrentData();
-    renderTakeoverEmployees(); renderAccessories(); renderTakeovers(); renderSubmissions();
+    await Promise.all([loadAccessories(),loadAccessoryHealth()]);
+    renderTakeoverEmployees();renderAccessories();renderTakeovers();renderSubmissions();
   }
 
   async function loadAll(){ await Promise.all([loadSubmissions(), loadInventory(), loadTemplates(), loadChangeRequests(), loadDeviceRequests(), loadIssueResolutions(), loadEmployeeIssueReports(), loadDuplicateImeiAlerts(), loadEmployeeItStatus(), loadAccessories()]); try{await reconcileZeroPhoneAutoAccessories();}catch(e){console.warn('Accessory current-state reconciliation warning',e);} renderSubmissions(); renderInventory(); renderIssues(); renderStats(); populateLocationFilter(); populateReportLocationFilter(); renderReports(); }
@@ -3713,24 +3865,203 @@
   function viewTakeoverById(id){
     var t=currentTakeovers.find(function(x){return String(x.id)===String(id);});if(!t)return;
     var items=Array.isArray(t.items_snapshot)?t.items_snapshot:(t.items_snapshot||[]);
-    openModal('Takeover #'+t.id,[{id:'employee',label:'Employee',value:(t.employee_name||'')+' · '+(t.employee_id||'')},{id:'exit',label:'Exit date',value:t.exit_date||''},{id:'completed',label:'Completed by / time',value:(t.completed_by||'')+' · '+(t.completed_at?new Date(t.completed_at).toLocaleString():'')},{id:'items',label:'Returned assets',value:(items||[]).map(function(i){return i.type+' · '+(i.label||i.identifier||'')+' · '+(i.returned?'Returned / '+i.destination:'Missing')+' · '+(i.condition||'');}).join('\n'),type:'textarea'},{id:'notes',label:'Notes',value:t.notes||'',type:'textarea'}],function(){closeModal();});
+    openModal('Takeover #'+t.id,[{id:'employee',label:'Employee',value:(t.employee_name||'')+' · '+(t.employee_id||'')},{id:'exit',label:'Exit date',value:t.exit_date||''},{id:'completed',label:'Completed by / time',value:(t.completed_by||'')+' · '+(t.completed_at?new Date(t.completed_at).toLocaleString():'')},{id:'items',label:'Returned assets',value:(items&&items.length)?items.map(function(i){return i.type+' · '+(i.label||i.identifier||'')+' · '+(i.returned?'Returned / '+i.destination:'Missing')+' · '+(i.condition||'');}).join('\n'):'Legacy takeover — no returned-asset snapshot was captured.',type:'textarea'},{id:'notes',label:'Notes',value:t.notes||'',type:'textarea'}],function(){closeModal();});
   }
   function viewLastTakeover(employeeId){
     var id=String(employeeId||'').trim().toLowerCase(),t=currentTakeovers.find(function(x){return String(x.employee_id||'').trim().toLowerCase()===id;});
     if(t)viewTakeoverById(t.id);else alert('No completed takeover record found for this employee.');
   }
-  document.getElementById('addAccessoryBtn').addEventListener('click',function(){
-    openModal('Add accessory / SIM / memory card',[{id:'asset_type',label:'Type',value:'Charger',type:'select',options:['Charger','USB/Data Cable','SIM Card','Memory Card','Other']},{id:'label',label:'Label / description',value:''},{id:'identifier',label:'Identifier / SIM number / card size',value:''},{id:'status',label:'Status',value:'Spare',type:'select',options:['Assigned','Spare','With Device','Missing','Retired']},{id:'assigned_employee_name',label:'Assigned employee name',value:''},{id:'assigned_employee_id',label:'Assigned employee ID',value:''},{id:'assigned_employee_email',label:'Assigned employee email',value:''},{id:'device_imei',label:'Linked phone IMEI (optional)',value:''},{id:'condition',label:'Condition',value:'Good',type:'select',options:['Good','Fair','Damaged','Needs repair']},{id:'notes',label:'Notes',value:'',type:'textarea'}],async function(v){
-      if(v.asset_type==='SIM Card'&&v.identifier&&!/^\d{10}$/.test(v.identifier)){alert('SIM number must be 10 digits.');return;}
-      var ref='manual:'+Date.now()+':'+Math.random().toString(36).slice(2,8);
-      var ins=await sb.from('accessory_assets').insert([{asset_type:v.asset_type,label:v.label||v.asset_type,identifier:v.identifier||null,status:v.status,assigned_employee_name:v.assigned_employee_name||null,assigned_employee_id:v.assigned_employee_id||null,assigned_employee_email:v.assigned_employee_email||null,device_imei:v.device_imei||null,condition:v.condition||'Good',notes:v.notes||null,source:'Manual IT entry',source_ref:ref}]);if(ins.error){alert(ins.error.message);return;}closeModal();await loadAccessories();renderAccessories();
+  function activeEmployeeOptions(){
+    var seen=new Set(),out=[];
+    latestSubmissionKeys().forEach(function(r){
+      var id=normalizedEmployeeId(r.employee_id); if(!id||seen.has(id))return;
+      var st=employeeStatusFor(r); if(st&&st.status==='Exited')return;
+      seen.add(id);out.push(r);
+    });
+    return out.sort(function(a,b){return String(a.employee_name||'').localeCompare(String(b.employee_name||''));});
+  }
+  function findEmployeeById(id){
+    id=normalizedEmployeeId(id);
+    return activeEmployeeOptions().find(function(r){return normalizedEmployeeId(r.employee_id)===id;})||null;
+  }
+  function closeAssetAssign(){
+    document.getElementById('assetAssignOverlay').classList.remove('open');
+    activeAccessoryAssignment=null;
+  }
+  document.getElementById('assetAssignClose').addEventListener('click',closeAssetAssign);
+  document.getElementById('assetAssignCancel').addEventListener('click',closeAssetAssign);
+  document.getElementById('assetAssignOverlay').addEventListener('click',function(e){if(e.target===this)closeAssetAssign();});
+
+  function populateAssetAssignDevices(){
+    var emp=findEmployeeById(document.getElementById('assetAssignEmployee').value);
+    var sel=document.getElementById('assetAssignDevice');
+    var devs=emp?assignedDevicesForEmployee(emp):[];
+    sel.innerHTML=devs.length?devs.map(function(d){return '<option value="'+esc(d.imei1)+'">'+esc(((d.brand||'')+' '+(d.model||'')).trim())+' · IMEI '+esc(d.imei1)+'</option>';}).join(''):'<option value="">No assigned phone available</option>';
+  }
+  function syncAssetAssignMode(){
+    var a=activeAccessoryAssignment;if(!a)return;
+    var isDeviceOnly=a.asset_type==='SIM Card'||a.asset_type==='Memory Card';
+    var mode=document.getElementById('assetAssignMode');
+    mode.value=isDeviceOnly?'Device':'Employee';
+    mode.disabled=true;
+    var show=isDeviceOnly;
+    document.getElementById('assetAssignDeviceWrap').style.display=show?'block':'none';
+    if(show)populateAssetAssignDevices();
+  }
+  document.getElementById('assetAssignEmployee').addEventListener('change',populateAssetAssignDevices);
+  document.getElementById('assetAssignMode').addEventListener('change',syncAssetAssignMode);
+
+  function openAssetAssign(id){
+    var a=currentAccessories.find(function(x){return String(x.id)===String(id);});if(!a)return;
+    if(a.status==='Retired'){alert('Retired assets cannot be assigned. Change metadata/status only after physical verification.');return;}
+    activeAccessoryAssignment=a;
+    var employees=activeEmployeeOptions();
+    if(!employees.length){alert('No Active employee records found.');return;}
+    var empSel=document.getElementById('assetAssignEmployee');
+    empSel.innerHTML=employees.map(function(r){return '<option value="'+esc(r.employee_id||'')+'">'+esc(r.employee_name||'')+' · '+esc(r.employee_id||'')+' · '+esc(r.location||'')+'</option>';}).join('');
+    if(a.assigned_employee_id&&employees.some(function(r){return normalizedEmployeeId(r.employee_id)===normalizedEmployeeId(a.assigned_employee_id);})){
+      empSel.value=employees.find(function(r){return normalizedEmployeeId(r.employee_id)===normalizedEmployeeId(a.assigned_employee_id);}).employee_id;
+    }
+    document.getElementById('assetAssignMode').value=(a.asset_type==='SIM Card'||a.asset_type==='Memory Card'||a.status==='With Device')?'Device':'Employee';
+    document.getElementById('assetAssignBy').value=currentAdminDisplayName||loggedInAdminUsername||'IT Admin';
+    document.getElementById('assetAssignNote').value='';
+    document.getElementById('assetAssignPreview').innerHTML='<b>'+esc(accessoryCode(a))+' · '+esc(a.asset_type)+'</b><br/>'+esc(a.label||'')+(a.identifier?'<br/>Identifier: '+esc(a.identifier):'')+'<br/>Current: '+esc(a.status)+' · '+esc(accessoryAssignmentText(a));
+    document.getElementById('assetAssignSubtitle').textContent=(a.asset_type==='SIM Card'||a.asset_type==='Memory Card')?'SIM/memory cards must be attached to an Assigned employee phone.':'Charger/cable/other assets are assigned directly to the employee; they never move automatically with a phone.';
+    syncAssetAssignMode();
+    document.getElementById('assetAssignMsg').className='msg';document.getElementById('assetAssignMsg').textContent='';
+    document.getElementById('assetAssignOverlay').classList.add('open');
+  }
+
+  document.getElementById('assetAssignConfirm').addEventListener('click',async function(){
+    var a=activeAccessoryAssignment;if(!a)return;
+    var emp=findEmployeeById(document.getElementById('assetAssignEmployee').value);
+    if(!emp){showMsg('assetAssignMsg','Select a valid Active employee.','err');return;}
+    var mode=document.getElementById('assetAssignMode').value;
+    if(a.asset_type==='SIM Card'||a.asset_type==='Memory Card')mode='Device';
+    var imei=mode==='Device'?document.getElementById('assetAssignDevice').value:'';
+    if(mode==='Device'&&!imei){showMsg('assetAssignMsg','Select an Assigned phone for this employee.','err');return;}
+    var note=document.getElementById('assetAssignNote').value.trim();
+    var by=document.getElementById('assetAssignBy').value.trim()||loggedInAdminUsername||'IT Admin';
+    var currentOwner=a.assigned_employee_id||a.assigned_employee_name||a.device_imei;
+    if(currentOwner&&!confirm('Move '+accessoryCode(a)+' from its current assignment to '+(emp.employee_name||emp.employee_id)+'?'))return;
+    var btn=this;
+    await withButtonBusy(btn,'Assigning…',async function(){
+      try{
+        var rpc=await sb.rpc('dncc_assign_accessory',{
+          p_asset_id:Number(a.id),
+          p_employee_id:emp.employee_id||'',
+          p_employee_name:emp.employee_name||'',
+          p_employee_email:preferredSubmissionEmail(emp)||'',
+          p_assignment_mode:mode,
+          p_device_imei:imei||null,
+          p_changed_by:by,
+          p_note:note||null
+        });
+        if(rpc.error)throw rpc.error;
+        closeAssetAssign();
+        await refreshAccessoryManagement();
+        showToast('Accessory assigned successfully.','success');
+      }catch(err){console.error(err);showMsg('assetAssignMsg',err.message||String(err),'err');}
     });
   });
+
+  async function refreshAccessoryManagement(){
+    await reconcileAccessoryRegistry();
+    await Promise.all([loadAccessories(),loadAccessoryHealth(),loadInventory(),loadEmployeeItStatus()]);
+    renderAccessories();renderTakeoverEmployees();renderInventory();renderSubmissions();renderStats();
+  }
+
+  async function returnAccessory(id){
+    var a=currentAccessories.find(function(x){return String(x.id)===String(id);});if(!a)return;
+    var options=['Spare','Missing','Retired'];
+    openModal('Return / close assignment — '+accessoryCode(a),[
+      {id:'destination',label:'New status',value:'Spare',type:'select',options:options},
+      {id:'by',label:'Handled by',value:currentAdminDisplayName||loggedInAdminUsername||'IT Admin'},
+      {id:'note',label:'Return / condition note',value:'',type:'textarea'}
+    ],async function(v){
+      if(!confirm('Change '+accessoryCode(a)+' from '+a.status+' to '+v.destination+'?'))return;
+      var rpc=await sb.rpc('dncc_return_accessory',{
+        p_asset_id:Number(a.id),p_destination:v.destination,p_changed_by:v.by.trim()||'IT Admin',p_note:v.note.trim()||null
+      });
+      if(rpc.error){alert(rpc.error.message);return;}
+      closeModal();await refreshAccessoryManagement();showToast('Accessory status updated.','success');
+    });
+  }
+
+  async function recoverAccessory(id){
+    var a=currentAccessories.find(function(x){return String(x.id)===String(id);});if(!a)return;
+    if(!confirm('Mark '+accessoryCode(a)+' as physically found and move it to Spare stock?'))return;
+    var rpc=await sb.rpc('dncc_return_accessory',{p_asset_id:Number(a.id),p_destination:'Spare',p_changed_by:currentAdminDisplayName||loggedInAdminUsername||'IT Admin',p_note:'Recovered / found by IT'});
+    if(rpc.error){alert(rpc.error.message);return;}
+    await refreshAccessoryManagement();showToast('Recovered asset moved to Spare.','success');
+  }
+
+  async function showAccessoryHistory(id){
+    var a=currentAccessories.find(function(x){return String(x.id)===String(id);});if(!a)return;
+    var q=await sb.from('accessory_asset_history').select('*').eq('asset_id',Number(id)).order('created_at',{ascending:false}).limit(100);
+    if(q.error){alert(q.error.message);return;}
+    var text=(q.data||[]).map(function(h){
+      return new Date(h.created_at).toLocaleString()+' · '+(h.action||'Update')+' · '+(h.from_status||'—')+' → '+(h.to_status||'—')+(h.employee_name?' · '+h.employee_name:'')+(h.device_imei?' · IMEI '+h.device_imei:'')+(h.changed_by?' · by '+h.changed_by:'');
+    }).join('\n')||'No history entries yet.';
+    openModal('History — '+accessoryCode(a),[{id:'history',label:'Lifecycle history',value:text,type:'textarea'}],function(){closeModal();});
+  }
+
+  async function handleAccessoryAction(action,id){
+    if(action==='assign'){openAssetAssign(id);return;}
+    if(action==='return'){await returnAccessory(id);return;}
+    if(action==='recover'){await recoverAccessory(id);return;}
+    if(action==='edit'){editAccessory(id);return;}
+    if(action==='history'){await showAccessoryHistory(id);return;}
+  }
+
+  document.getElementById('checkAccessoryConsistencyBtn').addEventListener('click',async function(){
+    var btn=this;
+    await withButtonBusy(btn,'Checking…',async function(){
+      await reconcileAccessoryRegistry();await Promise.all([loadAccessories(),loadAccessoryHealth()]);renderAccessories();
+      showToast(currentAccessoryHealth.length?(currentAccessoryHealth.length+' consistency issue(s) need review.'):'Accessory register is consistent.',currentAccessoryHealth.length?'warning':'success');
+    });
+  });
+
+  document.getElementById('addAccessoryBtn').addEventListener('click',function(){
+    openModal('Add stock accessory / SIM / memory card',[
+      {id:'asset_type',label:'Type',value:'Charger',type:'select',options:['Charger','USB/Data Cable','SIM Card','Memory Card','Other']},
+      {id:'label',label:'Label / description',value:''},
+      {id:'identifier',label:'Identifier / SIM number / memory size / serial',value:''},
+      {id:'condition',label:'Condition',value:'Good',type:'select',options:['Good','Fair','Damaged','Needs repair']},
+      {id:'notes',label:'Stock notes',value:'',type:'textarea'}
+    ],async function(v){
+      if(v.asset_type==='SIM Card'&&!/^\d{10}$/.test(String(v.identifier||'').replace(/\D/g,''))){alert('SIM number must be exactly 10 digits.');return;}
+      var ref='manual:'+Date.now()+':'+Math.random().toString(36).slice(2,8);
+      var ins=await sb.from('accessory_assets').insert([{
+        asset_type:v.asset_type,label:v.label||v.asset_type,identifier:v.identifier||null,status:'Spare',
+        assigned_employee_name:null,assigned_employee_id:null,assigned_employee_email:null,device_imei:null,
+        condition:v.condition||'Good',notes:v.notes||null,source:'Manual IT entry',source_ref:ref,
+        manual_override:true,assignment_mode:null,updated_by:currentAdminDisplayName||loggedInAdminUsername||'IT Admin'
+      }]);
+      if(ins.error){alert(ins.error.message);return;}
+      closeModal();await refreshAccessoryManagement();showToast('Stock accessory created. Use Assign when it is physically issued.','success');
+    });
+  });
+
   function editAccessory(id){
     var a=currentAccessories.find(function(x){return String(x.id)===String(id);});if(!a)return;
-    openModal('Edit accessory',[{id:'asset_type',label:'Type',value:a.asset_type,type:'select',options:['Charger','USB/Data Cable','SIM Card','Memory Card','Other']},{id:'label',label:'Label',value:a.label||''},{id:'identifier',label:'Identifier / SIM / size',value:a.identifier||''},{id:'status',label:'Status',value:a.status,type:'select',options:['Assigned','Spare','With Device','Missing','Retired']},{id:'assigned_employee_name',label:'Assigned employee name',value:a.assigned_employee_name||''},{id:'assigned_employee_id',label:'Assigned employee ID',value:a.assigned_employee_id||''},{id:'assigned_employee_email',label:'Assigned employee email',value:a.assigned_employee_email||''},{id:'device_imei',label:'Linked phone IMEI',value:a.device_imei||''},{id:'condition',label:'Condition',value:a.condition||'Good',type:'select',options:['Good','Fair','Damaged','Needs repair']},{id:'notes',label:'Notes',value:a.notes||'',type:'textarea'}],async function(v){
-      if(v.asset_type==='SIM Card'&&v.identifier&&!/^\d{10}$/.test(v.identifier)){alert('SIM number must be 10 digits.');return;}
-      var up=await sb.from('accessory_assets').update({asset_type:v.asset_type,label:v.label||v.asset_type,identifier:v.identifier||null,status:v.status,assigned_employee_name:v.status==='Assigned'?(v.assigned_employee_name||null):null,assigned_employee_id:v.status==='Assigned'?(v.assigned_employee_id||null):null,assigned_employee_email:v.status==='Assigned'?(v.assigned_employee_email||null):null,device_imei:(v.status==='With Device'||v.status==='Assigned')?(v.device_imei||null):null,condition:v.condition||'Good',notes:v.notes||null,source:(a.source==='Handover form'||a.source==='Device inventory')?'Manual override · '+a.source:(a.source||'Manual IT entry'),updated_at:new Date().toISOString()}).eq('id',a.id);if(up.error){alert(up.error.message);return;}closeModal();await loadAccessories();renderAccessories();
+    openModal('Edit metadata — '+accessoryCode(a),[
+      {id:'asset_type',label:'Type',value:a.asset_type,type:'select',options:['Charger','USB/Data Cable','SIM Card','Memory Card','Other']},
+      {id:'label',label:'Label',value:a.label||''},
+      {id:'identifier',label:'Identifier / SIM / memory size / serial',value:a.identifier||''},
+      {id:'condition',label:'Condition',value:a.condition||'Good',type:'select',options:['Good','Fair','Damaged','Needs repair']},
+      {id:'notes',label:'Notes',value:a.notes||'',type:'textarea'}
+    ],async function(v){
+      if(a.asset_type==='SIM Card'&&a.status==='With Device'&&String(v.identifier||'').replace(/\D/g,'')!==String(a.identifier||'').replace(/\D/g,'')){
+        alert('Return the SIM to Spare before changing its SIM number. This prevents the phone inventory and SIM register from becoming inconsistent.');return;
+      }
+      if(v.asset_type==='SIM Card'&&!/^\d{10}$/.test(String(v.identifier||'').replace(/\D/g,''))){alert('SIM number must be exactly 10 digits.');return;}
+      var up=await sb.from('accessory_assets').update({
+        asset_type:v.asset_type,label:v.label||v.asset_type,identifier:v.identifier||null,condition:v.condition||'Good',
+        notes:v.notes||null,manual_override:true,updated_by:currentAdminDisplayName||loggedInAdminUsername||'IT Admin',updated_at:new Date().toISOString()
+      }).eq('id',a.id);
+      if(up.error){alert(up.error.message);return;}
+      closeModal();await refreshAccessoryManagement();showToast('Accessory metadata updated. Assignment was not changed.','success');
     });
   }
 
