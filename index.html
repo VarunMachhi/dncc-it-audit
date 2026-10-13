@@ -121,6 +121,15 @@
   .candidate-card input,.issue-device-card input{margin-right:8px;}
   .candidate-meta,.issue-device-meta{display:block;color:var(--text-soft);font-size:11.5px;margin:4px 0 0 24px;line-height:1.45;}
   .inline-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+  .selfservice-search-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:end;}
+  .selfservice-search-row .field{margin-bottom:0;min-width:0;}
+  .selfservice-search-row .lookup-btn-field{display:flex;align-items:flex-end;}
+  .selfservice-search-row .lookup-btn-field button{min-width:168px;min-height:46px;white-space:nowrap;padding-left:20px;padding-right:20px;}
+  .candidate-status{display:inline-flex;margin-left:7px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800;vertical-align:1px;}
+  .candidate-status.exited{background:var(--danger-light);color:var(--danger);border:1px solid #efc7c7;}
+  .candidate-status.active{background:var(--ok-light);color:var(--ok);border:1px solid #c4dfd1;}
+  .lookup-result.exited{background:#fff2f2;border-color:#e8bebe;}
+  .lookup-result.exited h3{color:var(--danger);}
   .btn-quiet{background:#fff;color:var(--navy);border:1px solid var(--line-strong);border-radius:8px;padding:11px 16px;font-weight:700;font-size:13px;cursor:pointer;}
   .btn-quiet:hover{background:#f3f6f7;}
 
@@ -187,6 +196,8 @@
     legend{max-width:100%;font-size:13.5px;line-height:1.35;white-space:normal;}
     .field{margin-bottom:13px;min-width:0;}
     .row2,.photo-pair{grid-template-columns:minmax(0,1fr);gap:11px;}
+    .selfservice-search-row{grid-template-columns:minmax(0,1fr);gap:9px;}
+    .selfservice-search-row .lookup-btn-field button{width:100%;min-width:0;}
     label{font-size:12.5px;line-height:1.35;}
     input[type=text],input[type=tel],input[type=email],input[type=number],input[type=date],select,textarea{font-size:16px!important;min-height:46px;padding:10px 11px;}
     textarea{min-height:88px;}
@@ -383,9 +394,9 @@
     <button type="button" class="correction-toggle" id="correctionToggle" data-i18n="correctionToggle">Made a mistake? Request a correction to details you already submitted →</button>
     <form id="correctionForm" style="display:none;" novalidate>
       <p class="hint" style="margin-top:0;" data-i18n="correctionHint">Find your employee record using your name, employee ID/code, personal email, or company email. If more than one result appears, select your own record before requesting a correction.</p>
-      <div class="row2">
+      <div class="selfservice-search-row">
         <div class="field"><label for="corrLookupTerm" data-i18n="issueLookupLabel">Email, employee ID/code, or employee name</label><input type="text" id="corrLookupTerm" data-i18n-ph="issueLookupPlaceholder" placeholder="e.g. name@dncc.in, VAD-RAHUL, or Rahul Patel" /></div>
-        <div class="field" style="display:flex;align-items:flex-end;"><button type="button" class="btn-primary" id="corrLookupBtn" data-i18n="issueFindBtn">Find my record</button></div>
+        <div class="field lookup-btn-field"><button type="button" class="btn-primary" id="corrLookupBtn" data-i18n="issueFindBtn">Find my record</button></div>
       </div>
       <div id="corrCandidateArea"></div>
       <div id="corrSelectedArea"></div>
@@ -403,9 +414,9 @@
     <button type="button" class="selfservice-toggle" id="issueReportToggle" data-i18n="issueReportToggleClosed">Report new physical damage or a phone issue on my existing device →</button>
     <form id="employeeIssueForm" style="display:none;" novalidate>
       <p class="hint" style="margin-top:0;" data-i18n="issueReportHint">Find your employee record using your email, employee ID/code, or name. If more than one person has the same name, select your own record.</p>
-      <div class="row2">
+      <div class="selfservice-search-row">
         <div class="field"><label for="issueLookupTerm" data-i18n="issueLookupLabel">Email, employee ID/code, or employee name</label><input type="text" id="issueLookupTerm" data-i18n-ph="issueLookupPlaceholder" placeholder="e.g. name@dncc.in, VAD-RAHUL, or Rahul Patel" /></div>
-        <div class="field" style="display:flex;align-items:flex-end;"><button type="button" class="btn-primary" id="issueLookupBtn" data-i18n="issueFindBtn">Find my record</button></div>
+        <div class="field lookup-btn-field"><button type="button" class="btn-primary" id="issueLookupBtn" data-i18n="issueFindBtn">Find my record</button></div>
       </div>
       <div id="issueCandidateArea"></div>
       <div id="issueDeviceArea"></div>
@@ -720,6 +731,36 @@
     empIdHint:'सिस्टम unique Employee ID तयार करता. तोच base ID दुसऱ्या कर्मचाऱ्याक आसल्यार -02, -03 अशें फुडले रिकामे suffix आपशींच जोडटलें.',
     correctionHint:'नांव, Employee ID/कोड, personal email वा company email वापरून तुमचो रेकॉर्ड सोदात. जास्त निकाल आयल्यार तुमचो योग्य रेकॉर्ड निवडात.',
     corrValidation:'पयलीं तुमचो कर्मचारी रेकॉर्ड सोदून निवडात, मागीर कितें बदलपाचें तें बरयात.'
+  });
+  Object.assign(TRANSLATIONS.en,{
+    employeeExitedTitle:'Employee record is closed',
+    employeeExitedSelfService:'This employee is marked Exited. Correction requests and device issue reports cannot be submitted from employee self-service. If this status is incorrect, contact IT/HR.',
+    employeeExitedRequest:'This employee is marked Exited. New/Replace Device Requests are disabled. Contact IT/HR if the employee has rejoined or the status is incorrect.',
+    statusExited:'Exited',statusActive:'Active'
+  });
+  Object.assign(TRANSLATIONS.gu,{
+    employeeExitedTitle:'કર્મચારી રેકોર્ડ બંધ છે',
+    employeeExitedSelfService:'આ કર્મચારી Exited તરીકે માર્ક છે. Employee self-service માંથી correction request અથવા device issue મોકલી શકાતું નથી. Status ખોટો હોય તો IT/HR નો સંપર્ક કરો.',
+    employeeExitedRequest:'આ કર્મચારી Exited તરીકે માર્ક છે. New/Replace Device Request બંધ છે. કર્મચારી ફરી જોડાયો હોય અથવા status ખોટો હોય તો IT/HR નો સંપર્ક કરો.',
+    statusExited:'Exited',statusActive:'Active'
+  });
+  Object.assign(TRANSLATIONS.hi,{
+    employeeExitedTitle:'कर्मचारी रिकॉर्ड बंद है',
+    employeeExitedSelfService:'यह कर्मचारी Exited के रूप में marked है. Employee self-service से correction request या device issue submit नहीं किया जा सकता. Status गलत हो तो IT/HR से संपर्क करें.',
+    employeeExitedRequest:'यह कर्मचारी Exited के रूप में marked है. New/Replace Device Request बंद है. कर्मचारी ने दोबारा join किया हो या status गलत हो तो IT/HR से संपर्क करें.',
+    statusExited:'Exited',statusActive:'Active'
+  });
+  Object.assign(TRANSLATIONS.mr,{
+    employeeExitedTitle:'कर्मचारी रेकॉर्ड बंद आहे',
+    employeeExitedSelfService:'हा कर्मचारी Exited म्हणून मार्क आहे. Employee self-service मधून correction request किंवा device issue पाठवता येणार नाही. Status चुकीचा असल्यास IT/HR शी संपर्क करा.',
+    employeeExitedRequest:'हा कर्मचारी Exited म्हणून मार्क आहे. New/Replace Device Request बंद आहे. कर्मचारी पुन्हा join झाला असेल किंवा status चुकीचा असेल तर IT/HR शी संपर्क करा.',
+    statusExited:'Exited',statusActive:'Active'
+  });
+  Object.assign(TRANSLATIONS.kok,{
+    employeeExitedTitle:'कर्मचारी रेकॉर्ड बंद आसा',
+    employeeExitedSelfService:'हो कर्मचारी Exited म्हणून मार्क आसा. Employee self-service वरून correction request वा device issue धाडूंक येना. Status चुकीचो आसल्यार IT/HR क संपर्क करात.',
+    employeeExitedRequest:'हो कर्मचारी Exited म्हणून मार्क आसा. New/Replace Device Request बंद आसा. कर्मचारी परत join जाला वा status चुकीचो आसा जाल्यार IT/HR क संपर्क करात.',
+    statusExited:'Exited',statusActive:'Active'
   });
 
   var currentLang = (function(){ try{ return localStorage.getItem('dncc_lang') || 'en'; }catch(e){ return 'en'; } })();
@@ -1828,6 +1869,15 @@
     var emails=[e.company_email,e.personal_email].filter(validEmail);
     return (e.employee_id||t('noEmployeeId'))+' · '+(e.location||'')+(emails.length?' · '+emails.join(' / '):'');
   }
+  function isExitedEmployee(e){return String((e&&e.employee_status)||'').trim().toLowerCase()==='exited';}
+  function employeeStatusBadge(e){
+    return isExitedEmployee(e)
+      ? '<span class="candidate-status exited">'+h(t('statusExited'))+'</span>'
+      : '<span class="candidate-status active">'+h(t('statusActive'))+'</span>';
+  }
+  function exitedEmployeeMessage(){
+    return '<div class="lookup-result exited"><h3>'+h(t('employeeExitedTitle'))+'</h3><p>'+h(t('employeeExitedSelfService'))+'</p></div>';
+  }
 
   // ---------- Correction request ----------
   var correctionState={matches:[],employee:null};
@@ -1848,7 +1898,7 @@
         var noSub=!e.latest_submission_id;
         return '<label class="candidate-card"><input type="radio" name="corrEmployeeChoice" value="'+h(e.employee_id||'')+'" '
           +(correctionState.employee&&String(correctionState.employee.employee_id)===String(e.employee_id)?'checked':'')+'/>'
-          +'<b>'+h(e.employee_name||'Employee')+'</b>'
+          +'<b>'+h(e.employee_name||'Employee')+'</b>'+employeeStatusBadge(e)
           +'<span class="candidate-meta">'+h(selfServiceEmployeeMeta(e))+(noSub?' · No submitted audit form':'')+'</span></label>';
       }).join('')+'</div>';
     area.querySelectorAll('input[name="corrEmployeeChoice"]').forEach(function(r){r.addEventListener('change',function(){selectCorrectionEmployee(this.value);});});
@@ -1859,12 +1909,17 @@
     correctionState.employee=emp;
     renderCorrectionCandidates();
     var selected=document.getElementById('corrSelectedArea');
+    if(isExitedEmployee(emp)){
+      selected.innerHTML=exitedEmployeeMessage();
+      document.getElementById('corrDetailsArea').style.display='none';
+      return;
+    }
     if(!emp.latest_submission_id){
       selected.innerHTML='<div class="lookup-result warn"><p>This employee record has no submitted mobile audit form to correct. Contact IT if the employee details themselves need to be created.</p></div>';
       document.getElementById('corrDetailsArea').style.display='none';
       return;
     }
-    selected.innerHTML='<div class="lookup-result"><h3>'+h(t('employeeFound'))+'</h3><p><b>'+h(emp.employee_name||'Employee')+'</b> · '+h(emp.employee_id||'')+' · '+h(emp.location||'')+'</p><p>'+h([emp.company_email,emp.personal_email].filter(validEmail).join(' / ')||'—')+'</p></div>';
+    selected.innerHTML='<div class="lookup-result"><h3>'+h(t('employeeFound'))+'</h3><p><b>'+h(emp.employee_name||'Employee')+'</b> '+employeeStatusBadge(emp)+' · '+h(emp.employee_id||'')+' · '+h(emp.location||'')+'</p><p>'+h([emp.company_email,emp.personal_email].filter(validEmail).join(' / ')||'—')+'</p></div>';
     document.getElementById('corrDetailsArea').style.display='block';
     document.getElementById('corrDetails').focus();
   }
@@ -1899,6 +1954,7 @@
     e.preventDefault();
     var emp=correctionState.employee;
     var details=document.getElementById('corrDetails').value.trim();
+    if(emp&&isExitedEmployee(emp)){setCorrectionToast(t('employeeExitedSelfService'),'err');return;}
     if(!emp||!emp.latest_submission_id||!details){
       setCorrectionToast(t('corrValidation'),'err');return;
     }
@@ -1946,7 +2002,7 @@
   function renderIssueCandidates(){
     var area=document.getElementById('issueCandidateArea');
     if(!issueReportState.matches.length){area.innerHTML='<div class="lookup-result warn"><p>'+h(t('issueNoMatch'))+'</p></div>';return;}
-    area.innerHTML='<label>'+h(t('issueSelectEmployee'))+'</label><div class="candidate-list">'+issueReportState.matches.map(function(e,i){return '<label class="candidate-card"><input type="radio" name="issueEmployeeChoice" value="'+h(e.id)+'" '+(issueReportState.employee&&String(issueReportState.employee.id)===String(e.id)?'checked':'')+'/><b>'+h(e.employee_name||'Employee')+'</b><span class="candidate-meta">'+h(selfServiceEmployeeMeta(e))+'</span></label>';}).join('')+'</div>';
+    area.innerHTML='<label>'+h(t('issueSelectEmployee'))+'</label><div class="candidate-list">'+issueReportState.matches.map(function(e,i){return '<label class="candidate-card"><input type="radio" name="issueEmployeeChoice" value="'+h(e.id)+'" '+(issueReportState.employee&&String(issueReportState.employee.id)===String(e.id)?'checked':'')+'/><b>'+h(e.employee_name||'Employee')+'</b>'+employeeStatusBadge(e)+'<span class="candidate-meta">'+h(selfServiceEmployeeMeta(e))+'</span></label>';}).join('')+'</div>';
     area.querySelectorAll('input[name="issueEmployeeChoice"]').forEach(function(r){r.addEventListener('change',function(){selectIssueEmployee(this.value);});});
   }
   async function selectIssueEmployee(id){
@@ -1955,6 +2011,11 @@
     issueReportState.employee=emp;
     document.getElementById('issueDetailsArea').style.display='none';
     setIssueToast('','');
+    if(isExitedEmployee(emp)){
+      issueReportState.devices=[];
+      document.getElementById('issueDeviceArea').innerHTML=exitedEmployeeMessage();
+      return;
+    }
     try{
       if(!emp.employee_id){issueReportState.devices=[];renderIssueDevices();return;}
       var res=await sb.from('devices').select('*').eq('status','Assigned').eq('assigned_employee_id',emp.employee_id).order('last_updated',{ascending:false});
@@ -1973,6 +2034,7 @@
   function renderIssueDevices(){
     var area=document.getElementById('issueDeviceArea'),devs=issueReportState.devices||[];
     if(!issueReportState.employee){area.innerHTML='';return;}
+    if(isExitedEmployee(issueReportState.employee)){area.innerHTML=exitedEmployeeMessage();document.getElementById('issueDetailsArea').style.display='none';return;}
     if(!devs.length){area.innerHTML='<div class="lookup-result warn"><p>'+h(t('issueNoAssignedDevice'))+'</p></div>';document.getElementById('issueDetailsArea').style.display='none';return;}
     area.innerHTML='<label>'+h(t('issueSelectDevice'))+'</label><div class="issue-device-list">'+devs.map(function(d,i){var sims=d.sim_numbers||d.simNumbers||[];return '<label class="issue-device-card"><input type="radio" name="issueDeviceChoice" value="'+h(d.imei1||'')+'" '+(i===0?'checked':'')+'/><b>'+h(((d.brand||'')+' '+(d.model||'')).trim()||'Mobile device')+'</b><span class="issue-device-meta">IMEI '+h(d.imei1||'—')+(sims.length?' · SIM '+h(sims.join(', ')):'')+(d._historical?' · '+h(t('simFromAudit')):'')+'</span></label>';}).join('')+'</div>';
     document.getElementById('issueDetailsArea').style.display='block';
@@ -1984,7 +2046,7 @@
     catch(err){console.error(err);setIssueToast(t('lookupFailed'),'err');}finally{b.disabled=false;b.textContent=t('issueFindBtn');}
   });
   document.getElementById('employeeIssueForm').addEventListener('submit',async function(e){
-    e.preventDefault();var emp=issueReportState.employee;if(!emp){setIssueToast(t('issueChooseEmployeeFirst'),'err');return;}var imei=(document.querySelector('input[name="issueDeviceChoice"]:checked')||{}).value||'';if(!imei){setIssueToast(t('issueChooseDevice'),'err');return;}var type=(document.querySelector('input[name="employeeIssueType"]:checked')||{}).value||'';if(!type){setIssueToast(t('issueChooseType'),'err');return;}var details=document.getElementById('reportedIssueDetails').value.trim();if(!details){setIssueToast(t('issueDetailsRequired'),'err');return;}var cause=type==='Physical Damage'?document.getElementById('reportedDamageCause').value.trim():'';var device=(issueReportState.devices||[]).find(function(d){return d.imei1===imei;})||{};var email=preferredIssueEmail(emp);var btn=document.getElementById('issueReportSubmitBtn');btn.disabled=true;btn.textContent=t('issueSending');setIssueToast('','');
+    e.preventDefault();var emp=issueReportState.employee;if(!emp){setIssueToast(t('issueChooseEmployeeFirst'),'err');return;}if(isExitedEmployee(emp)){setIssueToast(t('employeeExitedSelfService'),'err');return;}var imei=(document.querySelector('input[name="issueDeviceChoice"]:checked')||{}).value||'';if(!imei){setIssueToast(t('issueChooseDevice'),'err');return;}var type=(document.querySelector('input[name="employeeIssueType"]:checked')||{}).value||'';if(!type){setIssueToast(t('issueChooseType'),'err');return;}var details=document.getElementById('reportedIssueDetails').value.trim();if(!details){setIssueToast(t('issueDetailsRequired'),'err');return;}var cause=type==='Physical Damage'?document.getElementById('reportedDamageCause').value.trim():'';var device=(issueReportState.devices||[]).find(function(d){return d.imei1===imei;})||{};var email=preferredIssueEmail(emp);var btn=document.getElementById('issueReportSubmitBtn');btn.disabled=true;btn.textContent=t('issueSending');setIssueToast('','');
     try{
       var deviceSnapshot={brand:device.brand||'',model:device.model||'',ram:device.ram||'',storage:device.storage||'',imei1:device.imei1||imei,imei2:device.imei2||'',sim_numbers:device.sim_numbers||device.simNumbers||[],condition:device.condition||'',status:device.status||'Assigned'};
       var payload={submission_id:emp.latest_submission_id||null,employee_name:emp.employee_name,employee_id:emp.employee_id,employee_email:email,location:emp.location,device_imei1:imei,device_snapshot:deviceSnapshot,issue_type:type,issue_details:details,damage_cause:cause||null,status:'Open',language:currentLang,updated_at:new Date().toISOString()};
@@ -2014,6 +2076,7 @@
     document.getElementById('requestTitle').textContent = type==='Replace' ? t('replaceDeviceRequest').replace('↻ ','') : t('newDeviceRequest').replace('+ ','');
     document.getElementById('requestSubtitle').textContent = t('requestSubtitle');
     document.getElementById('requestEmail').value=''; document.getElementById('requestLookupResult').innerHTML='';
+    document.getElementById('requestSubmitBtn').disabled=false;
     ['requestEmpName','requestDesignation','requestDepartment','requestReason','requestUse','requestNeededBy'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('requestLocation').value=''; var addChoice=document.querySelector('input[name="requestChoice"][value="Additional"]'); if(addChoice)addChoice.checked=true;
     document.getElementById('requestStepLookup').classList.add('active'); document.getElementById('requestStepDetails').classList.remove('active');
@@ -2027,20 +2090,30 @@
   document.getElementById('requestOverlay').addEventListener('click',function(e){if(e.target===this) closeRequest();});
 
   async function lookupRequestEmployee(email){
-    var master=await sb.rpc('dncc_employee_master_rows',{p_search:email,p_limit:20});if(master.error)throw master.error;
-    var exact=(master.data||[]).find(function(e){return [e.company_email,e.personal_email].some(function(v){return String(v||'').trim().toLowerCase()===email.toLowerCase();});})||null;
+    var matches=await findSelfServiceEmployees(email);
+    var exact=(matches||[]).find(function(e){
+      return [e.company_email,e.personal_email].some(function(v){return String(v||'').trim().toLowerCase()===email.toLowerCase();});
+    })||null;
     var employee=null,devices=[];
     if(exact){
-      if(exact.latest_submission_id){var sr=await sb.from('submission_summaries').select('*').eq('id',exact.latest_submission_id).single();if(!sr.error)employee=sr.data;}
-      if(!employee)employee={id:exact.latest_submission_id,employee_name:exact.employee_name,employee_id:exact.employee_id,company_email:exact.company_email,personal_email:exact.personal_email,location:exact.location,designation:exact.designation,department:exact.department};
-      devices=Array.isArray(exact.current_devices)?exact.current_devices:[];
-      if(!devices.length){var q=sb.from('devices').select('*').eq('status','Assigned'),filters=[];if(employee.employee_id)filters.push('assigned_employee_id.eq.'+employee.employee_id);if(email)filters.push('assigned_employee_email.eq.'+email);if(filters.length){var dr=await q.or(filters.join(','));if(!dr.error)devices=dr.data||[];}}
-      var historical=[employee.device1,employee.device2].filter(Boolean);
-      devices=devices.map(function(dev){var h=historical.find(function(x){return x&&x.imei1===dev.imei1;})||{};return Object.assign({},dev,{sim_numbers:(dev.sim_numbers&&dev.sim_numbers.length)?dev.sim_numbers:(h.simNumbers||[]),sim_slots:dev.sim_slots||h.simCount||2});});
+      if(exact.latest_submission_id){
+        var sr=await sb.from('submission_summaries').select('*').eq('id',exact.latest_submission_id).single();
+        if(!sr.error)employee=Object.assign({},sr.data,{employee_status:exact.employee_status});
+      }
+      if(!employee)employee={
+        id:exact.latest_submission_id,
+        employee_name:exact.employee_name,employee_id:exact.employee_id,
+        company_email:exact.company_email,personal_email:exact.personal_email,
+        location:exact.location,designation:exact.designation,department:exact.department,
+        employee_status:exact.employee_status
+      };
+      if(!isExitedEmployee(employee)&&employee.employee_id){
+        var dr=await sb.from('devices').select('*').eq('status','Assigned').eq('assigned_employee_id',employee.employee_id).order('last_updated',{ascending:false});
+        if(!dr.error)devices=dr.data||[];
+      }
     }
     return {employee:employee,devices:devices};
   }
-
   function requestDeviceLabel(d){ return (d.brand||'')+' '+(d.model||'')+' · IMEI '+(d.imei1||'—'); }
   function renderRequestDetails(){
     var e=requestState.employee, devices=requestState.devices||[];
@@ -2049,7 +2122,12 @@
     document.getElementById('newRequestChoice').style.display=(!requestState.isNew && requestState.type==='New' && devices.length)?'block':'none';
     if(requestState.isNew){
       sum.innerHTML='<div class="lookup-result warn"><h3>'+h(t('newEmployeeRequest'))+'</h3><p>'+h(t('noPreviousRecord'))+' <b>'+h(requestState.email)+'</b></p></div>'; list.innerHTML='';
+    }else if(isExitedEmployee(e)){
+      sum.innerHTML='<div class="lookup-result exited"><h3>'+h(t('employeeExitedTitle'))+'</h3><p>'+h(t('employeeExitedRequest'))+'</p></div>';list.innerHTML='';
+      document.getElementById('requestSubmitBtn').disabled=true;
+      return;
     }else{
+      document.getElementById('requestSubmitBtn').disabled=false;
       sum.innerHTML='<div class="lookup-result"><h3>'+h(t('employeeFound'))+'</h3><p><b>'+h((e||{}).employee_name||'Employee')+'</b> · '+h((e||{}).employee_id||t('noEmployeeId'))+' · '+h((e||{}).location||'')+'</p><p>'+devices.length+' '+h(t('currentlyAssignedDevices'))+'</p></div>';
       list.innerHTML=devices.length?'<label>'+h(t('currentPhones'))+'</label><div class="request-device-list">'+devices.map(function(d){return '<div class="request-device"><strong>'+h(requestDeviceLabel(d))+'</strong><div class="mini">'+h(d.ram||'—')+' RAM · '+h(d.storage||'—')+' storage · '+h((d.sim_numbers||[]).join(', ')||t('simFromAudit'))+'</div></div>';}).join('')+'</div>':'<div class="lookup-result warn"><h3>'+h(t('noActivePhone'))+'</h3><p>'+h(t('noActivePhoneText'))+'</p></div>';
     }
@@ -2071,6 +2149,10 @@
     var btn=this;btn.disabled=true;btn.textContent=t('checkingBtn');
     try{
       var found=await lookupRequestEmployee(email); requestState.email=email; requestState.employee=found.employee; requestState.devices=found.devices; requestState.isNew=!found.employee;
+      if(requestState.employee&&isExitedEmployee(requestState.employee)){
+        document.getElementById('requestLookupResult').innerHTML='<div class="request-msg err" style="display:block">'+h(t('employeeExitedRequest'))+'</div>';
+        return;
+      }
       if(requestState.isNew){ if(!confirm(t('newEmployeeConfirm'))){return;} }
       if(requestState.type==='Replace' && !requestState.isNew && !requestState.devices.length){
         alert(t('replaceNoDeviceAlert')); return;
@@ -2089,6 +2171,7 @@
 
   document.getElementById('requestSubmitBtn').addEventListener('click',async function(){
     var btn=this, e=requestState.employee||{}; setRequestMsg('','');
+    if(requestState.employee&&isExitedEmployee(requestState.employee)){setRequestMsg(t('employeeExitedRequest'),'err');return;}
     var requestChoice=requestState.type==='New' ? ((document.querySelector('input[name="requestChoice"]:checked')||{}).value||'Additional') : 'Replace';
     var effectiveType=requestChoice==='Replace'?'Replace':requestState.type;
     var replaceImei=effectiveType==='Replace'?((document.querySelector('input[name="replaceImei"]:checked')||{}).value||''):'';
