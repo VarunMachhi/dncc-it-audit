@@ -381,16 +381,19 @@
 
   <div class="correction-block">
     <button type="button" class="correction-toggle" id="correctionToggle" data-i18n="correctionToggle">Made a mistake? Request a correction to details you already submitted →</button>
-    <form id="correctionForm" style="display:none;">
-      <p class="hint" style="margin-top:0;" data-i18n="correctionHint">Describe what's wrong and what it should be instead (e.g. "IMEI 1 for my Samsung was typed wrong, it should be 356789012345678"). IT will review and update your record — you'll get an email once it's corrected.</p>
+    <form id="correctionForm" style="display:none;" novalidate>
+      <p class="hint" style="margin-top:0;" data-i18n="correctionHint">Find your employee record using your name, employee ID/code, personal email, or company email. If more than one result appears, select your own record before requesting a correction.</p>
       <div class="row2">
-        <div class="field"><label for="corrName" data-i18n="corrNameLabel">Your name</label><input type="text" id="corrName" required /></div>
-        <div class="field"><label for="corrEmail" data-i18n="corrEmailLabel">Your email (company or personal)</label><input type="email" id="corrEmail" required /></div>
+        <div class="field"><label for="corrLookupTerm" data-i18n="issueLookupLabel">Email, employee ID/code, or employee name</label><input type="text" id="corrLookupTerm" data-i18n-ph="issueLookupPlaceholder" placeholder="e.g. name@dncc.in, VAD-RAHUL, or Rahul Patel" /></div>
+        <div class="field" style="display:flex;align-items:flex-end;"><button type="button" class="btn-primary" id="corrLookupBtn" data-i18n="issueFindBtn">Find my record</button></div>
       </div>
-      <div class="field"><label for="corrEmpId" data-i18n="corrEmpIdLabel">Employee ID (if known)</label><input type="text" id="corrEmpId" /></div>
-      <div class="field" style="margin-bottom:0;"><label for="corrDetails" data-i18n="corrDetailsLabel">What needs to be corrected?</label><textarea id="corrDetails" required style="min-height:90px;"></textarea></div>
-      <div class="submit-bar" style="margin-top:14px;">
-        <button type="submit" class="btn-primary" id="corrSubmitBtn" data-i18n="corrSubmitBtn">Send correction request</button>
+      <div id="corrCandidateArea"></div>
+      <div id="corrSelectedArea"></div>
+      <div id="corrDetailsArea" style="display:none;">
+        <div class="field" style="margin-bottom:0;"><label for="corrDetails" data-i18n="corrDetailsLabel">What needs to be corrected?</label><textarea id="corrDetails" required style="min-height:90px;"></textarea></div>
+        <div class="submit-bar" style="margin-top:14px;">
+          <button type="submit" class="btn-primary" id="corrSubmitBtn" data-i18n="corrSubmitBtn">Send correction request</button>
+        </div>
       </div>
       <div class="toast" id="corrToast"></div>
     </form>
@@ -693,6 +696,32 @@
   Object.assign(TRANSLATIONS.hi,{formSubtitle:'IT विभाग — IT मोबाइल ऑडिट फॉर्म',draftRestoreConfirm:'पहले का अधूरा फॉर्म सेव है. उसे वापस लाकर वहीं से जारी रखें?',draftRestored:'आपका अधूरा फॉर्म वापस लोड हो गया है.',imeiDuplicateLive:'इस IMEI के लिए पहले से submission है ({name}). डिवाइस reassignment के लिए मान्य IT request/temporary edit link उपयोग करें.',fillRequired:'सबमिट करने से पहले highlighted जरूरी fields भरें.',preparingReview:'Review तैयार हो रहा है…',prepareError:'विवरण तैयार करते समय समस्या आई. फिर कोशिश करें.',checkingDuplicates:'Duplicate जाँच रहे हैं…',duplicateFinal:'इस डिवाइस (IMEI {imei}) के लिए पहले से submission है ({name}). Reassigned device के लिए IT-issued request/edit link उपयोग करें.',saving:'सेव हो रहा है…',emailingCopy:'आपकी कॉपी ईमेल हो रही है…',submitSuccessEmail:'Submission सफल है — handover PDF डाउनलोड हो रहा है और ईमेल कॉपी भेज दी गई है.',submitSuccessNoEmail:'Submission सफल है और PDF डाउनलोड हो रहा है. ईमेल कॉपी नहीं भेजी जा सकी; IT portal से दोबारा भेज सकता है.',saveError:'आपका response सेव करते समय समस्या आई. फिर कोशिश करें.',corrValidation:'अपना नाम, मान्य ईमेल और क्या सुधारना है, भरें.',corrSuccess:'Correction request भेज दी गई है. IT review करके update होने पर ईमेल करेगा.',corrError:'Request नहीं भेज सके. फिर कोशिश करें.'});
   Object.assign(TRANSLATIONS.mr,{formSubtitle:'IT विभाग — IT मोबाईल ऑडिट फॉर्म',draftRestoreConfirm:'आधीचे अपूर्ण फॉर्म सेव आहे. ते परत आणून पुढे सुरू ठेवायचे?',draftRestored:'तुमचे अपूर्ण फॉर्म परत आणले आहे.',imeiDuplicateLive:'या IMEI साठी आधीच submission आहे ({name}). डिव्हाइस पुन्हा assign होत असल्यास वैध IT request/temporary edit link वापरा.',fillRequired:'सबमिट करण्यापूर्वी highlight केलेली आवश्यक माहिती भरा.',preparingReview:'Review तयार होत आहे…',prepareError:'तपशील तयार करताना समस्या आली. पुन्हा प्रयत्न करा.',checkingDuplicates:'Duplicate तपासत आहोत…',duplicateFinal:'या डिव्हाइस (IMEI {imei}) साठी आधीच submission आहे ({name}). Reassigned device साठी IT-issued request/edit link वापरा.',saving:'सेव करत आहोत…',emailingCopy:'तुमची कॉपी ईमेल करत आहोत…',submitSuccessEmail:'Submission यशस्वी — handover PDF डाउनलोड होत आहे आणि ईमेल कॉपी पाठवली आहे.',submitSuccessNoEmail:'Submission यशस्वी आणि PDF डाउनलोड होत आहे. ईमेल कॉपी पाठवता आली नाही; IT portal मधून पुन्हा पाठवू शकते.',saveError:'तुमचा response सेव करताना समस्या आली. पुन्हा प्रयत्न करा.',corrValidation:'तुमचे नाव, वैध ईमेल आणि काय सुधारायचे ते भरा.',corrSuccess:'Correction request पाठवली आहे. IT review करून update झाल्यावर ईमेल करेल.',corrError:'Request पाठवता आली नाही. पुन्हा प्रयत्न करा.'});
   Object.assign(TRANSLATIONS.kok,{formSubtitle:'IT विभाग — IT मोबायल ऑडिट फॉर्म',draftRestoreConfirm:'पयलें अपुरें फॉर्म सेव आसा. तें परत हाडून फुडें चालू दवरपाचें?',draftRestored:'तुमचें अपुरें फॉर्म परत हाडलां.',imeiDuplicateLive:'ह्या IMEI खातीर पयलींच submission आसा ({name}). डिव्हाइस परत assign जाता जाल्यार योग्य IT request/temporary edit link वापरात.',fillRequired:'सबमिट करचे पयलीं दाखयल्ली गरजेची म्हायती भरात.',preparingReview:'Review तयार जाता…',prepareError:'म्हायती तयार करतना समस्या जाली. परत यत्न करात.',checkingDuplicates:'Duplicate तपासता…',duplicateFinal:'ह्या डिव्हाइस (IMEI {imei}) खातीर पयलींच submission आसा ({name}). Reassigned device खातीर IT-issued request/edit link वापरात.',saving:'सेव जाता…',emailingCopy:'तुमची प्रत ई-मेलान धाडता…',submitSuccessEmail:'Submission यशस्वी — handover PDF डाउनलोड जाता आनी ई-मेल प्रत धाडल्या.',submitSuccessNoEmail:'Submission यशस्वी आनी PDF डाउनलोड जाता. ई-मेल प्रत धाडूंक जमना; IT portal वरून परत धाडूंक शकता.',saveError:'तुमचो response सेव करतना समस्या जाली. परत यत्न करात.',corrValidation:'तुमचें नांव, योग्य ई-मेल आनी कितें बदलपाचें तें भरात.',corrSuccess:'Correction request धाडल्या. IT तपासून update जाल्यार ई-मेल करतली.',corrError:'Request धाडूंक जमना. परत यत्न करात.'});
+  Object.assign(TRANSLATIONS.en,{
+    empIdHint:'System-generated unique Employee ID. If the same base ID already exists for another person, the next free suffix is used automatically (for example -02, -03).',
+    correctionHint:'Find your employee record using your name, Employee ID/code, personal email, or company email. If multiple results appear, select your own record before requesting a correction.',
+    corrValidation:'Find and select your employee record, then describe what needs to be corrected.'
+  });
+  Object.assign(TRANSLATIONS.gu,{
+    empIdHint:'સિસ્ટમ યુનિક Employee ID બનાવે છે. એ જ base ID બીજા કર્મચારી માટે પહેલેથી હોય તો -02, -03 જેવી આગળની ખાલી suffix આપમેળે ઉમેરાશે.',
+    correctionHint:'નામ, Employee ID/કોડ, personal email અથવા company email થી તમારો રેકોર્ડ શોધો. એકથી વધુ પરિણામ આવે તો તમારો સાચો રેકોર્ડ પસંદ કરો.',
+    corrValidation:'પહેલા તમારો કર્મચારી રેકોર્ડ શોધીને પસંદ કરો, પછી શું સુધારવું છે તે લખો.'
+  });
+  Object.assign(TRANSLATIONS.hi,{
+    empIdHint:'सिस्टम एक unique Employee ID बनाता है. वही base ID किसी दूसरे कर्मचारी के लिए मौजूद हो तो अगला खाली suffix अपने-आप लगेगा, जैसे -02, -03.',
+    correctionHint:'नाम, Employee ID/कोड, personal email या company email से अपना रिकॉर्ड खोजें. एक से अधिक परिणाम आएँ तो अपना सही रिकॉर्ड चुनें.',
+    corrValidation:'पहले अपना कर्मचारी रिकॉर्ड खोजकर चुनें, फिर क्या सुधारना है लिखें.'
+  });
+  Object.assign(TRANSLATIONS.mr,{
+    empIdHint:'सिस्टम unique Employee ID तयार करते. तोच base ID दुसऱ्या कर्मचाऱ्याकडे असल्यास -02, -03 असा पुढचा रिकामा suffix आपोआप जोडला जाईल.',
+    correctionHint:'नाव, Employee ID/कोड, personal email किंवा company email वापरून तुमचा रेकॉर्ड शोधा. एकापेक्षा जास्त परिणाम आल्यास योग्य रेकॉर्ड निवडा.',
+    corrValidation:'आधी तुमचा कर्मचारी रेकॉर्ड शोधून निवडा, नंतर काय दुरुस्त करायचे ते लिहा.'
+  });
+  Object.assign(TRANSLATIONS.kok,{
+    empIdHint:'सिस्टम unique Employee ID तयार करता. तोच base ID दुसऱ्या कर्मचाऱ्याक आसल्यार -02, -03 अशें फुडले रिकामे suffix आपशींच जोडटलें.',
+    correctionHint:'नांव, Employee ID/कोड, personal email वा company email वापरून तुमचो रेकॉर्ड सोदात. जास्त निकाल आयल्यार तुमचो योग्य रेकॉर्ड निवडात.',
+    corrValidation:'पयलीं तुमचो कर्मचारी रेकॉर्ड सोदून निवडात, मागीर कितें बदलपाचें तें बरयात.'
+  });
+
   var currentLang = (function(){ try{ return localStorage.getItem('dncc_lang') || 'en'; }catch(e){ return 'en'; } })();
 
 
@@ -737,21 +766,53 @@
     applyLanguage();
   });
 
-  // ---------- Auto-generate Employee ID from location + name (read-only, always in sync) ----------
+  // ---------- Unique Employee ID preview ----------
+  // Employee ID is the primary identity. The browser shows a preview, while the
+  // final ID is claimed atomically in PostgreSQL before a new submission is saved.
   var LOCATION_CODES = {
     'Vadodara':'VAD', 'Surat':'SUR', 'Anand':'ANA', 'Ahmedabad':'AHM',
     'Rajkot':'RAJ', 'Bandra':'BAN', 'Thane':'THA', 'Borivali':'BOR', 'Panjim':'PAN'
   };
+  var empIdPreviewTimer=null, empIdPreviewSeq=0;
+  function localEmployeeIdBase(){
+    var loc=document.getElementById('location').value;
+    var name=document.getElementById('empName').value.trim();
+    var code=LOCATION_CODES[loc];
+    var firstName=(name.split(/\s+/)[0]||'').replace(/[^a-z0-9]/gi,'').toUpperCase();
+    return (code&&firstName)?(code+'-'+firstName):'';
+  }
   function updateAutoEmpId(){
-    var loc = document.getElementById('location').value;
-    var name = document.getElementById('empName').value.trim();
-    var code = LOCATION_CODES[loc];
-    var firstName = name.split(/\s+/)[0] || '';
-    var idField = document.getElementById('empId');
-    idField.value = (code && firstName) ? (code + '-' + firstName.toUpperCase()) : '';
+    var idField=document.getElementById('empId');
+    var base=localEmployeeIdBase();
+    if(!base){idField.value='';return;}
+    // Existing IT-issued edit/request links keep the Employee ID already supplied by IT.
+    if((typeof EDIT_CONTEXT!=='undefined'&&EDIT_CONTEXT&&EDIT_CONTEXT.submission&&EDIT_CONTEXT.submission.employee_id)
+      ||(typeof REQUEST_CONTEXT!=='undefined'&&REQUEST_CONTEXT&&REQUEST_CONTEXT.employee_kind==='Existing'&&idField.value)){
+      return;
+    }
+    idField.value=base;
+    var seq=++empIdPreviewSeq;
+    clearTimeout(empIdPreviewTimer);
+    empIdPreviewTimer=setTimeout(async function(){
+      try{
+        var res=await sb.rpc('dncc_preview_employee_id',{
+          p_location:document.getElementById('location').value||'',
+          p_employee_name:document.getElementById('empName').value.trim(),
+          p_personal_email:document.getElementById('personalEmail').value.trim()||null,
+          p_company_email:document.getElementById('companyEmail').value.trim()||null
+        });
+        if(res.error)throw res.error;
+        if(seq!==empIdPreviewSeq)return;
+        if(res.data)idField.value=String(res.data);
+      }catch(err){
+        console.warn('Employee ID preview unavailable; final submit will still verify uniqueness.',err);
+      }
+    },350);
   }
   document.getElementById('location').addEventListener('change', updateAutoEmpId);
   document.getElementById('empName').addEventListener('input', updateAutoEmpId);
+  document.getElementById('personalEmail').addEventListener('input', updateAutoEmpId);
+  document.getElementById('companyEmail').addEventListener('input', updateAutoEmpId);
 
   // ---------- Draft autosave (localStorage) ----------
   var DRAFT_KEY = 'dncc_form_draft_v1';
@@ -894,7 +955,15 @@
   var EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   function isRealEmail(v){ return !!v && EMAIL_FORMAT.test(String(v).trim()); }
 
-  async function autoSendHandoverEmail(record, submissionId){
+  async function claimEmailEvent(eventKey,recipient,subject,source){
+    if(!eventKey)return true;
+    try{var q=await sb.rpc('dncc_claim_email_event',{p_event_key:eventKey,p_recipient:Array.isArray(recipient)?recipient.join(', '):(recipient||''),p_subject:subject||'',p_source:source||''});if(q.error)throw q.error;return q.data!==false;}
+    catch(err){console.warn('Email de-duplication check unavailable; allowing send.',err);return true;}
+  }
+  async function markEmailEvent(eventKey,success,errorText){if(!eventKey)return;try{await sb.rpc('dncc_mark_email_event',{p_event_key:eventKey,p_success:!!success,p_error:errorText||null});}catch(err){console.warn('Could not update email event status',err);}}
+
+
+  async function autoSendHandoverEmail(record, submissionId, versionToken){
     var recipients = [record.companyEmail, record.personalEmail].filter(isRealEmail);
     if(recipients.length === 0) return;
     try{
@@ -908,6 +977,8 @@
       var closing = tmpl ? fillTemplate(tmpl.closing, vars) : '';
       var subject = tmpl ? fillTemplate(tmpl.subject, vars) : ('Your Mobile Device Handover Confirmation — ' + window.DNCC_CONFIG.COMPANY_NAME);
       var html = intro + buildDeviceDetailsHTML(record) + closing;
+      var eventKey=submissionId?('handover:'+submissionId+':'+(versionToken||'current')):null;
+      var canSend=await claimEmailEvent(eventKey,recipients,subject,'employee_handover');if(!canSend)return true;
       var pdfBase64 = buildHandoverPDFBase64(record);
       var res = await fetch(FUNCTIONS_URL + '/send-handover-email', {
         method:'POST',
@@ -918,14 +989,11 @@
           pdfFilename: 'Handover_' + (record.employeeName||'Employee').replace(/[^a-z0-9]+/gi,'_') + '.pdf'
         })
       });
-      var json = await res.json();
-      if(res.ok && json.ok && submissionId){
-        await sb.from('submissions').update({ email_sent_at: new Date().toISOString(), email_sent_via: 'resend' }).eq('id', submissionId);
-      }
-      return res.ok && json.ok;
+      var json = await res.json();var ok=!!(res.ok&&json.ok);
+      if(ok && submissionId){await sb.from('submissions').update({ email_sent_at:new Date().toISOString(), email_sent_via:'auto_handover' }).eq('id',submissionId);}
+      await markEmailEvent(eventKey,ok,ok?null:(json.error||'Send failed'));return ok;
     }catch(err){
-      console.error('Auto-email failed (submission was still saved successfully):', err);
-      return false;
+      await markEmailEvent(eventKey,false,err.message||String(err));console.error('Auto-email failed (submission was still saved successfully):', err);return false;
     }
   }
 
@@ -1526,7 +1594,7 @@
       var sr=await sb.from('settings').select('*').eq('id',1).single(),settings=sr.data||{},itEmail=settings.it_request_email||settings.smtp2go_sender_email||settings.smtp_from_email||'';
       var adminLink=location.origin+location.pathname.replace(/index\.html.*$/,'admin.html');
       var html='<p><b>'+h(after.employee_name||'Employee')+'</b> ('+h(after.employee_id||'')+') used a temporary edit link and submitted updated mobile audit details.</p><p><b>Employee email:</b> '+h(email||'—')+'<br/><b>Changed fields:</b> '+changes.length+'<br/><b>Submitted:</b> '+h(new Date().toLocaleString())+'</p>'+changesHtml(changes)+'<p><a href="'+adminLink+'">Open IT Admin</a></p>';
-      var sent=await sendRequestEmail(itEmail,'Employee updated mobile audit — '+(after.employee_name||after.employee_id||'Employee'),html);
+      var sent=await sendRequestEmail(itEmail,'Employee updated mobile audit — '+(after.employee_name||after.employee_id||'Employee'),html,auditRow&&auditRow.id?('employee-edit:'+auditRow.id+':it'):null,'employee_edit_notification');
       if(sent&&auditRow&&auditRow.id)await sb.from('employee_edit_audits').update({admin_notification_sent_at:new Date().toISOString()}).eq('id',auditRow.id);
     }catch(err){console.error('Could not notify IT about employee edit',err);}
   }
@@ -1611,6 +1679,22 @@
           console.error(checkErr);showToast(t('imeiCheckFailed'),'err');submitBtn.disabled=false;submitBtn.textContent=t('submitBtn');return;
         }
       }
+      // Claim the final unique Employee ID only for a new employee/form.
+      // Existing employees keep their already verified Employee ID.
+      var mustClaimEmployeeId=!(EDIT_CONTEXT&&EDIT_CONTEXT.submission)
+        && !(REQUEST_CONTEXT&&REQUEST_CONTEXT.employee_kind==='Existing');
+      if(mustClaimEmployeeId){
+        var idClaim=await sb.rpc('dncc_claim_employee_id',{
+          p_location:effectiveRecord.location||'',
+          p_employee_name:effectiveRecord.employeeName||'',
+          p_personal_email:effectiveRecord.personalEmail||null,
+          p_company_email:effectiveRecord.companyEmail||null
+        });
+        if(idClaim.error)throw idClaim.error;
+        if(!idClaim.data)throw new Error('Could not generate a unique Employee ID.');
+        effectiveRecord.employeeId=String(idClaim.data);
+        document.getElementById('empId').value=effectiveRecord.employeeId;
+      }
       submitBtn.textContent = t('saving');
 
       var submissionPayload = {
@@ -1668,7 +1752,8 @@
 
       buildHandoverPDF(effectiveRecord);
       submitBtn.textContent = t('emailingCopy');
-      var emailed = await autoSendHandoverEmail(effectiveRecord, submissionId);
+      var submissionVersion=inserted&&inserted[0]?(inserted[0].updated_at||inserted[0].created_at):new Date().toISOString();
+      var emailed = await autoSendHandoverEmail(effectiveRecord, submissionId, submissionVersion);
       showToast(emailed
         ? t('submitSuccessEmail')
         : t('submitSuccessNoEmail'), 'ok');
@@ -1719,54 +1804,124 @@
     window.scrollTo({top:0,behavior:'smooth'});
   });
 
+  // ---------- Shared self-service employee lookup ----------
+  async function findSelfServiceEmployees(term){
+    var res=await sb.rpc('dncc_self_service_employee_lookup',{p_search:term.trim(),p_limit:20});
+    if(res.error)throw res.error;
+    return (res.data||[]).map(function(e){
+      return {
+        id:e.employee_id,
+        latest_submission_id:e.latest_submission_id,
+        employee_name:e.employee_name,
+        employee_id:e.employee_id,
+        company_email:e.company_email,
+        personal_email:e.personal_email,
+        location:e.location,
+        designation:e.designation,
+        department:e.department,
+        employee_status:e.employee_status,
+        current_device_count:e.current_device_count||0
+      };
+    });
+  }
+  function selfServiceEmployeeMeta(e){
+    var emails=[e.company_email,e.personal_email].filter(validEmail);
+    return (e.employee_id||t('noEmployeeId'))+' · '+(e.location||'')+(emails.length?' · '+emails.join(' / '):'');
+  }
+
   // ---------- Correction request ----------
+  var correctionState={matches:[],employee:null};
+  function setCorrectionToast(text,type){var el=document.getElementById('corrToast');el.textContent=text||'';el.className='toast '+(type||'');}
+  function resetCorrectionLookup(){
+    correctionState={matches:[],employee:null};
+    document.getElementById('correctionForm').reset();
+    document.getElementById('corrCandidateArea').innerHTML='';
+    document.getElementById('corrSelectedArea').innerHTML='';
+    document.getElementById('corrDetailsArea').style.display='none';
+    setCorrectionToast('','');
+  }
+  function renderCorrectionCandidates(){
+    var area=document.getElementById('corrCandidateArea');
+    if(!correctionState.matches.length){area.innerHTML='<div class="lookup-result warn"><p>'+h(t('issueNoMatch'))+'</p></div>';return;}
+    area.innerHTML='<label>'+h(t('issueSelectEmployee'))+'</label><div class="candidate-list">'
+      +correctionState.matches.map(function(e){
+        var noSub=!e.latest_submission_id;
+        return '<label class="candidate-card"><input type="radio" name="corrEmployeeChoice" value="'+h(e.employee_id||'')+'" '
+          +(correctionState.employee&&String(correctionState.employee.employee_id)===String(e.employee_id)?'checked':'')+'/>'
+          +'<b>'+h(e.employee_name||'Employee')+'</b>'
+          +'<span class="candidate-meta">'+h(selfServiceEmployeeMeta(e))+(noSub?' · No submitted audit form':'')+'</span></label>';
+      }).join('')+'</div>';
+    area.querySelectorAll('input[name="corrEmployeeChoice"]').forEach(function(r){r.addEventListener('change',function(){selectCorrectionEmployee(this.value);});});
+  }
+  function selectCorrectionEmployee(employeeId){
+    var emp=correctionState.matches.find(function(x){return String(x.employee_id)===String(employeeId);});
+    if(!emp)return;
+    correctionState.employee=emp;
+    renderCorrectionCandidates();
+    var selected=document.getElementById('corrSelectedArea');
+    if(!emp.latest_submission_id){
+      selected.innerHTML='<div class="lookup-result warn"><p>This employee record has no submitted mobile audit form to correct. Contact IT if the employee details themselves need to be created.</p></div>';
+      document.getElementById('corrDetailsArea').style.display='none';
+      return;
+    }
+    selected.innerHTML='<div class="lookup-result"><h3>'+h(t('employeeFound'))+'</h3><p><b>'+h(emp.employee_name||'Employee')+'</b> · '+h(emp.employee_id||'')+' · '+h(emp.location||'')+'</p><p>'+h([emp.company_email,emp.personal_email].filter(validEmail).join(' / ')||'—')+'</p></div>';
+    document.getElementById('corrDetailsArea').style.display='block';
+    document.getElementById('corrDetails').focus();
+  }
+
   document.getElementById('correctionToggle').addEventListener('click', function(){
-    var form = document.getElementById('correctionForm');
-    var open = form.style.display !== 'none';
-    form.style.display = open ? 'none' : 'block';
-    this.textContent = open ? t('correctionToggleClosed') : t('correctionToggleOpen');
+    var form=document.getElementById('correctionForm');
+    var open=form.style.display!=='none';
+    form.style.display=open?'none':'block';
+    this.textContent=open?t('correctionToggleClosed'):t('correctionToggleOpen');
+    if(!open)document.getElementById('corrLookupTerm').focus();
+  });
+
+  document.getElementById('corrLookupBtn').addEventListener('click',async function(){
+    var term=document.getElementById('corrLookupTerm').value.trim();
+    if(term.length<2){setCorrectionToast(t('issueSearchMin'),'err');return;}
+    var b=this;b.disabled=true;b.textContent=t('issueSearching');setCorrectionToast('','');
+    try{
+      correctionState.matches=await findSelfServiceEmployees(term);
+      correctionState.employee=null;
+      document.getElementById('corrSelectedArea').innerHTML='';
+      document.getElementById('corrDetailsArea').style.display='none';
+      renderCorrectionCandidates();
+      if(correctionState.matches.length===1)selectCorrectionEmployee(correctionState.matches[0].employee_id);
+    }catch(err){
+      console.error(err);setCorrectionToast(t('lookupFailed'),'err');
+    }finally{
+      b.disabled=false;b.textContent=t('issueFindBtn');
+    }
   });
 
   document.getElementById('correctionForm').addEventListener('submit', async function(e){
     e.preventDefault();
-    var name = document.getElementById('corrName').value.trim();
-    var email = document.getElementById('corrEmail').value.trim();
-    var empId = document.getElementById('corrEmpId').value.trim();
-    var details = document.getElementById('corrDetails').value.trim();
-    var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    var corrToast = document.getElementById('corrToast');
-    if(!name || !details || !emailPattern.test(email)){
-      corrToast.textContent = t('corrValidation');
-      corrToast.className = 'toast err';
-      return;
+    var emp=correctionState.employee;
+    var details=document.getElementById('corrDetails').value.trim();
+    if(!emp||!emp.latest_submission_id||!details){
+      setCorrectionToast(t('corrValidation'),'err');return;
     }
-    var btn = document.getElementById('corrSubmitBtn');
-    btn.disabled = true; btn.textContent = t('sendingBtn');
+    var email=validEmail(emp.personal_email)?emp.personal_email:(validEmail(emp.company_email)?emp.company_email:'');
+    var btn=document.getElementById('corrSubmitBtn');
+    btn.disabled=true;btn.textContent=t('sendingBtn');
     try{
-      // Try to auto-link to their most recent submission by matching email
-      var submissionId = null;
-      var { data: matches } = await sb.from('submissions')
-        .select('id, created_at')
-        .or('company_email.eq.' + email + ',personal_email.eq.' + email)
-        .order('created_at', { ascending:false }).limit(1);
-      if(matches && matches[0]) submissionId = matches[0].id;
-
-      var { error } = await sb.from('change_requests').insert([{
-        submission_id: submissionId, employee_name: name, employee_id: empId,
-        employee_email: email, request_details: details, status: 'Pending'
-      }]);
-      if(error) throw error;
-      corrToast.textContent = t('corrSuccess');
-      corrToast.className = 'toast ok';
-      this.reset();
+      var ins=await sb.from('change_requests').insert([{
+        submission_id:emp.latest_submission_id,
+        employee_name:emp.employee_name,
+        employee_id:emp.employee_id,
+        employee_email:email||null,
+        request_details:details,
+        status:'Pending'
+      }]).select();
+      if(ins.error)throw ins.error;
+      setCorrectionToast(t('corrSuccess'),'ok');
+      setTimeout(resetCorrectionLookup,1800);
     }catch(err){
-      console.error(err);
-      corrToast.textContent = t('corrError');
-      corrToast.className = 'toast err';
+      console.error(err);setCorrectionToast(t('corrError'),'err');
     }finally{
-      btn.disabled = false; btn.textContent = t('corrSubmitBtn');
+      btn.disabled=false;btn.textContent=t('corrSubmitBtn');
     }
-
   });
 
   // ---------- Employee-reported post-handover issue workflow ----------
@@ -1786,52 +1941,34 @@
   document.querySelectorAll('input[name="employeeIssueType"]').forEach(function(el){el.addEventListener('change',function(){document.getElementById('reportedDamageCauseWrap').style.display=this.value==='Physical Damage'?'block':'none';});});
 
   async function findIssueEmployees(term){
-    var res=await sb.from('submission_summaries').select('id,created_at,employee_name,employee_id,company_email,personal_email,location,designation,department,device_count,device1,device2').order('created_at',{ascending:false}).limit(500);if(res.error)throw res.error;
-    var q=term.trim().toLowerCase(),seen=new Set(),out=[];
-    (res.data||[]).forEach(function(s){
-      var vals=[s.employee_name,s.employee_id,s.company_email,s.personal_email].map(function(v){return String(v||'').toLowerCase();});
-      var match=vals.some(function(v){return v&&v.indexOf(q)>=0;}); if(!match)return;
-      var key=issueEmployeeKey(s);if(seen.has(key))return;seen.add(key);out.push(s);
-    });
-    return out.slice(0,20);
+    return findSelfServiceEmployees(term);
   }
   function renderIssueCandidates(){
     var area=document.getElementById('issueCandidateArea');
     if(!issueReportState.matches.length){area.innerHTML='<div class="lookup-result warn"><p>'+h(t('issueNoMatch'))+'</p></div>';return;}
-    area.innerHTML='<label>'+h(t('issueSelectEmployee'))+'</label><div class="candidate-list">'+issueReportState.matches.map(function(e,i){return '<label class="candidate-card"><input type="radio" name="issueEmployeeChoice" value="'+h(e.id)+'" '+(issueReportState.employee&&String(issueReportState.employee.id)===String(e.id)?'checked':'')+'/><b>'+h(e.employee_name||'Employee')+'</b><span class="candidate-meta">'+h((e.employee_id||t('noEmployeeId'))+' · '+(e.location||'')+' · '+(preferredIssueEmail(e)||'—'))+'</span></label>';}).join('')+'</div>';
+    area.innerHTML='<label>'+h(t('issueSelectEmployee'))+'</label><div class="candidate-list">'+issueReportState.matches.map(function(e,i){return '<label class="candidate-card"><input type="radio" name="issueEmployeeChoice" value="'+h(e.id)+'" '+(issueReportState.employee&&String(issueReportState.employee.id)===String(e.id)?'checked':'')+'/><b>'+h(e.employee_name||'Employee')+'</b><span class="candidate-meta">'+h(selfServiceEmployeeMeta(e))+'</span></label>';}).join('')+'</div>';
     area.querySelectorAll('input[name="issueEmployeeChoice"]').forEach(function(r){r.addEventListener('change',function(){selectIssueEmployee(this.value);});});
   }
   async function selectIssueEmployee(id){
-    var emp=issueReportState.matches.find(function(x){return String(x.id)===String(id);});if(!emp)return;issueReportState.employee=emp;document.getElementById('issueDetailsArea').style.display='none';setIssueToast('','');
+    var emp=issueReportState.matches.find(function(x){return String(x.id)===String(id);});
+    if(!emp)return;
+    issueReportState.employee=emp;
+    document.getElementById('issueDetailsArea').style.display='none';
+    setIssueToast('','');
     try{
-      var res=await sb.from('devices').select('*').eq('status','Assigned').order('last_updated',{ascending:false});if(res.error)throw res.error;
-      var live=res.data||[];
-      var hist=submissionDeviceArray(emp); // latest selected handover is authoritative for the employee's current device list
-      var emails=[emp.company_email,emp.personal_email].filter(validEmail).map(function(v){return String(v).trim().toLowerCase();});
-      function strongOwnerMatch(d){
-        if(emp.employee_id&&d.assigned_employee_id&&String(d.assigned_employee_id).trim().toLowerCase()===String(emp.employee_id).trim().toLowerCase())return true;
-        if(d.assigned_employee_email&&emails.indexOf(String(d.assigned_employee_email).trim().toLowerCase())>=0)return true;
-        return false;
-      }
-      var devs=[];
-      if(hist.length){
-        // Only the IMEIs recorded on the employee's latest submission are shown here.
-        // This prevents stale/old devices with the same assigned_to name from appearing.
-        devs=hist.map(function(hd){
-          var ld=live.find(function(d){return String(d.imei1||'')===String(hd.imei1||'');});
-          return Object.assign({},hd,ld||{}, {
-            _historical:!ld,
-            sim_numbers:(ld&&ld.sim_numbers&&ld.sim_numbers.length)?ld.sim_numbers:(hd.simNumbers||hd.sim_numbers||[])
-          });
-        }).filter(function(d){return d.imei1;});
-      }else{
-        // Fallback for employees whose old submission has no device snapshot: use strong ID/email ownership only.
-        devs=live.filter(strongOwnerMatch).map(function(d){return Object.assign({},d,{sim_numbers:d.sim_numbers||[]});});
-      }
+      if(!emp.employee_id){issueReportState.devices=[];renderIssueDevices();return;}
+      var res=await sb.from('devices').select('*').eq('status','Assigned').eq('assigned_employee_id',emp.employee_id).order('last_updated',{ascending:false});
+      if(res.error)throw res.error;
       var seen=new Set();
-      devs=devs.filter(function(d){var k=String(d.imei1||'');if(!k||seen.has(k))return false;seen.add(k);return true;});
-      issueReportState.devices=devs;renderIssueDevices();
-    }catch(err){console.error(err);issueReportState.devices=[];renderIssueDevices();}
+      issueReportState.devices=(res.data||[]).filter(function(d){
+        var k=String(d.imei1||'');
+        if(!k||seen.has(k))return false;
+        seen.add(k);return true;
+      }).map(function(d){return Object.assign({},d,{sim_numbers:d.sim_numbers||[]});});
+      renderIssueDevices();
+    }catch(err){
+      console.error(err);issueReportState.devices=[];renderIssueDevices();
+    }
   }
   function renderIssueDevices(){
     var area=document.getElementById('issueDeviceArea'),devs=issueReportState.devices||[];
@@ -1850,13 +1987,13 @@
     e.preventDefault();var emp=issueReportState.employee;if(!emp){setIssueToast(t('issueChooseEmployeeFirst'),'err');return;}var imei=(document.querySelector('input[name="issueDeviceChoice"]:checked')||{}).value||'';if(!imei){setIssueToast(t('issueChooseDevice'),'err');return;}var type=(document.querySelector('input[name="employeeIssueType"]:checked')||{}).value||'';if(!type){setIssueToast(t('issueChooseType'),'err');return;}var details=document.getElementById('reportedIssueDetails').value.trim();if(!details){setIssueToast(t('issueDetailsRequired'),'err');return;}var cause=type==='Physical Damage'?document.getElementById('reportedDamageCause').value.trim():'';var device=(issueReportState.devices||[]).find(function(d){return d.imei1===imei;})||{};var email=preferredIssueEmail(emp);var btn=document.getElementById('issueReportSubmitBtn');btn.disabled=true;btn.textContent=t('issueSending');setIssueToast('','');
     try{
       var deviceSnapshot={brand:device.brand||'',model:device.model||'',ram:device.ram||'',storage:device.storage||'',imei1:device.imei1||imei,imei2:device.imei2||'',sim_numbers:device.sim_numbers||device.simNumbers||[],condition:device.condition||'',status:device.status||'Assigned'};
-      var payload={submission_id:emp.id,employee_name:emp.employee_name,employee_id:emp.employee_id,employee_email:email,location:emp.location,device_imei1:imei,device_snapshot:deviceSnapshot,issue_type:type,issue_details:details,damage_cause:cause||null,status:'Open',language:currentLang,updated_at:new Date().toISOString()};
+      var payload={submission_id:emp.latest_submission_id||null,employee_name:emp.employee_name,employee_id:emp.employee_id,employee_email:email,location:emp.location,device_imei1:imei,device_snapshot:deviceSnapshot,issue_type:type,issue_details:details,damage_cause:cause||null,status:'Open',language:currentLang,updated_at:new Date().toISOString()};
       var ins=await sb.from('employee_issue_reports').insert([payload]).select();if(ins.error)throw ins.error;var report=ins.data&&ins.data[0];
       var ackHtml='<p>'+h(emp.employee_name||'Employee')+',</p><p>Your <b>'+h(type)+'</b> report for <b>'+h(((device.brand||'')+' '+(device.model||'')).trim())+'</b> (IMEI '+h(imei)+') has been received by '+h(window.DNCC_CONFIG.COMPANY_NAME)+' IT Department.</p><p><b>Reported details:</b><br/>'+h(details)+(cause?'<br/><b>Damage cause:</b> '+h(cause):'')+'</p><p>IT will review the issue and email you after it is resolved.</p>';
-      var ack=await sendRequestEmail(email,'Device issue received — '+window.DNCC_CONFIG.COMPANY_NAME,ackHtml);
+      var ack=await sendRequestEmail(email,'Device issue received — '+window.DNCC_CONFIG.COMPANY_NAME,ackHtml,report&&report.id?('employee-issue:'+report.id+':ack'):null,'issue_ack');
       var setRes=await sb.from('settings').select('*').eq('id',1).single(),settings=setRes.data||{},itEmail=settings.it_request_email||settings.smtp2go_sender_email||settings.smtp_from_email||'',adminLink=location.origin+location.pathname.replace(/index\.html.*$/,'admin.html');
       var itHtml='<p>A new employee device issue was reported.</p><p><b>Employee:</b> '+h(emp.employee_name||'')+' ('+h(emp.employee_id||'')+')<br/><b>Email:</b> '+h(email)+'<br/><b>Location:</b> '+h(emp.location||'')+'<br/><b>Device:</b> '+h(((device.brand||'')+' '+(device.model||'')).trim())+'<br/><b>IMEI:</b> '+h(imei)+'<br/><b>Issue type:</b> '+h(type)+'<br/><b>Details:</b> '+h(details)+(cause?'<br/><b>Damage cause:</b> '+h(cause):'')+'</p><p><a href="'+adminLink+'">Open IT Admin → Issues & Damage</a></p>';
-      var itSent=await sendRequestEmail(itEmail,'New '+type+' reported — '+(emp.employee_name||'Employee'),itHtml);
+      var itSent=await sendRequestEmail(itEmail,'New '+type+' reported — '+(emp.employee_name||'Employee'),itHtml,report&&report.id?('employee-issue:'+report.id+':it'):null,'issue_it_notification');
       if(report&&report.id)await sb.from('employee_issue_reports').update({employee_ack_sent_at:ack?new Date().toISOString():null,it_notification_sent_at:itSent?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq('id',report.id);
       try{await sb.from('activity_log').insert([{admin_username:'Employee self-service',action:'Reported '+type,target_type:'employee_issue_report',target_id:report&&report.id||'',details:(emp.employee_name||'')+' · '+imei+' · '+details}]);}catch(logErr){console.warn(logErr);}
       setIssueToast(t('issueSent'),'ok');setTimeout(function(){resetIssueReport();},2200);
@@ -1890,24 +2027,18 @@
   document.getElementById('requestOverlay').addEventListener('click',function(e){if(e.target===this) closeRequest();});
 
   async function lookupRequestEmployee(email){
-    var { data: matches, error } = await sb.from('submission_summaries').select('*').or('company_email.eq.'+email+',personal_email.eq.'+email).order('created_at',{ascending:false}).limit(10);
-    if(error) throw error;
-    var employee = matches && matches.length ? matches[0] : null;
-    var devices=[];
-    if(employee){
-      var q = sb.from('devices').select('*').eq('status','Assigned');
-      var filters=[];
-      if(employee.employee_id) filters.push('assigned_employee_id.eq.'+employee.employee_id);
-      if(email) filters.push('assigned_employee_email.eq.'+email);
-      if(employee.employee_name) filters.push('assigned_to.eq.'+employee.employee_name);
-      if(filters.length){ var res=await q.or(filters.join(',')); if(!res.error) devices=res.data||[]; }
+    var master=await sb.rpc('dncc_employee_master_rows',{p_search:email,p_limit:20});if(master.error)throw master.error;
+    var exact=(master.data||[]).find(function(e){return [e.company_email,e.personal_email].some(function(v){return String(v||'').trim().toLowerCase()===email.toLowerCase();});})||null;
+    var employee=null,devices=[];
+    if(exact){
+      if(exact.latest_submission_id){var sr=await sb.from('submission_summaries').select('*').eq('id',exact.latest_submission_id).single();if(!sr.error)employee=sr.data;}
+      if(!employee)employee={id:exact.latest_submission_id,employee_name:exact.employee_name,employee_id:exact.employee_id,company_email:exact.company_email,personal_email:exact.personal_email,location:exact.location,designation:exact.designation,department:exact.department};
+      devices=Array.isArray(exact.current_devices)?exact.current_devices:[];
+      if(!devices.length){var q=sb.from('devices').select('*').eq('status','Assigned'),filters=[];if(employee.employee_id)filters.push('assigned_employee_id.eq.'+employee.employee_id);if(email)filters.push('assigned_employee_email.eq.'+email);if(filters.length){var dr=await q.or(filters.join(','));if(!dr.error)devices=dr.data||[];}}
       var historical=[employee.device1,employee.device2].filter(Boolean);
-      devices=devices.map(function(dev){
-        var h=historical.find(function(x){ return x && x.imei1===dev.imei1; }) || {};
-        return Object.assign({},dev,{ sim_numbers:(dev.sim_numbers&&dev.sim_numbers.length)?dev.sim_numbers:(h.simNumbers||[]), sim_slots:dev.sim_slots||h.simCount||2 });
-      });
+      devices=devices.map(function(dev){var h=historical.find(function(x){return x&&x.imei1===dev.imei1;})||{};return Object.assign({},dev,{sim_numbers:(dev.sim_numbers&&dev.sim_numbers.length)?dev.sim_numbers:(h.simNumbers||[]),sim_slots:dev.sim_slots||h.simCount||2});});
     }
-    return {employee:employee, devices:devices};
+    return {employee:employee,devices:devices};
   }
 
   function requestDeviceLabel(d){ return (d.brand||'')+' '+(d.model||'')+' · IMEI '+(d.imei1||'—'); }
@@ -1949,9 +2080,10 @@
     finally{btn.disabled=false;btn.textContent=t('issueFindBtn');}
   });
 
-  async function sendRequestEmail(to,subject,html){
+  async function sendRequestEmail(to,subject,html,eventKey,source){
     if(!validEmail(to)) return false;
-    try{var res=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:to,subject:subject,html:html})});var j=await res.json();return !!(res.ok&&j.ok);}catch(e){console.error(e);return false;}
+    var canSend=await claimEmailEvent(eventKey,to,subject,source||'employee_request');if(!canSend)return true;
+    try{var res=await fetch(FUNCTIONS_URL+'/send-handover-email',{method:'POST',headers:{'Content-Type':'application/json','apikey':window.DNCC_CONFIG.SUPABASE_ANON_KEY,'Authorization':'Bearer '+window.DNCC_CONFIG.SUPABASE_ANON_KEY},body:JSON.stringify({to:to,subject:subject,html:html})});var j=await res.json();var ok=!!(res.ok&&j.ok);await markEmailEvent(eventKey,ok,ok?null:(j.error||'Send failed'));return ok;}catch(e){await markEmailEvent(eventKey,false,e.message||String(e));console.error(e);return false;}
   }
   function employeeAckHtml(reqNo,name,type){return '<p>Dear '+(name||'Employee')+',</p><p>Your <b>'+type+' Device Request</b> has been received by '+window.DNCC_CONFIG.COMPANY_NAME+' IT Department.</p><p><b>Request:</b> #'+reqNo+'<br/><b>Status:</b> Pending Review</p><p>IT will review your request and email you when it is approved, awaiting availability, rejected, or a device is assigned.</p><p><b>Important:</b> after a device is issued, you will receive a secure handover-form link. Completing that form is compulsory to close the request.</p><p>Regards,<br/>'+window.DNCC_CONFIG.COMPANY_NAME+' IT Department</p>';}
 
@@ -1973,10 +2105,10 @@
       var payload={request_type:effectiveType,employee_kind:requestState.isNew?'New':'Existing',requester_email:requestState.email,company_email:e.company_email||((requestState.email||'').endsWith('@dncc.in')?requestState.email:null),personal_email:e.personal_email||(!(requestState.email||'').endsWith('@dncc.in')?requestState.email:null),employee_name:name,employee_id:e.employee_id||null,location:employeeLocation,designation:designation,department:department,matched_submission_id:e.id||null,current_devices:requestState.devices||[],request_choice:requestChoice,replace_imei1:replaceImei||null,replace_device:replaceDevice,request_reason:reason,intended_use:intended,needed_by:needed,status:'Pending Review',updated_at:new Date().toISOString()};
       var ins=await sb.from('device_requests').insert([payload]).select(); if(ins.error) throw ins.error; var req=ins.data&&ins.data[0];
       var reqNo=req.request_no||String(req.id).slice(0,8).toUpperCase();
-      var ack=await sendRequestEmail(requestState.email,'Device Request #'+reqNo+' received — '+window.DNCC_CONFIG.COMPANY_NAME,employeeAckHtml(reqNo,name,effectiveType));
+      var ack=await sendRequestEmail(requestState.email,'Device Request #'+reqNo+' received — '+window.DNCC_CONFIG.COMPANY_NAME,employeeAckHtml(reqNo,name,effectiveType),'device-request:'+req.id+':received:employee','request_received');
       var setRes=await sb.from('settings').select('*').eq('id',1).single(); var settings=setRes.data||{}; var itEmail=settings.it_request_email||settings.smtp2go_sender_email||settings.smtp_from_email||'';
       var adminLink=location.origin+location.pathname.replace(/index\.html.*$/,'admin.html');
-      var itSent=await sendRequestEmail(itEmail,'New '+effectiveType+' Device Request #'+reqNo+' — '+name,'<p>A new <b>'+effectiveType+' Device Request</b> was submitted.</p><p><b>Employee:</b> '+name+'<br/><b>Email:</b> '+requestState.email+'<br/><b>Location:</b> '+employeeLocation+'<br/><b>Reason:</b> '+reason+(replaceDevice?'<br/><b>Replace:</b> '+requestDeviceLabel(replaceDevice):'')+'</p><p><a href="'+adminLink+'">Open IT Admin Panel</a></p>');
+      var itSent=await sendRequestEmail(itEmail,'New '+effectiveType+' Device Request #'+reqNo+' — '+name,'<p>A new <b>'+effectiveType+' Device Request</b> was submitted.</p><p><b>Employee:</b> '+name+'<br/><b>Email:</b> '+requestState.email+'<br/><b>Location:</b> '+employeeLocation+'<br/><b>Reason:</b> '+reason+(replaceDevice?'<br/><b>Replace:</b> '+requestDeviceLabel(replaceDevice):'')+'</p><p><a href="'+adminLink+'">Open IT Admin Panel</a></p>','device-request:'+req.id+':received:it','request_it_notification');
       await sb.from('device_requests').update({employee_notified_at:ack?new Date().toISOString():null,it_notified_at:itSent?new Date().toISOString():null}).eq('id',req.id);
       setRequestMsg(t('requestSentPrefix')+' #'+reqNo+' '+t('requestSentSuffix'),'ok');
       setTimeout(closeRequest,1800);
