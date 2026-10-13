@@ -424,6 +424,13 @@
   @media(max-width:950px){.ops-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
   @media(max-width:650px){.ops-grid{grid-template-columns:1fr}.ops-state-row{grid-template-columns:1fr}}
 
+
+  .health-issue-list{display:grid;gap:7px;margin-top:8px}
+  .health-issue-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid rgba(130,70,70,.18);border-radius:7px;background:rgba(255,255,255,.55)}
+  .health-issue-row .msgtext{line-height:1.4}
+  .health-issue-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  @media(max-width:650px){.health-issue-row{grid-template-columns:1fr}.health-issue-actions{justify-content:flex-start}}
+
 </style>
 </head>
 <body>
@@ -2128,16 +2135,58 @@
       throw err;
     }
   }
+  function healthImei(issue){
+    var key=String(issue&&issue.entity_key||'');
+    return key.indexOf('IMEI:')===0?key.slice(5):'';
+  }
+  async function repairMissingDeviceEmployee(issue,btn){
+    var imei=healthImei(issue);
+    if(!imei){alert('Could not read the device IMEI from this health issue.');return;}
+    if(!confirm('Repair the missing Employee ID for IMEI '+imei+'?\n\nThe database will update it ONLY if exactly one employee can be proven from the existing records. No other device will be changed.'))return;
+    await withButtonBusy(btn,'Repairing…',async function(){
+      try{
+        var rpc=await sb.rpc('dncc_repair_missing_device_employee',{p_imei:imei,p_changed_by:operationActor()});
+        if(rpc.error)throw rpc.error;
+        var data=rpc.data||{};
+        await refreshOperationalState();
+        await loadSystemHealth();
+        renderSystemHealth();
+        showToast('Device '+imei+' linked to '+(data.employee_name||data.employee_id||'the verified employee')+'.','success');
+      }catch(err){
+        console.error(err);
+        alert('Repair was not applied.\n\n'+(err.message||String(err))+'\n\nNo device assignment was changed.');
+      }
+    });
+  }
   function renderSystemHealth(){
     var box=document.getElementById('opHealthSummary');if(!box)return;
     box.style.display='block';
-    if(!currentSystemHealth.length){box.className='asset-health ok';box.innerHTML='<b>System consistency:</b> No current conflicts found.';return;}
+    if(!currentSystemHealth.length){
+      box.className='asset-health ok';
+      box.innerHTML='<b>System consistency:</b> No current conflicts found.';
+      return;
+    }
     var high=currentSystemHealth.filter(function(x){return x.severity==='High';}).length;
     box.className='asset-health '+(high?'err':'warn');
-    box.innerHTML='<b>System consistency:</b> '+currentSystemHealth.length+' issue(s) found'+(high?' · '+high+' high priority':'')+'. This check does not change data.<br/>'
-      +currentSystemHealth.slice(0,8).map(function(x){return '• '+esc(x.message||x.issue_type||'Issue');}).join('<br/>')
-      +(currentSystemHealth.length>8?'<br/>…and '+(currentSystemHealth.length-8)+' more.':'');
+    var rows=currentSystemHealth.slice(0,12).map(function(x,idx){
+      var actions='';
+      if(x.issue_type==='AssignedDeviceMissingEmployee'&&healthImei(x)){
+        actions='<button class="btn btn-secondary" data-health-repair="'+idx+'">Repair employee link</button>';
+      }
+      return '<div class="health-issue-row"><div class="msgtext"><b>'+esc(x.severity||'Issue')+':</b> '+esc(x.message||x.issue_type||'Issue')+'</div>'
+        +'<div class="health-issue-actions">'+actions+'</div></div>';
+    }).join('');
+    box.innerHTML='<b>System consistency:</b> '+currentSystemHealth.length+' issue(s) found'+(high?' · '+high+' high priority':'')+'. This check never changes data automatically.'
+      +'<div class="health-issue-list">'+rows+'</div>'
+      +(currentSystemHealth.length>12?'<div style="margin-top:7px;">…and '+(currentSystemHealth.length-12)+' more.</div>':'');
+    box.querySelectorAll('[data-health-repair]').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var issue=currentSystemHealth[Number(btn.dataset.healthRepair)];
+        if(issue)repairMissingDeviceEmployee(issue,btn);
+      });
+    });
   }
+
   document.getElementById('opHealthBtn').addEventListener('click',async function(){
     await withButtonBusy(this,'Checking…',async function(){
       try{await loadSystemHealth();renderSystemHealth();}catch(err){alert('Could not run health check: '+(err.message||err));}
