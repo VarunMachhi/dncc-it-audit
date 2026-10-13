@@ -254,7 +254,7 @@
       <p id="companySub">IT Department</p>
     </div>
     <select id="langToggle" class="lang-toggle">
-      <option value="en">English</option>
+      <option value="en" selected>English</option>
       <option value="gu">ગુજરાતી</option>
       <option value="hi">हिन्दी</option>
       <option value="mr">मराठी</option>
@@ -280,6 +280,9 @@
   <div class="special-access-banner" id="specialAccessBanner"></div>
 
   <form id="intakeForm" novalidate>
+    <div class="hint" style="margin:0 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#f7fafc;">
+      Common options are pre-selected to make the form faster. Please change any default answer that does not match your actual device or accessories.
+    </div>
     <fieldset>
       <legend><span class="num">1</span> <span data-i18n="legend1">Employee details</span></legend>
       <div class="row2">
@@ -333,7 +336,7 @@
     <fieldset>
       <legend><span class="num">2</span> <span data-i18n="legend2">How many mobile phones do you use for work?</span></legend>
       <div class="radiogroup" id="deviceCountGroup">
-        <label><input type="radio" name="deviceCount" value="1" checked /> <span data-i18n="deviceCount1">1 mobile</span></label>
+        <label class="on"><input type="radio" name="deviceCount" value="1" checked /> <span data-i18n="deviceCount1">1 mobile</span></label>
         <label><input type="radio" name="deviceCount" value="2" /> <span data-i18n="deviceCount2">2 mobiles</span></label>
       </div>
     </fieldset>
@@ -351,9 +354,9 @@
       <legend><span class="num">5</span> <span data-i18n="legend5">Accessories</span></legend>
       <div class="row2">
         <div class="field" style="margin-bottom:0;"><label data-i18n="chargerLabel">Do you have the charger?</label>
-          <div class="radiogroup"><label><input type="radio" name="charger" value="Yes" /> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="charger" value="No" /> <span data-i18n="no">No</span></label></div></div>
+          <div class="radiogroup"><label><input type="radio" name="charger" value="Yes" /> <span data-i18n="yes">Yes</span></label><label class="on"><input type="radio" name="charger" value="No" checked /> <span data-i18n="no">No</span></label></div></div>
         <div class="field" style="margin-bottom:0;"><label data-i18n="cableLabel">Do you have the data/USB cable?</label>
-          <div class="radiogroup"><label><input type="radio" name="cable" value="Yes" /> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="cable" value="No" /> <span data-i18n="no">No</span></label></div></div>
+          <div class="radiogroup"><label><input type="radio" name="cable" value="Yes" /> <span data-i18n="yes">Yes</span></label><label class="on"><input type="radio" name="cable" value="No" checked /> <span data-i18n="no">No</span></label></div></div>
       </div>
     </fieldset>
 
@@ -1061,10 +1064,10 @@
     + '<div class="field"><label for="d'+idx+'_imei2" data-i18n="imei2Label">IMEI number 2</label><input type="text" data-imei id="d'+idx+'_imei2" placeholder="Leave blank if single-SIM device" data-i18n-ph="imei2Placeholder" /><div class="dup-warning" id="d'+idx+'_imei2DupWarning"></div></div>'
     + '</div>'
     + '<div class="field"><label for="d'+idx+'_simCount" data-i18n="simCountLabel">How many SIMs does this phone have?</label>'
-    + '<select id="d'+idx+'_simCount"><option value="1">1</option><option value="2">2</option></select>'
+    + '<select id="d'+idx+'_simCount"><option value="1" selected>1</option><option value="2">2</option></select>'
     + '<div class="sim-numbers" id="d'+idx+'_simNumbers"></div></div>'
     + '<div class="field"><label data-i18n="memCardLabel">Does this phone have a memory / SD card?</label>'
-    + '<div class="radiogroup"><label><input type="radio" name="d'+idx+'_memoryCard" value="Yes" required /> <span data-i18n="yes">Yes</span></label><label><input type="radio" name="d'+idx+'_memoryCard" value="No" required /> <span data-i18n="no">No</span></label></div>'
+    + '<div class="radiogroup"><label><input type="radio" name="d'+idx+'_memoryCard" value="Yes" required /> <span data-i18n="yes">Yes</span></label><label class="on"><input type="radio" name="d'+idx+'_memoryCard" value="No" checked required /> <span data-i18n="no">No</span></label></div>'
     + '<div class="conditional" id="d'+idx+'_memoryCardSizeWrap" style="display:none;">'
     + '<div class="field" style="margin-bottom:0;"><label for="d'+idx+'_memoryCardSize" data-i18n="memCardSizeLabel">Memory card size</label><input type="text" id="d'+idx+'_memoryCardSize" placeholder="e.g. 64 GB" data-i18n-ph="memCardSizePlaceholder" /></div>'
     + '</div></div>'
@@ -1293,14 +1296,28 @@
     });
   });
 
-  function applyDefaultNoForConditionRadios(force){
-    ['damage','phoneProblem'].forEach(function(name){
-      var current=document.querySelector('input[name="'+name+'"]:checked');
-      if(current&&!force)return;
-      var no=document.querySelector('input[name="'+name+'"][value="No"]');
-      if(no){
-        no.checked=true;
-        no.dispatchEvent(new Event('change',{bubbles:true}));
+  function setSafeDefaultRadio(name,value,force){
+    var current=document.querySelector('input[name="'+name+'"]:checked');
+    if(current&&!force)return;
+    var el=document.querySelector('input[name="'+name+'"][value="'+value+'"]');
+    if(el){
+      el.checked=true;
+      el.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+  }
+  function applySafeFormDefaults(force){
+    // Defaults reduce clicks, but only for common/non-identifying choices.
+    // Existing draft/prefill answers are preserved unless force=true after a reset.
+    setSafeDefaultRadio('deviceCount','1',force);
+    ['charger','cable','damage','phoneProblem'].forEach(function(name){
+      setSafeDefaultRadio(name,'No',force);
+    });
+    [1,2].forEach(function(idx){
+      setSafeDefaultRadio('d'+idx+'_memoryCard','No',force);
+      var simSel=document.getElementById('d'+idx+'_simCount');
+      if(simSel && (force || !simSel.value)){
+        simSel.value='1';
+        simSel.dispatchEvent(new Event('change',{bubbles:true}));
       }
     });
   }
@@ -1309,7 +1326,7 @@
   document.getElementById('intakeForm').addEventListener('input', saveDraftDebounced);
   document.getElementById('intakeForm').addEventListener('change', saveDraftDebounced);
   restoreDraft();
-  applyDefaultNoForConditionRadios(false);
+  applySafeFormDefaults(false);
 
   function compressImage(file, maxDim, quality){
     return new Promise(function(resolve, reject){
@@ -1822,11 +1839,12 @@
         if(wrap) wrap.style.display = 'none';
       });
       document.querySelectorAll('.radiogroup label').forEach(function(l){ l.classList.remove('on'); });
-      applyDefaultNoForConditionRadios(true);
+      applySafeFormDefaults(true);
       ['frontPrev','backPrev'].forEach(function(k){
         var i1=document.getElementById('d1_'+k), i2=document.getElementById('d2_'+k);
         if(i1) i1.style.display='none'; if(i2) i2.style.display='none';
       });
+      [1,2].forEach(function(idx){var sel=document.getElementById('d'+idx+'_simCount');if(sel)sel.value='1';});
       wireSimNumbers(1); wireSimNumbers(2);
     }catch(err){
       console.error(err);
@@ -1845,7 +1863,8 @@
       ['frontPrev','backPrev'].forEach(function(k){var el=document.getElementById('d'+idx+'_'+k);if(el){el.removeAttribute('src');el.style.display='none';}});
     });
     document.querySelectorAll('.radiogroup label').forEach(function(l){l.classList.remove('on');});
-    applyDefaultNoForConditionRadios(true);
+    applySafeFormDefaults(true);
+    [1,2].forEach(function(idx){var sel=document.getElementById('d'+idx+'_simCount');if(sel)sel.value='1';});
     wireSimNumbers(1); wireSimNumbers(2);
   }
   document.getElementById('clearMainFormBtn').addEventListener('click',function(){
@@ -1855,7 +1874,7 @@
     if(EDIT_CONTEXT&&EDIT_CONTEXT.submission){prefillEmployeeForm(EDIT_CONTEXT.submission);}
     else if(REQUEST_CONTEXT){
       var d=REQUEST_CONTEXT.fulfillment_device_snapshot||{};
-      prefillEmployeeForm({employee_name:REQUEST_CONTEXT.employee_name,employee_id:REQUEST_CONTEXT.employee_id,location:REQUEST_CONTEXT.location,designation:REQUEST_CONTEXT.designation,department:REQUEST_CONTEXT.department,company_email:REQUEST_CONTEXT.company_email||((REQUEST_CONTEXT.requester_email||'').endsWith('@dncc.in')?REQUEST_CONTEXT.requester_email:'NOT'),personal_email:REQUEST_CONTEXT.personal_email||(!(REQUEST_CONTEXT.requester_email||'').endsWith('@dncc.in')?REQUEST_CONTEXT.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:REQUEST_CONTEXT.fulfillment_sim_numbers||[]})});
+      prefillEmployeeForm({employee_name:REQUEST_CONTEXT.employee_name,employee_id:REQUEST_CONTEXT.employee_id,location:REQUEST_CONTEXT.location,designation:REQUEST_CONTEXT.designation,department:REQUEST_CONTEXT.department,company_email:REQUEST_CONTEXT.company_email||((REQUEST_CONTEXT.requester_email||'').endsWith('@dncc.in')?REQUEST_CONTEXT.requester_email:'NOT'),personal_email:REQUEST_CONTEXT.personal_email||(!(REQUEST_CONTEXT.requester_email||'').endsWith('@dncc.in')?REQUEST_CONTEXT.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:REQUEST_CONTEXT.fulfillment_sim_numbers||[]}),charger:'No',cable:'No',damage:'No',phone_problem:'No'});
     }else{document.getElementById('empId').value='';clearDraft();updateAutoEmpId();}
     window.scrollTo({top:0,behavior:'smooth'});
   });
@@ -2215,10 +2234,10 @@
   });
 
   function setRadioValue(name,value){ var el=document.querySelector('input[name="'+name+'"][value="'+value+'"]'); if(el){el.checked=true;el.dispatchEvent(new Event('change',{bubbles:true}));} }
-  function prefillDevice(idx,d){ if(!d)return; ['brand','model','ram','storage','imei1','imei2','usage'].forEach(function(k){var el=document.getElementById('d'+idx+'_'+k);if(el&&d[k]!==undefined)el.value=d[k]||'';}); var sims=d.simNumbers||d.sim_numbers||[]; var count=Math.max(1,Math.min(2,sims.length||d.simCount||d.sim_slots||1)); var sel=document.getElementById('d'+idx+'_simCount');sel.value=String(count);sel.dispatchEvent(new Event('change'));sims.slice(0,count).forEach(function(v,i){var el=document.getElementById('d'+idx+'_sim'+(i+1));if(el)el.value=v;}); if(d.memoryCard)setRadioValue('d'+idx+'_memoryCard',d.memoryCard);var size=document.getElementById('d'+idx+'_memoryCardSize');if(size)size.value=d.memoryCardSize||''; if(d.frontPhoto){var fp=document.getElementById('d'+idx+'_frontPrev');fp.src=d.frontPhoto;fp.style.display='block';} if(d.backPhoto){var bp=document.getElementById('d'+idx+'_backPrev');bp.src=d.backPhoto;bp.style.display='block';} }
+  function prefillDevice(idx,d){ if(!d)return; ['brand','model','ram','storage','imei1','imei2','usage'].forEach(function(k){var el=document.getElementById('d'+idx+'_'+k);if(el&&d[k]!==undefined)el.value=d[k]||'';}); var sims=d.simNumbers||d.sim_numbers||[]; var count=Math.max(1,Math.min(2,sims.length||d.simCount||d.sim_slots||1)); var sel=document.getElementById('d'+idx+'_simCount');sel.value=String(count);sel.dispatchEvent(new Event('change'));sims.slice(0,count).forEach(function(v,i){var el=document.getElementById('d'+idx+'_sim'+(i+1));if(el)el.value=v;}); setRadioValue('d'+idx+'_memoryCard',d.memoryCard||'No');var size=document.getElementById('d'+idx+'_memoryCardSize');if(size)size.value=d.memoryCardSize||''; if(d.frontPhoto){var fp=document.getElementById('d'+idx+'_frontPrev');fp.src=d.frontPhoto;fp.style.display='block';} if(d.backPhoto){var bp=document.getElementById('d'+idx+'_backPrev');bp.src=d.backPhoto;bp.style.display='block';} }
   function prefillEmployeeForm(s){
     document.getElementById('empName').value=s.employee_name||'';document.getElementById('empId').value=s.employee_id||'';document.getElementById('location').value=s.location||'';document.getElementById('designation').value=s.designation||'';document.getElementById('department').value=s.department||'';document.getElementById('contact').value=s.contact||'';document.getElementById('companyEmail').value=s.company_email||'NOT';document.getElementById('personalEmail').value=s.personal_email||'';
-    var dc=parseInt(s.device_count||1,10)===2?2:1;setRadioValue('deviceCount',String(dc));document.getElementById('device2Fieldset').style.display=dc===2?'block':'none';prefillDevice(1,s.device1||{});if(dc===2)prefillDevice(2,s.device2||{});setRadioValue('charger',s.charger||'');setRadioValue('cable',s.cable||'');setRadioValue('damage',s.damage||'No');document.getElementById('damageWhat').value=s.damage_what||'';document.getElementById('damageHow').value=s.damage_how||'';setRadioValue('phoneProblem',s.phone_problem||'No');document.getElementById('phoneProblemDescription').value=s.phone_problem_details||'';if(!document.getElementById('empId').value) updateAutoEmpId();
+    var dc=parseInt(s.device_count||1,10)===2?2:1;setRadioValue('deviceCount',String(dc));document.getElementById('device2Fieldset').style.display=dc===2?'block':'none';prefillDevice(1,s.device1||{});if(dc===2)prefillDevice(2,s.device2||{});setRadioValue('charger',s.charger||'No');setRadioValue('cable',s.cable||'No');setRadioValue('damage',s.damage||'No');document.getElementById('damageWhat').value=s.damage_what||'';document.getElementById('damageHow').value=s.damage_how||'';setRadioValue('phoneProblem',s.phone_problem||'No');document.getElementById('phoneProblemDescription').value=s.phone_problem_details||'';if(!document.getElementById('empId').value) updateAutoEmpId();
   }
   async function loadSpecialAccessContext(){
     var qs=new URLSearchParams(location.search), editToken=qs.get('edit_token'), requestId=qs.get('request_id'), requestToken=qs.get('token'), banner=document.getElementById('specialAccessBanner');
@@ -2252,7 +2271,7 @@
           }
           if(rr.data.request_type==='Replace'&&!REQUEST_BASE_SUBMISSION) throw new Error('The original handover record containing the phone being replaced could not be found. IT must repair/select the employee record before this replacement form can be submitted.');
         }
-        var base=REQUEST_BASE_SUBMISSION||{};var d=rr.data.fulfillment_device_snapshot||{}; var formSub={employee_name:base.employee_name||rr.data.employee_name,employee_id:base.employee_id||rr.data.employee_id,location:base.location||rr.data.location,designation:base.designation||rr.data.designation,department:base.department||rr.data.department,contact:base.contact||'',company_email:base.company_email||rr.data.company_email||((rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:'NOT'),personal_email:base.personal_email||rr.data.personal_email||(!(rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:rr.data.fulfillment_sim_numbers||[]}),charger:'',cable:'',damage:'No',phone_problem:'No'};prefillEmployeeForm(formSub);var assignedText=t('assignedFormText').replace('{device}',((d.brand||'')+' '+(d.model||'')).trim()).replace('{request}',rr.data.request_no||'');if(rr.data.request_type==='Replace'&&REQUEST_BASE_SUBMISSION){assignedText+=' Your other currently assigned device will be preserved automatically; this form updates the replacement slot instead of creating a second employee submission.';}banner.innerHTML='<strong>'+h(t('assignedFormTitle'))+'</strong>'+h(assignedText);banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});
+        var base=REQUEST_BASE_SUBMISSION||{};var d=rr.data.fulfillment_device_snapshot||{}; var formSub={employee_name:base.employee_name||rr.data.employee_name,employee_id:base.employee_id||rr.data.employee_id,location:base.location||rr.data.location,designation:base.designation||rr.data.designation,department:base.department||rr.data.department,contact:base.contact||'',company_email:base.company_email||rr.data.company_email||((rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:'NOT'),personal_email:base.personal_email||rr.data.personal_email||(!(rr.data.requester_email||'').endsWith('@dncc.in')?rr.data.requester_email:''),device_count:1,device1:Object.assign({},d,{simNumbers:rr.data.fulfillment_sim_numbers||[]}),charger:'No',cable:'No',damage:'No',phone_problem:'No'};prefillEmployeeForm(formSub);var assignedText=t('assignedFormText').replace('{device}',((d.brand||'')+' '+(d.model||'')).trim()).replace('{request}',rr.data.request_no||'');if(rr.data.request_type==='Replace'&&REQUEST_BASE_SUBMISSION){assignedText+=' Your other currently assigned device will be preserved automatically; this form updates the replacement slot instead of creating a second employee submission.';}banner.innerHTML='<strong>'+h(t('assignedFormTitle'))+'</strong>'+h(assignedText);banner.classList.add('show');banner.scrollIntoView({behavior:'smooth',block:'center'});
       }
     }catch(err){banner.innerHTML='<strong>'+h(t('linkCannotUse'))+'</strong>'+h(err.message||err);banner.classList.add('show');}
   }
