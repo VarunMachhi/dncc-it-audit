@@ -177,7 +177,9 @@ $$;
 
 -- One lookup for both Correction and Device Issue forms.
 -- Search supports Employee ID, employee name, personal email, and company email.
-create or replace function public.dncc_self_service_employee_lookup(
+drop function if exists public.dncc_self_service_employee_lookup(text,int);
+
+create function public.dncc_self_service_employee_lookup(
   p_search text,
   p_limit int default 20
 )
@@ -190,7 +192,7 @@ returns table(
   designation text,
   department text,
   employee_status text,
-  latest_submission_id bigint,
+  latest_submission_id uuid,
   current_device_count bigint
 )
 language sql
