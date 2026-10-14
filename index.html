@@ -1716,6 +1716,7 @@
     var submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = true; submitBtn.textContent = t('checkingDuplicates');
 
+    var stage='start', saved=false;
     try{
       if(EDIT_CONTEXT && EDIT_CONTEXT.access){
         if(new Date(EDIT_CONTEXT.access.expires_at)<=new Date()){showToast(t('linkExpired'),'err');submitBtn.disabled=false;submitBtn.textContent=t('submitBtn');return;}
@@ -1755,6 +1756,7 @@
       var mustClaimEmployeeId=!(EDIT_CONTEXT&&EDIT_CONTEXT.submission)
         && !(REQUEST_CONTEXT&&REQUEST_CONTEXT.employee_kind==='Existing');
       if(mustClaimEmployeeId){
+        stage='claim-employee-id';
         var idClaim=await sb.rpc('dncc_claim_employee_id',{
           p_location:effectiveRecord.location||'',
           p_employee_name:effectiveRecord.employeeName||'',
@@ -1767,6 +1769,7 @@
         document.getElementById('empId').value=effectiveRecord.employeeId;
       }
       submitBtn.textContent = t('saving');
+      stage='save-submission';
 
       var submissionPayload = {
         employee_name: effectiveRecord.employeeName, employee_id: effectiveRecord.employeeId,
@@ -1799,6 +1802,7 @@
         inserted = insertResult.data; error = insertResult.error;
       }
       if(error) throw error;
+      saved=true; stage='after-save';
       var submissionId = inserted && inserted[0] ? inserted[0].id : (EDIT_CONTEXT && EDIT_CONTEXT.submission ? EDIT_CONTEXT.submission.id : (REQUEST_BASE_SUBMISSION ? REQUEST_BASE_SUBMISSION.id : null));
       if(EDIT_CONTEXT && EDIT_CONTEXT.submission && submissionId){
         await saveAndNotifyEmployeeEdit(submissionId, EDIT_CONTEXT.submission, submissionPayload, EDIT_CONTEXT.access);
@@ -1821,7 +1825,7 @@
         await sb.from('form_access_tokens').update({ active:false, used_at:new Date().toISOString() }).eq('id', EDIT_CONTEXT.access.id);
       }
 
-      buildHandoverPDF(effectiveRecord);
+      try{ buildHandoverPDF(effectiveRecord); }catch(pdfErr){ console.error('Handover PDF download failed (submission already saved)', pdfErr); }
       submitBtn.textContent = t('emailingCopy');
       var submissionVersion=inserted&&inserted[0]?(inserted[0].updated_at||inserted[0].created_at):new Date().toISOString();
       var emailed = await autoSendHandoverEmail(effectiveRecord, submissionId, submissionVersion);
@@ -1847,8 +1851,16 @@
       [1,2].forEach(function(idx){var sel=document.getElementById('d'+idx+'_simCount');if(sel)sel.value='1';});
       wireSimNumbers(1); wireSimNumbers(2);
     }catch(err){
-      console.error(err);
-      showToast(t('saveError'), 'err');
+      console.error('[submit-failed] stage='+stage, err);
+      var detail=String((err&&(err.message||err.details||err.hint||err.code))||err||'').replace(/\s+/g,' ').slice(0,140);
+      try{
+        sb.from('activity_log').insert([{admin_username:'Employee form',action:'Form save failed',target_type:'submission',target_id:(record&&record.employeeId)||'',details:'stage='+stage+' | '+detail+' | '+((record&&record.employeeName)||'')}]).then(function(){},function(){});
+      }catch(logErr){}
+      if(saved){
+        showToast('Your details were saved, but one final step did not finish. Please do NOT submit again - IT will check it. ['+stage+']','err');
+      }else{
+        showToast(t('saveError')+' ['+stage+': '+detail+']','err');
+      }
     }finally{
       submitBtn.disabled=false; submitBtn.textContent=t('submitBtn');
     }
