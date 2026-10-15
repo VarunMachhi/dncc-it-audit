@@ -2492,6 +2492,7 @@
         +   '<button class="btn-small edit" data-action="edithistory" data-id="'+r.id+'" title="View employee self-edit history">Edit log</button>'
         +   '<button class="btn-small assign" data-action="originalreceipt" data-id="'+r.id+'" title="Original handover snapshot">Original receipt</button>'
         +   '<button class="btn-small assign" data-action="print" data-id="'+r.id+'" title="Live current asset statement">Current statement</button>'
+         +   ((currentAdminRole==='owner'||currentAdminRole==='admin') ? '<button class="btn-small delete" data-action="delete" data-id="'+r.id+'" title="Delete this record safely (devices and accessories are handled)">Delete</button>' : '')
         + '</td>'
         + '</tr>';
     }).join('');
@@ -2921,12 +2922,35 @@
         openModal('Employee edit history — '+(r.employee_name||''),[{id:'history',label:'Temporary self-edit submissions',value:text,type:'textarea'}],function(){closeModal();});
       }catch(err){console.error(err);alert('Could not load employee edit history. Run the latest database migration first.');}
     } else if(action === 'delete'){
-      if(!confirm('Delete this submission permanently? This cannot be undone.')) return;
-      try{
-        var { error } = await sb.from('submissions').delete().eq('id', id);
-        if(error) throw error;
-        await loadSubmissions(); renderStats();
-      }catch(err){ console.error(err); alert('Could not delete: ' + (err.message||err)); }
+      var delEmp=(r.employee_id||'').trim();
+      openModal('Delete record — '+(r.employee_name||'')+(delEmp?' ('+delEmp+')':''),[
+        {section:'What should happen to this employee\'s phones and accessories?'},
+        {id:'mode',label:'Delete type',type:'select',value:'release',options:[
+          {value:'release',label:'Real employee — return phones & accessories to stock (Spare)'},
+          {value:'purge',label:'TEST data — delete ALL submissions, phones, history and accessories completely'}]},
+        {section:'Real employee: if they have other submissions, only this one is removed and nothing else changes. TEST data: everything of this employee is removed and the Employee ID becomes free again.'},
+        {id:'confirm',label:'Type the Employee ID to confirm'+(delEmp?' ('+delEmp+')':''),value:''}
+      ],async function(v){
+        if(delEmp && (v.confirm||'').toUpperCase()!==delEmp.toUpperCase()){ alert('Employee ID does not match. Nothing was deleted.'); return; }
+        try{
+          var res=await sb.rpc('dncc_delete_submission_record',{p_token:adminSessionToken,p_submission_id:id,p_mode:v.mode,p_confirm:v.confirm||''});
+          if(res.error) throw res.error;
+          var out=res.data||{};
+          closeModal();
+          await loadSubmissions();
+          try{ await loadInventory(); }catch(e1){}
+          try{ await loadAccessories(); }catch(e2){}
+          renderStats();
+          alert(out.full_cleanup
+            ? 'Deleted. Employee record closed. Phones affected: '+out.devices_affected+', accessories affected: '+out.accessories_affected+'.'
+            : 'Deleted this submission only. The employee has '+out.other_submissions_kept+' other submission(s); phones and accessories were not changed.');
+        }catch(err){
+          console.error(err);
+          var msg=String(err.message||err);
+          if(/Could not find the function|schema cache/i.test(msg)) msg='Run migration 2026-10-14_proper_delete_submission_record.sql in Supabase first.';
+          alert('Could not delete: '+msg);
+        }
+      });
     } else if(action === 'email'){
       await sendHandoverEmail(r);
     } else if(action === 'originalreceipt'){
