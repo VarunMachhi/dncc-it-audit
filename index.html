@@ -390,7 +390,8 @@
       </div>
       <span class="submit-note" data-i18n="submitNote">A handover PDF copy will download automatically after submission.</span>
     </div>
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+    <p class="submit-note" id="formBuildVersion" style="margin:0;font-size:10px;opacity:.7;">Form build: 2026-10-15.1</p>
   </form>
 
   <div class="correction-block">
@@ -497,6 +498,8 @@
   document.getElementById('companySub').textContent = window.DNCC_CONFIG.DEPARTMENT + ' — IT Mobile Audit Form';
   document.title = window.DNCC_CONFIG.COMPANY_NAME + ' — IT Mobile Audit Form';
 
+  var FORM_BUILD='2026-10-15.1';
+  console.info('[DNCC Form] build', FORM_BUILD);
   var sb = window.supabase.createClient(window.DNCC_CONFIG.SUPABASE_URL, window.DNCC_CONFIG.SUPABASE_ANON_KEY);
   var FUNCTIONS_URL = window.DNCC_CONFIG.SUPABASE_URL + '/functions/v1';
   var REQUEST_CONTEXT = null;
@@ -1448,7 +1451,39 @@
     return ok;
   }
 
-  function showToast(msg, type){ var t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type; }
+  function showToast(msg, type){ var el=document.getElementById('toast'); el.textContent=msg; el.className='toast '+type; }
+
+  // Preserve the original error in the browser console for IT, but show employees only
+  // a safe error code, the failed step, and an action that does not expose record data.
+  function submissionFailureMessage(stage, err){
+    var code=String((err&&err.code)||'').replace(/[^a-zA-Z0-9_-]/g,'').slice(0,24);
+    var status=Number((err&&(err.status||err.statusCode))||0);
+    var raw=String((err&&(err.message||err.details))||err||'');
+    var hint='Please contact IT with the step and error code. Your form draft is kept on this device.';
+    if(code==='PGRST202'||/could not find the function|function .* does not exist/i.test(raw)){
+      hint='A required database function is missing. IT should verify the 2026-10-13 Supabase migration.';
+    }else if(code==='PGRST205'||code==='42P01'||/relation .* does not exist/i.test(raw)){
+      hint='A required database table is missing. IT should verify the Supabase schema and migrations.';
+    }else if(code==='42703'||/column .* does not exist/i.test(raw)){
+      hint='The database schema is older than the form. IT should verify the Supabase migrations.';
+    }else if(code==='42501'||status===401||status===403){
+      hint='Database permissions blocked saving. IT should check the Supabase access policies.';
+    }else if(code==='23505'){
+      hint='This record conflicts with an existing unique value. IT should check for an existing submission before any retry.';
+    }else if(code==='23514'||code==='23503'){
+      hint='A database validation rule rejected the submission. IT should check the form data and migration state.';
+    }else if(status===413||/payload too large|request entity too large/i.test(raw)){
+      hint='The submission is too large. IT should check photo sizes and the server upload limit.';
+    }else if(status===429){
+      hint='Too many requests were sent. Please wait and ask IT before retrying.';
+    }else if(/failed to fetch|networkerror|load failed|network request failed|timeout|aborterror/i.test(raw)){
+      hint='Network connection lost. IT should verify whether a record was already saved before you try again.';
+    }
+    if(stage==='save-submission'){
+      hint+=' Do not resubmit until IT checks for a saved record.';
+    }
+    return t('saveError')+' [step: '+stage+(code?', code: '+code:'')+'] '+hint;
+  }
 
   async function collectDevice(idx){
     var simCount=parseInt(document.getElementById('d'+idx+'_simCount').value,10);
@@ -1522,19 +1557,26 @@
   }
 
   async function upsertDevice(d, employeeName, employeeId, employeeEmail){
-    if(!d || !d.imei1) return;
+    if(!d || !d.imei1) return true;
     try{
-      await sb.from('devices').upsert([{
+      var deviceResult=await sb.from('devices').upsert([{
         brand:d.brand, model:d.model, ram:d.ram, storage:d.storage,
         imei1:d.imei1, imei2:d.imei2, status:'Assigned',
         assigned_to:employeeName, assigned_employee_id:employeeId, assigned_employee_email:employeeEmail || '',
         sim_slots:d.simCount||((d.simNumbers||[]).length||1), sim_numbers:d.simNumbers||[], sim_assignment_mode:(d.simNumbers&&d.simNumbers.length)?'Recorded via handover form':'No SIM assigned',
         last_updated:new Date().toISOString()
       }], { onConflict:'imei1' });
-      await sb.from('device_history').insert([{
+      if(deviceResult.error)throw deviceResult.error;
+      var historyResult=await sb.from('device_history').insert([{
         imei1:d.imei1, action:'Assigned (via audit form)', employee_name:employeeName, notes:''
       }]);
-    }catch(e){ /* inventory sync is best-effort; submission already saved */ }
+      if(historyResult.error)throw historyResult.error;
+      return true;
+    }catch(e){
+      // A handover record was already saved. Never ask the employee to resubmit.
+      console.error('[DNCC inventory-sync] Saved submission but failed to sync inventory/history:',e);
+      return false;
+    }
   }
 
   document.getElementById('intakeForm').addEventListener('submit', async function(e){
@@ -1716,7 +1758,7 @@
     var submitBtn = document.getElementById('submitBtn');
     submitBtn.disabled = true; submitBtn.textContent = t('checkingDuplicates');
 
-    var stage='start', saved=false;
+    var stage='start', saved=false, inventorySyncFailed=false, pdfDownloaded=true;
     try{
       if(EDIT_CONTEXT && EDIT_CONTEXT.access){
         if(new Date(EDIT_CONTEXT.access.expires_at)<=new Date()){showToast(t('linkExpired'),'err');submitBtn.disabled=false;submitBtn.textContent=t('submitBtn');return;}
@@ -1802,6 +1844,9 @@
         inserted = insertResult.data; error = insertResult.error;
       }
       if(error) throw error;
+      if(!inserted || inserted.length!==1 || !inserted[0] || !inserted[0].id){
+        throw new Error('Save not confirmed: expected one submission row with an ID.');
+      }
       saved=true; stage='after-save';
       var submissionId = inserted && inserted[0] ? inserted[0].id : (EDIT_CONTEXT && EDIT_CONTEXT.submission ? EDIT_CONTEXT.submission.id : (REQUEST_BASE_SUBMISSION ? REQUEST_BASE_SUBMISSION.id : null));
       if(EDIT_CONTEXT && EDIT_CONTEXT.submission && submissionId){
@@ -1811,10 +1856,10 @@
       var inventoryEmail = [effectiveRecord.companyEmail, effectiveRecord.personalEmail].filter(isRealEmail)[0] || '';
       if(REQUEST_CONTEXT && REQUEST_CONTEXT.fulfillment_device_snapshot){
         // Admin already moved the inventory ownership during fulfillment. Sync only the newly issued phone.
-        await upsertDevice(record.device1, effectiveRecord.employeeName, effectiveRecord.employeeId, inventoryEmail);
+        if(!await upsertDevice(record.device1, effectiveRecord.employeeName, effectiveRecord.employeeId, inventoryEmail)) inventorySyncFailed=true;
       }else{
-        await upsertDevice(effectiveRecord.device1, effectiveRecord.employeeName, effectiveRecord.employeeId, inventoryEmail);
-        if(effectiveRecord.device2) await upsertDevice(effectiveRecord.device2, effectiveRecord.employeeName, effectiveRecord.employeeId, inventoryEmail);
+        if(!await upsertDevice(effectiveRecord.device1, effectiveRecord.employeeName, effectiveRecord.employeeId, inventoryEmail)) inventorySyncFailed=true;
+        if(effectiveRecord.device2 && !await upsertDevice(effectiveRecord.device2, effectiveRecord.employeeName, effectiveRecord.employeeId, inventoryEmail)) inventorySyncFailed=true;
       }
 
       if(REQUEST_CONTEXT && REQUEST_CONTEXT.id){
@@ -1825,13 +1870,14 @@
         await sb.from('form_access_tokens').update({ active:false, used_at:new Date().toISOString() }).eq('id', EDIT_CONTEXT.access.id);
       }
 
-      try{ buildHandoverPDF(effectiveRecord); }catch(pdfErr){ console.error('Handover PDF download failed (submission already saved)', pdfErr); }
+      try{ buildHandoverPDF(effectiveRecord); }catch(pdfErr){ pdfDownloaded=false; console.error('Handover PDF download failed (submission already saved)', pdfErr); }
       submitBtn.textContent = t('emailingCopy');
       var submissionVersion=inserted&&inserted[0]?(inserted[0].updated_at||inserted[0].created_at):new Date().toISOString();
       var emailed = await autoSendHandoverEmail(effectiveRecord, submissionId, submissionVersion);
-      showToast(emailed
-        ? t('submitSuccessEmail')
-        : t('submitSuccessNoEmail'), 'ok');
+      var savedNotice=emailed ? t('submitSuccessEmail') : t('submitSuccessNoEmail');
+      if(!pdfDownloaded) savedNotice='Your details were saved, but the PDF could not download. Ask IT for a copy. '+(emailed?'The email copy was sent.':'The email copy could not be confirmed.');
+      if(inventorySyncFailed) savedNotice+=' Inventory/history sync needs IT review. Do not submit the form again.';
+      showToast(savedNotice, inventorySyncFailed||!pdfDownloaded ? 'err' : 'ok');
       clearDraft();
       document.getElementById('intakeForm').reset();
       document.getElementById('empId').value = '';
@@ -1852,14 +1898,14 @@
       wireSimNumbers(1); wireSimNumbers(2);
     }catch(err){
       console.error('[submit-failed] stage='+stage, err);
-      var detail=String((err&&(err.message||err.details||err.hint||err.code))||err||'').replace(/\s+/g,' ').slice(0,140);
+      // Best-effort failure telemetry. Do not log employee name/email or device IMEI.
       try{
-        sb.from('activity_log').insert([{admin_username:'Employee form',action:'Form save failed',target_type:'submission',target_id:(record&&record.employeeId)||'',details:'stage='+stage+' | '+detail+' | '+((record&&record.employeeName)||'')}]).then(function(){},function(){});
+        sb.from('activity_log').insert([{admin_username:'Employee form',action:'Form save failed',target_type:'submission',target_id:'',details:'build='+FORM_BUILD+' | stage='+stage+' | code='+String((err&&err.code)||'')}]).then(function(){},function(){});
       }catch(logErr){}
       if(saved){
         showToast('Your details were saved, but one final step did not finish. Please do NOT submit again - IT will check it. ['+stage+']','err');
       }else{
-        showToast(t('saveError')+' ['+stage+': '+detail+']','err');
+        showToast(submissionFailureMessage(stage,err),'err');
       }
     }finally{
       submitBtn.disabled=false; submitBtn.textContent=t('submitBtn');
